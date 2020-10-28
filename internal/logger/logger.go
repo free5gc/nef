@@ -16,9 +16,9 @@ var MainLog *logrus.Entry
 var InitLog *logrus.Entry
 var GinLog *logrus.Entry
 var SBIServerLog *logrus.Entry
-var Processorlog *logrus.Entry
-var TrafficInfluenceLog *logrus.Entry
-var PFDManagementLog *logrus.Entry
+var ProcessorLog *logrus.Entry
+var TrafInfluLog *logrus.Entry
+var PFDManageLog *logrus.Entry
 var OamLog *logrus.Entry
 
 func init() {
@@ -47,9 +47,9 @@ func init() {
 	InitLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Init"})
 	GinLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "GIN"})
 	SBIServerLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "SBIServer"})
-	Processorlog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Processor"})
-	TrafficInfluenceLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "TrafficInfluence"})
-	PFDManagementLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDManagement"})
+	ProcessorLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Processor"})
+	TrafInfluLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "TrafficInfluence"})
+	PFDManageLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDManagement"})
 	OamLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "OAM"})
 }
 
