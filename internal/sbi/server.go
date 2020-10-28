@@ -8,18 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"bitbucket.org/free5gc-team/http2_util"
+	"bitbucket.org/free5gc-team/http_wrapper"
 	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/openapi"
+	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 type SBIServer struct {
 	server    *http.Server
 	router    *gin.Engine
+	processor *processor.Processor
 }
 
-func NewSBIServer() *SBIServer {
-	s := &SBIServer{}
+func NewSBIServer(proc *processor.Processor) *SBIServer {
+	s := &SBIServer{processor: proc}
 	s.init()
 
 	addr := "0.0.0.0:12345" //TODO
@@ -88,5 +93,52 @@ func (s *SBIServer) ListenAndServe(scheme string) error {
 		return s.server.ListenAndServeTLS(util.NEF_PEM_PATH, util.NEF_KEY_PATH) //use config
 	}
 	return fmt.Errorf("ListenAndServe Error: no support this scheme[%s]", scheme)
+}
+
+func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
+	reqBody, err := ginCtx.GetRawData()
+	if err != nil {
+		logger.SBIServerLog.Errorf("Get Request Body error: %+v", err)
+		problemDetail := models.ProblemDetails{
+			Title:  "System failure",
+			Status: http.StatusInternalServerError,
+			Detail: err.Error(),
+			Cause:  "SYSTEM_FAILURE",
+		}
+		ginCtx.JSON(http.StatusInternalServerError, problemDetail)
+		return err
+	}
+
+	err = openapi.Deserialize(data, reqBody, "application/json")
+	if err != nil {
+		logger.SBIServerLog.Errorf("Deserialize Request Body error: %+v", err)
+		detail := "[Request Body] " + err.Error()
+		problemDetail := models.ProblemDetails{
+			Title:  "Malformed request syntax",
+			Status: http.StatusBadRequest,
+			Detail: detail,
+		}
+		logger.SBIServerLog.Errorln(problemDetail)
+		ginCtx.JSON(http.StatusBadRequest, problemDetail)
+		return err
+	}
+
+	return nil
+}
+
+func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
+	rsp := http_wrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
+	rspBody, err := openapi.Serialize(rsp.Body, "application/json")
+	if err != nil {
+		logger.SBIServerLog.Errorln(err)
+		problemDetails := models.ProblemDetails{
+			Status: http.StatusInternalServerError,
+			Cause:  "SYSTEM_FAILURE",
+			Detail: err.Error(),
+		}
+		ginCtx.JSON(http.StatusInternalServerError, problemDetails)
+	} else {
+		ginCtx.Data(rsp.Status, "application/json", rspBody)
+	}
 }
 
