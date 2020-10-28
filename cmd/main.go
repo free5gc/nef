@@ -30,6 +30,10 @@ func main() {
 
 func action(cliCtx *cli.Context) {
 	nefApp := nef.NewNEF(cliCtx.String("nefcfg"))
+	if nefApp == nil {
+		logger.MainLog.Errorf("New NEF failed")
+		return
+	}
 	if err := nefApp.Run(); err != nil {
 		logger.MainLog.Errorf("NEF Run err: %v", err)
 	}

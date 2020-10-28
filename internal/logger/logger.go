@@ -14,8 +14,9 @@ import (
 var log *logrus.Logger
 var MainLog *logrus.Entry
 var InitLog *logrus.Entry
+var CfgLog *logrus.Entry
 var GinLog *logrus.Entry
-var SBIServerLog *logrus.Entry
+var SBILog *logrus.Entry
 var ProcessorLog *logrus.Entry
 var TrafInfluLog *logrus.Entry
 var PFDManageLog *logrus.Entry
@@ -45,8 +46,9 @@ func init() {
 
 	MainLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Main"})
 	InitLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Init"})
+	CfgLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "CFG"})
 	GinLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "GIN"})
-	SBIServerLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "SBIServer"})
+	SBILog = log.WithFields(logrus.Fields{"component": "NEF", "category": "SBI"})
 	ProcessorLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Processor"})
 	TrafInfluLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "TrafficInfluence"})
 	PFDManageLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDManagement"})

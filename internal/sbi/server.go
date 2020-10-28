@@ -10,26 +10,28 @@ import (
 	"bitbucket.org/free5gc-team/http2_util"
 	"bitbucket.org/free5gc-team/http_wrapper"
 	"bitbucket.org/free5gc-team/logger_util"
+	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
-	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 type SBIServer struct {
+	cfg       *factory.Config
 	server    *http.Server
 	router    *gin.Engine
 	processor *processor.Processor
 }
 
-func NewSBIServer(proc *processor.Processor) *SBIServer {
-	s := &SBIServer{processor: proc}
+func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer {
+	s := &SBIServer{cfg: nefCfg, processor: proc}
 	s.init()
 
-	addr := "0.0.0.0:12345" //TODO
+	bindAddr := s.cfg.GetBindingAddr()
+	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
-	if s.server, err = http2_util.NewServer(addr, util.NEF_LOG_PATH, s.router); err != nil {
+	if s.server, err = http2_util.NewServer(bindAddr, factory.NEF_LOG_PATH, s.router); err != nil {
 		logger.InitLog.Errorf("Initialize HTTP server failed: %+v", err)
 		return nil
 	}
@@ -90,7 +92,8 @@ func (s *SBIServer) ListenAndServe(scheme string) error {
 	if scheme == "http" {
 		return s.server.ListenAndServe()
 	} else if scheme == "https" {
-		return s.server.ListenAndServeTLS(util.NEF_PEM_PATH, util.NEF_KEY_PATH) //use config
+		//TODO: use config file to config path
+		return s.server.ListenAndServeTLS(factory.NEF_PEM_PATH, factory.NEF_KEY_PATH)
 	}
 	return fmt.Errorf("ListenAndServe Error: no support this scheme[%s]", scheme)
 }
@@ -98,7 +101,7 @@ func (s *SBIServer) ListenAndServe(scheme string) error {
 func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
 	reqBody, err := ginCtx.GetRawData()
 	if err != nil {
-		logger.SBIServerLog.Errorf("Get Request Body error: %+v", err)
+		logger.SBILog.Errorf("Get Request Body error: %+v", err)
 		problemDetail := models.ProblemDetails{
 			Title:  "System failure",
 			Status: http.StatusInternalServerError,
@@ -111,14 +114,14 @@ func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interfa
 
 	err = openapi.Deserialize(data, reqBody, "application/json")
 	if err != nil {
-		logger.SBIServerLog.Errorf("Deserialize Request Body error: %+v", err)
+		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
 		detail := "[Request Body] " + err.Error()
 		problemDetail := models.ProblemDetails{
 			Title:  "Malformed request syntax",
 			Status: http.StatusBadRequest,
 			Detail: detail,
 		}
-		logger.SBIServerLog.Errorln(problemDetail)
+		logger.SBILog.Errorln(problemDetail)
 		ginCtx.JSON(http.StatusBadRequest, problemDetail)
 		return err
 	}
@@ -130,7 +133,7 @@ func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *proces
 	rsp := http_wrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
 	rspBody, err := openapi.Serialize(rsp.Body, "application/json")
 	if err != nil {
-		logger.SBIServerLog.Errorln(err)
+		logger.SBILog.Errorln(err)
 		problemDetails := models.ProblemDetails{
 			Status: http.StatusInternalServerError,
 			Cause:  "SYSTEM_FAILURE",
@@ -141,4 +144,3 @@ func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *proces
 		ginCtx.Data(rsp.Status, "application/json", rspBody)
 	}
 }
-

@@ -2,9 +2,11 @@ package processor
 
 import (
 	"bitbucket.org/free5gc-team/nef/internal/context"
+	"bitbucket.org/free5gc-team/nef/internal/factory"
 )
 
 type Processor struct {
+	cfg    *factory.Config
 	nefCtx *context.NefContext
 }
 
@@ -14,8 +16,8 @@ type HandlerResponse struct {
 	Body    interface{}
 }
 
-func NewProcessor(nefCtx *context.NefContext) *Processor {
-	handler := &Processor{nefCtx: nefCtx}
+func NewProcessor(nefCfg *factory.Config, nefCtx *context.NefContext) *Processor {
+	handler := &Processor{cfg: nefCfg, nefCtx: nefCtx}
 	handler.init()
 
 	return handler
@@ -23,3 +25,4 @@ func NewProcessor(nefCtx *context.NefContext) *Processor {
 
 func (h *Processor) init() {
 }
+
