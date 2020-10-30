@@ -28,7 +28,7 @@ func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer 
 	s := &SBIServer{cfg: nefCfg, processor: proc}
 	s.init()
 
-	bindAddr := s.cfg.GetBindingAddr()
+	bindAddr := s.cfg.GetSbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
 	if s.server, err = http2_util.NewServer(bindAddr, factory.NEF_LOG_PATH, s.router); err != nil {

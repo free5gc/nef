@@ -10,9 +10,11 @@ require (
 	bitbucket.org/free5gc-team/openapi v0.0.0-20200915035203-9fc3f0e748b4
 	bitbucket.org/free5gc-team/path_util v0.0.0-20200925075253-6a41479bd567
 	bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c
+	github.com/antihax/optional v1.0.0
 	github.com/antonfisher/nested-logrus-formatter v1.3.0
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3
+	github.com/google/uuid v1.1.2
 	github.com/sirupsen/logrus v1.7.0
 	github.com/urfave/cli v1.22.4
 	gopkg.in/yaml.v2 v2.3.0

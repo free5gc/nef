@@ -3,6 +3,7 @@ package nef
 import (
 	"github.com/sirupsen/logrus"
 
+	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
@@ -13,10 +14,11 @@ import (
 )
 
 type NefApp struct {
-	cfg       *factory.Config
-	nefCtx    *context.NefContext
-	processor *processor.Processor
-	sbiServer *sbi.SBIServer
+	cfg         *factory.Config
+	nefCtx      *context.NefContext
+	processor   *processor.Processor
+	sbiServer   *sbi.SBIServer
+	consumerNRF *consumer.ConsumerNRFService
 }
 
 func NewNEF(nefcfgPath string) *NefApp {
@@ -33,6 +35,13 @@ func NewNEF(nefcfgPath string) *NefApp {
 	if nef.sbiServer = sbi.NewSBIServer(nef.cfg, nef.processor); nef.sbiServer == nil {
 		return nil
 	}
+	if nef.consumerNRF = consumer.NewConsumerNRFService(nef.cfg, nef.nefCtx); nef.consumerNRF == nil {
+		return nil
+	}
+	nef.consumerNRF.RegisterNFInstance()
+	if err := nef.consumerNRF.SearchNFInstance("UDR"); err != nil {
+		return nil
+	}
 	return nef
 }
 
@@ -41,6 +50,7 @@ func (n *NefApp) initConfig(nefcfgPath string) error {
 		logger.InitLog.Errorf("initConfig [%s] Error: %+v", nefcfgPath, err)
 		return err
 	}
+	n.cfg.Print()
 	n.setLogLevel()
 	return nil
 }

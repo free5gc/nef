@@ -15,8 +15,10 @@ var log *logrus.Logger
 var MainLog *logrus.Entry
 var InitLog *logrus.Entry
 var CfgLog *logrus.Entry
+var CtxLog *logrus.Entry
 var GinLog *logrus.Entry
 var SBILog *logrus.Entry
+var ConsumerLog *logrus.Entry
 var ProcessorLog *logrus.Entry
 var TrafInfluLog *logrus.Entry
 var PFDManageLog *logrus.Entry
@@ -47,8 +49,10 @@ func init() {
 	MainLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Main"})
 	InitLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Init"})
 	CfgLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "CFG"})
+	CtxLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "CTX"})
 	GinLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "GIN"})
 	SBILog = log.WithFields(logrus.Fields{"component": "NEF", "category": "SBI"})
+	ConsumerLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Consumer"})
 	ProcessorLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Processor"})
 	TrafInfluLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "TrafficInfluence"})
 	PFDManageLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDManagement"})

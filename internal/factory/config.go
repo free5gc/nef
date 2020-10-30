@@ -15,13 +15,15 @@ import (
 
 // Path of HTTP2 key and log file
 var (
-	NEF_LOG_PATH       = path_util.Free5gcPath("free5gc/nefsslkey.log")
-	NEF_PEM_PATH       = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
-	NEF_KEY_PATH       = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NEF_CONFIG_PATH    = path_util.Free5gcPath("free5gc/config/nefcfg.conf")
-	NEF_DEFAULT_IPV4   = "127.0.0.1"
-	NEF_DEFAULT_PORT   = "29505"
-	NEF_DEFAULT_SCHEME = "https"
+	NEF_LOG_PATH        = path_util.Free5gcPath("free5gc/nefsslkey.log")
+	NEF_PEM_PATH        = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
+	NEF_KEY_PATH        = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
+	NEF_CONFIG_PATH     = path_util.Free5gcPath("free5gc/config/nefcfg.conf")
+	NEF_DEFAULT_VERSION = "1.0.0"
+	NEF_DEFAULT_IPV4    = "127.0.0.1"
+	NEF_DEFAULT_PORT    = "29505"
+	NEF_DEFAULT_SCHEME  = "https"
+	NEF_DEFAULT_NRFURI  = "https://127.0.0.1:29510"
 )
 
 type Config struct {
@@ -36,16 +38,10 @@ type Info struct {
 }
 
 type Configuration struct {
-	Sbi             *Sbi      `yaml:"sbi,omitempty"`
-	TimeFormat      string    `yaml:"timeFormat,omitempty"`
-	DefaultBdtRefId string    `yaml:"defaultBdtRefId,omitempty"`
-	NrfUri          string    `yaml:"nrfUri,omitempty"`
-	ServiceList     []Service `yaml:"serviceList,omitempty"`
-}
-
-type Service struct {
-	ServiceName string `yaml:"serviceName"`
-	SuppFeat    string `yaml:"suppFeat,omitempty"`
+	Sbi         *Sbi      `yaml:"sbi,omitempty"`
+	TimeFormat  string    `yaml:"timeFormat,omitempty"`
+	NrfUri      string    `yaml:"nrfUri,omitempty"`
+	ServiceList []Service `yaml:"serviceList,omitempty"`
 }
 
 type Sbi struct {
@@ -56,6 +52,46 @@ type Sbi struct {
 	Port        int    `yaml:"port,omitempty"`
 }
 
+type Service struct {
+	ServiceName string `yaml:"serviceName"`
+	SuppFeat    string `yaml:"suppFeat,omitempty"`
+}
+
+func (c *Config) Print() {
+	logger.CfgLog.Infof("==================================================")
+	if c.Info != nil {
+		logger.CfgLog.Infof("Info -")
+		logger.CfgLog.Infof("  Version: %s", c.Info.Version)
+		logger.CfgLog.Infof("  Description: %s", c.Info.Description)
+	}
+	if c.Configuration != nil {
+		logger.CfgLog.Infof("Configuration -")
+		if c.Configuration.Sbi != nil {
+			logger.CfgLog.Infof("  Sbi -")
+			logger.CfgLog.Infof("    Scheme: %s", c.Configuration.Sbi.Scheme)
+			logger.CfgLog.Infof("    RegisterIPv4: %s", c.Configuration.Sbi.RegisterIPv4)
+			logger.CfgLog.Infof("    BindingIPv4: %s", c.Configuration.Sbi.BindingIPv4)
+			logger.CfgLog.Infof("    Port: %d", c.Configuration.Sbi.Port)
+		}
+		logger.CfgLog.Infof("  TimeFormat: %s", c.Configuration.TimeFormat)
+		logger.CfgLog.Infof("  NrfUri: %s", c.Configuration.NrfUri)
+		if c.Configuration.ServiceList != nil {
+			logger.CfgLog.Infof("ServiceList -")
+			for _, s := range c.Configuration.ServiceList {
+				logger.CfgLog.Infof("ServiceName: %s, SuppFeat: %s", s.ServiceName, s.SuppFeat)
+			}
+		}
+	}
+	logger.CfgLog.Infof("==================================================")
+}
+
+func (c *Config) GetVersion() string {
+	if c.Info != nil && c.Info.Version != "" {
+		return c.Info.Version
+	}
+	return NEF_DEFAULT_VERSION
+}
+
 func (c *Config) GetSbiScheme() string {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Scheme != "" {
 		return c.Configuration.Sbi.Scheme
@@ -63,7 +99,15 @@ func (c *Config) GetSbiScheme() string {
 	return NEF_DEFAULT_SCHEME
 }
 
-func (c *Config) GetBindingAddr() string {
+func (c *Config) GetSbiPort() int {
+	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
+		return c.Configuration.Sbi.Port
+	}
+	port, _ := strconv.Atoi(NEF_DEFAULT_PORT)
+	return port
+}
+
+func (c *Config) GetSbiBindingAddr() string {
 	var bindAddr string
 	if c.Configuration == nil || c.Configuration.Sbi == nil {
 		return "0.0.0.0:" + NEF_DEFAULT_PORT
@@ -86,13 +130,15 @@ func (c *Config) GetBindingAddr() string {
 	return bindAddr
 }
 
-func (c *Config) GetRegisterAddr() string {
-	var regAddr string
-	if c.Configuration.Sbi.RegisterIPv4 != "" {
-		regAddr = c.Configuration.Sbi.RegisterIPv4 + ":"
-	} else {
-		regAddr = NEF_DEFAULT_IPV4 + ":"
+func (c *Config) GetSbiRegisterIP() string {
+	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.RegisterIPv4 != "" {
+		return c.Configuration.Sbi.RegisterIPv4
 	}
+	return NEF_DEFAULT_IPV4
+}
+
+func (c *Config) GetSbiRegisterAddr() string {
+	regAddr := c.GetSbiRegisterIP() + ":"
 	if c.Configuration.Sbi.Port != 0 {
 		regAddr = regAddr + strconv.Itoa(c.Configuration.Sbi.Port)
 	} else {
@@ -102,5 +148,19 @@ func (c *Config) GetRegisterAddr() string {
 }
 
 func (c *Config) GetSbiUri() string {
-	return c.GetSbiScheme() + "://" + c.GetRegisterAddr()
+	return c.GetSbiScheme() + "://" + c.GetSbiRegisterAddr()
+}
+
+func (c *Config) GetNrfUri() string {
+	if c.Configuration != nil && c.Configuration.NrfUri != "" {
+		return c.Configuration.NrfUri
+	}
+	return NEF_DEFAULT_NRFURI
+}
+
+func (c *Config) GetServiceList() []Service {
+	if c.Configuration != nil && c.Configuration.ServiceList != nil && len(c.Configuration.ServiceList) > 0 {
+		return c.Configuration.ServiceList
+	}
+	return nil
 }
