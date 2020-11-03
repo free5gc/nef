@@ -10,7 +10,8 @@ import (
 
 type NefContext struct {
 	nfInstID string //NF Instance ID
-	udrURI   string
+	pcfURI   string //PCF URI discovered from NRF
+	udrURI   string //UDR URI discovered from NRF
 	afCtx    map[string]*afContext
 	mtx      sync.RWMutex
 }
@@ -43,6 +44,19 @@ func (n *NefContext) NfInstID(id string) {
 	n.mtx.Lock()
 	n.nfInstID = id
 	logger.CtxLog.Infof("Set nfInstID: [%s]", n.nfInstID)
+	n.mtx.Unlock()
+}
+
+func (n *NefContext) GetPcfURI() string {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	return n.pcfURI
+}
+
+func (n *NefContext) PcfURI(uri string) {
+	n.mtx.Lock()
+	n.pcfURI = uri
+	logger.CtxLog.Infof("Set pcfURI: [%s]", n.pcfURI)
 	n.mtx.Unlock()
 }
 

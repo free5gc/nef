@@ -41,7 +41,7 @@ func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *
 func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *models.NfProfile {
 	profile := &models.NfProfile{
 		NfInstanceId: c.nefCtx.GetNfInstID(),
-		NfType:       models.NfType_PCF,
+		NfType:       models.NfType_NEF,
 		NfStatus:     models.NfStatus_REGISTERED,
 	}
 	profile.Ipv4Addresses = append(profile.Ipv4Addresses, c.cfg.GetSbiRegisterIP())
@@ -89,7 +89,7 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 
 	for {
 		_, rsp, err = c.clientNFMngmnt.NFInstanceIDDocumentApi.RegisterNFInstance(
-			ctx.TODO(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
+			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
 		if err != nil || rsp == nil {
 			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
 			time.Sleep(2 * time.Second)
@@ -113,8 +113,35 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 	}
 }
 
-// SearchNFServiceUri returns NF Uri derived from NfProfile with corresponding service
-func SearchNFServiceUri(nfProfile models.NfProfile, serviceName models.ServiceName,
+func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName string) (string, error) {
+	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
+		ServiceNames: optional.NewInterface([]models.ServiceName{models.ServiceName(srvName)}),
+	}
+	result, rsp, err := c.clientNFDisc.NFInstancesStoreApi.SearchNFInstances(ctx.Background(),
+		models.NfType(targetNfType), models.NfType_NEF, &param)
+	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
+		err = fmt.Errorf("SearchNFInstance Error: Temporary Redirect")
+	}
+	if err != nil {
+		return "", fmt.Errorf("SearchNFInstance Error: %+v", err)
+	}
+
+	uri := ""
+	for _, nfProfile := range result.NfInstances {
+		if uri = searchUriFromNfProfile(nfProfile, models.ServiceName(srvName),
+			models.NfServiceStatus_REGISTERED); uri != "" {
+			break
+		}
+	}
+	if uri == "" {
+		err = fmt.Errorf("SearchNFServiceUri Error: no URI found")
+		return "", err
+	}
+	return uri, nil
+}
+
+// searchUriFromNfProfile returns NF Uri derived from NfProfile with corresponding service
+func searchUriFromNfProfile(nfProfile models.NfProfile, serviceName models.ServiceName,
 	nfServiceStatus models.NfServiceStatus) string {
 	nfUri := ""
 	if nfProfile.NfServices != nil {
@@ -157,28 +184,4 @@ func getUriFromIpEndPoint(scheme models.UriScheme, ipv4Address string, port int3
 		}
 	}
 	return uri
-}
-
-func (c *ConsumerNRFService) SearchNFInstance(targetNfType string) error {
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]models.ServiceName{models.ServiceName_NUDR_DR}),
-	}
-	result, rsp, err := c.clientNFDisc.NFInstancesStoreApi.SearchNFInstances(ctx.TODO(),
-		models.NfType(targetNfType), models.NfType_PCF, &param)
-	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
-		err = fmt.Errorf("Temporary Redirect For Non NRF Consumer")
-	}
-	if err != nil {
-		logger.ConsumerLog.Errorf("SearchNFInstance Error: %+v", err)
-		return err
-	}
-
-	for _, nfProfile := range result.NfInstances {
-		udrUri := SearchNFServiceUri(nfProfile, models.ServiceName_NUDR_DR, models.NfServiceStatus_REGISTERED)
-		if udrUri != "" {
-			c.nefCtx.UdrURI(udrUri)
-			break
-		}
-	}
-	return nil
 }

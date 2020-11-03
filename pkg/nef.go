@@ -14,11 +14,11 @@ import (
 )
 
 type NefApp struct {
-	cfg         *factory.Config
-	nefCtx      *context.NefContext
-	processor   *processor.Processor
-	sbiServer   *sbi.SBIServer
-	consumerNRF *consumer.ConsumerNRFService
+	cfg       *factory.Config
+	nefCtx    *context.NefContext
+	processor *processor.Processor
+	sbiServer *sbi.SBIServer
+	consumer  *consumer.Consumer
 }
 
 func NewNEF(nefcfgPath string) *NefApp {
@@ -35,11 +35,7 @@ func NewNEF(nefcfgPath string) *NefApp {
 	if nef.sbiServer = sbi.NewSBIServer(nef.cfg, nef.processor); nef.sbiServer == nil {
 		return nil
 	}
-	if nef.consumerNRF = consumer.NewConsumerNRFService(nef.cfg, nef.nefCtx); nef.consumerNRF == nil {
-		return nil
-	}
-	nef.consumerNRF.RegisterNFInstance()
-	if err := nef.consumerNRF.SearchNFInstance("UDR"); err != nil {
+	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
 		return nil
 	}
 	return nef
