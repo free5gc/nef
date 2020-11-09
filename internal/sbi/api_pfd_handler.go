@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 func (s *SBIServer) getPFDManagementEndpoints() []Endpoint {
@@ -64,12 +66,12 @@ func (s *SBIServer) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
 }
 
 func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
-	//var pfdManag models.PfdManagement
-	//if err := s.getDataFromHttpRequestBody(ginCtx, &pfdManag); err != nil {
-	//	return
-	//}
+	var pfdMng models.PfdManagement
+	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+		return
+	}
 	hdlRsp := s.processor.PostPFDManagementTransactions(
-		ginCtx.Param("scsAsID"))
+		ginCtx.Param("scsAsID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
@@ -82,12 +84,12 @@ func (s *SBIServer) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context
 }
 
 func (s *SBIServer) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	//var pfdManag models.PfdManagement
-	//if err := s.getDataFromHttpRequestBody(ginCtx, &pfdManag); err != nil {
-	//	return
-	//}
+	var pfdMng models.PfdManagement
+	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+		return
+	}
 	hdlRsp := s.processor.PutIndividualPFDManagementTransaction(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
+		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
@@ -114,23 +116,23 @@ func (s *SBIServer) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Cont
 }
 
 func (s *SBIServer) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	//var pfdManag models.PfdManagement
-	//if err := s.getDataFromHttpRequestBody(ginCtx, &pfdManag); err != nil {
-	//	return
-	//}
+	var pfdData models.PfdData
+	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+		return
+	}
 	hdlRsp := s.processor.PutIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
+		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *SBIServer) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	//var pfdManag models.PfdManagement
-	//if err := s.getDataFromHttpRequestBody(ginCtx, &pfdManag); err != nil {
-	//	return
-	//}
+	var pfdData models.PfdData
+	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+		return
+	}
 	hdlRsp := s.processor.PatchIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
+		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }

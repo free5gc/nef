@@ -30,7 +30,7 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(afID, subscID stri
 }
 
 func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID string,
-	tiSubPatch *models.TrafficInfluDataPatch) *HandlerResponse {
+	tiSubPatch *models.TrafficInfluSubPatch) *HandlerResponse {
 	logger.TrafInfluLog.Infof("PatchIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 	return &HandlerResponse{http.StatusOK, nil, nil}
 }

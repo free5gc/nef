@@ -8,8 +8,8 @@ bitbucket.org/free5gc-team/logger_conf v0.0.0-20200925082105-8f148a8a82a3/go.mod
 bitbucket.org/free5gc-team/logger_util v0.0.0-20200915032249-cd1bf694e835/go.mod h1:UQytjJkq9guRYfPlO3jXNjAwfj92kkNnw5O6tnx6fu0=
 bitbucket.org/free5gc-team/logger_util v0.0.0-20201028095229-a00bec1e66ea h1:cXotD+Win6SRAVVrLx4y2izHQXwuVlqNwqMsCHE60x8=
 bitbucket.org/free5gc-team/logger_util v0.0.0-20201028095229-a00bec1e66ea/go.mod h1:poyN/lZRT3WxLydQy2Ov0S/5Ii/tO3xFA+Mqw2bmwxE=
-bitbucket.org/free5gc-team/openapi v0.0.0-20200915035203-9fc3f0e748b4 h1:c9BKWMdk83ZYhsEU8M4Xb9zIzOoqH9iC/uoSpkndh6M=
-bitbucket.org/free5gc-team/openapi v0.0.0-20200915035203-9fc3f0e748b4/go.mod h1:OPBqpY9KpaTgGnmZMNUe+yVx56L0cCmvBHnZ6llCKhs=
+bitbucket.org/free5gc-team/openapi v0.0.0-20201107101320-b56742e74e07 h1:m/+aSlU3ARRn0ip5FSeuo4PiKLwJkCrQxvndqbJT360=
+bitbucket.org/free5gc-team/openapi v0.0.0-20201107101320-b56742e74e07/go.mod h1:OPBqpY9KpaTgGnmZMNUe+yVx56L0cCmvBHnZ6llCKhs=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200915032418-20c65dc7664b/go.mod h1:YOubpf9itrS2U04mpnHFlB7X7SOwP50KqDaM8ptBA/Q=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200925075253-6a41479bd567 h1:wdBLG5CRrNUGPuD2Rzm45Bxh1ly413s2U06chl2Ts0E=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200925075253-6a41479bd567/go.mod h1:YOubpf9itrS2U04mpnHFlB7X7SOwP50KqDaM8ptBA/Q=
@@ -106,6 +106,7 @@ github.com/golang/mock v1.4.4/go.mod h1:l3mdAwkq5BuhzHwde/uurv3sEJeZMXNpwsxVWU71
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.1/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.3.3 h1:gyjaxf+svBWX08ZjK86iN9geUJF0H6gp2IRKX6Nf6/I=
 github.com/golang/protobuf v1.3.3/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/protobuf v1.3.4/go.mod h1:vzj43D7+SQXF/4pzW/hwtAqwc6iTitCiVSaWz5lYuqw=
 github.com/golang/protobuf v1.3.5/go.mod h1:6O5/vntMXwX2lRkT1hjjk0nAC1IDOTvTlVgjlRvqsdk=

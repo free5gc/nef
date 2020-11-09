@@ -51,7 +51,7 @@ func (s *SBIServer) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
 }
 
 func (s *SBIServer) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	var tiSub models.TrafficInfluSub //TODO: change to AF-NEF TrafficInfluSub
+	var tiSub models.TrafficInfluSub
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func (s *SBIServer) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Con
 }
 
 func (s *SBIServer) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	var tiSub models.TrafficInfluSub //TODO: change to AF-NEF TrafficInfluSub
+	var tiSub models.TrafficInfluSub
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (s *SBIServer) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Con
 }
 
 func (s *SBIServer) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	var tiSubPatch models.TrafficInfluDataPatch //TODO: change to AF-NEF TrafficInfluSubPatch
+	var tiSubPatch models.TrafficInfluSubPatch
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSubPatch); err != nil {
 		return
 	}
