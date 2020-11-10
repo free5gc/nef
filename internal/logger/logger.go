@@ -22,6 +22,7 @@ var ConsumerLog *logrus.Entry
 var ProcessorLog *logrus.Entry
 var TrafInfluLog *logrus.Entry
 var PFDManageLog *logrus.Entry
+var PFDFLog *logrus.Entry
 var OamLog *logrus.Entry
 
 func init() {
@@ -56,6 +57,7 @@ func init() {
 	ProcessorLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Processor"})
 	TrafInfluLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "TrafficInfluence"})
 	PFDManageLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDManagement"})
+	PFDFLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "PFDF"})
 	OamLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "OAM"})
 }
 

@@ -18,11 +18,6 @@ type HandlerResponse struct {
 
 func NewProcessor(nefCfg *factory.Config, nefCtx *context.NefContext) *Processor {
 	handler := &Processor{cfg: nefCfg, nefCtx: nefCtx}
-	handler.init()
 
 	return handler
 }
-
-func (h *Processor) init() {
-}
-

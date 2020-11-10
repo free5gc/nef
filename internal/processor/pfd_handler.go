@@ -17,6 +17,11 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 	return &HandlerResponse{http.StatusOK, nil, nil}
 }
 
+func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResponse {
+	logger.PFDManageLog.Infof("DeletePFDManagementTransactions - scsAsID[%s]", scsAsID)
+	return &HandlerResponse{http.StatusOK, nil, nil}
+}
+
 func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("GetIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
 	return &HandlerResponse{http.StatusOK, nil, nil}

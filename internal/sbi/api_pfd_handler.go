@@ -21,6 +21,11 @@ func (s *SBIServer) getPFDManagementEndpoints() []Endpoint {
 			APIFunc: s.apiPostPFDManagementTransactions,
 		},
 		{
+			Method:  strings.ToUpper("Delete"),
+			Pattern: "/:scsAsID/transactions",
+			APIFunc: s.apiDeletePFDManagementTransactions,
+		},
+		{
 			Method:  strings.ToUpper("Get"),
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiGetIndividualPFDManagementTransaction,
@@ -72,6 +77,13 @@ func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	}
 	hdlRsp := s.processor.PostPFDManagementTransactions(
 		ginCtx.Param("scsAsID"), &pfdMng)
+
+	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
+}
+
+func (s *SBIServer) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
+	hdlRsp := s.processor.DeletePFDManagementTransactions(
+		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }

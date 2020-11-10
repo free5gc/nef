@@ -26,7 +26,34 @@ type SBIServer struct {
 
 func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer {
 	s := &SBIServer{cfg: nefCfg, processor: proc}
-	s.init()
+
+	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
+
+	endpoints := s.getTrafficInfluenceEndpoints()
+	group := s.router.Group("/3gpp-traffic-influence/v1")
+	applyEndpoints(group, endpoints)
+
+	endpoints = s.getPFDManagementEndpoints()
+	group = s.router.Group("/3gpp-pfd-management/v1")
+	applyEndpoints(group, endpoints)
+
+	endpoints = s.getPFDFEndpoints()
+	group = s.router.Group("/nnef-pfdmanagement/v1")
+	applyEndpoints(group, endpoints)
+
+	endpoints = s.getOamEndpoints()
+	group = s.router.Group("/nnef-oam/v1")
+	applyEndpoints(group, endpoints)
+
+	s.router.Use(cors.New(cors.Config{
+		AllowMethods: []string{"GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"},
+		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "User-Agent",
+			"Referrer", "Host", "Token", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		AllowAllOrigins:  true,
+		MaxAge:           86400,
+	}))
 
 	bindAddr := s.cfg.GetSbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
@@ -43,32 +70,6 @@ type Endpoint struct {
 	Method  string
 	Pattern string
 	APIFunc gin.HandlerFunc
-}
-
-func (s *SBIServer) init() {
-	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
-
-	endpoints := s.getTrafficInfluenceEndpoints()
-	group := s.router.Group("/3gpp-traffic-influence/v1")
-	applyEndpoints(group, endpoints)
-
-	endpoints = s.getPFDManagementEndpoints()
-	group = s.router.Group("/3gpp-pfd-management/v1")
-	applyEndpoints(group, endpoints)
-
-	endpoints = s.getOamEndpoints()
-	group = s.router.Group("/nnef-oam/v1")
-	applyEndpoints(group, endpoints)
-
-	s.router.Use(cors.New(cors.Config{
-		AllowMethods: []string{"GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"},
-		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "User-Agent",
-			"Referrer", "Host", "Token", "X-Requested-With"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		AllowAllOrigins:  true,
-		MaxAge:           86400,
-	}))
 }
 
 func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
