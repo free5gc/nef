@@ -1,13 +1,15 @@
 package processor
 
 import (
+	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 )
 
 type Processor struct {
-	cfg    *factory.Config
-	nefCtx *context.NefContext
+	cfg      *factory.Config
+	nefCtx   *context.NefContext
+	consumer *consumer.Consumer
 }
 
 type HandlerResponse struct {
@@ -16,8 +18,8 @@ type HandlerResponse struct {
 	Body    interface{}
 }
 
-func NewProcessor(nefCfg *factory.Config, nefCtx *context.NefContext) *Processor {
-	handler := &Processor{cfg: nefCfg, nefCtx: nefCtx}
+func NewProcessor(nefCfg *factory.Config, nefCtx *context.NefContext, consumer *consumer.Consumer) *Processor {
+	handler := &Processor{cfg: nefCfg, nefCtx: nefCtx, consumer: consumer}
 
 	return handler
 }

@@ -30,19 +30,19 @@ func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer 
 	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
 
 	endpoints := s.getTrafficInfluenceEndpoints()
-	group := s.router.Group("/3gpp-traffic-influence/v1")
+	group := s.router.Group(factory.TRAFF_INFLU_RES_URI_PREFIX)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getPFDManagementEndpoints()
-	group = s.router.Group("/3gpp-pfd-management/v1")
+	group = s.router.Group(factory.PFD_MNG_RES_URI_PREFIX)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getPFDFEndpoints()
-	group = s.router.Group("/nnef-pfdmanagement/v1")
+	group = s.router.Group(factory.NEF_PFD_MNG_RES_URI_PREFIX)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getOamEndpoints()
-	group = s.router.Group("/nnef-oam/v1")
+	group = s.router.Group(factory.NEF_OAM_RES_URI_PREFIX)
 	applyEndpoints(group, endpoints)
 
 	s.router.Use(cors.New(cors.Config{

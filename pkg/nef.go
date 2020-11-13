@@ -29,13 +29,13 @@ func NewNEF(nefcfgPath string) *NefApp {
 	if nef.nefCtx = context.NewNefContext(); nef.nefCtx == nil {
 		return nil
 	}
-	if nef.processor = processor.NewProcessor(nef.cfg, nef.nefCtx); nef.processor == nil {
+	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
+		return nil
+	}
+	if nef.processor = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer); nef.processor == nil {
 		return nil
 	}
 	if nef.sbiServer = sbi.NewSBIServer(nef.cfg, nef.processor); nef.sbiServer == nil {
-		return nil
-	}
-	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
 		return nil
 	}
 	return nef

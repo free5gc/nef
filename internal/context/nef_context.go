@@ -9,27 +9,15 @@ import (
 )
 
 type NefContext struct {
-	nfInstID string //NF Instance ID
-	pcfURI   string //PCF URI discovered from NRF
-	udrURI   string //UDR URI discovered from NRF
-	afCtx    map[string]*afContext
-	mtx      sync.RWMutex
-}
-
-type afContext struct {
-	subsc    map[string]*subscription
-	pfdTrans map[string]*pfdTransaction
-}
-
-type subscription struct {
-}
-
-type pfdTransaction struct {
+	nfInstID   string //NF Instance ID
+	numCorreID uint64
+	afCtxs     map[string]*AfContext
+	mtx        sync.RWMutex
 }
 
 func NewNefContext() *NefContext {
 	n := &NefContext{nfInstID: uuid.New().String()}
-	n.afCtx = make(map[string]*afContext)
+	n.afCtxs = make(map[string]*AfContext)
 	logger.CtxLog.Infof("New nfInstID: [%s]", n.nfInstID)
 	return n
 }
@@ -42,33 +30,38 @@ func (n *NefContext) GetNfInstID() string {
 
 func (n *NefContext) NfInstID(id string) {
 	n.mtx.Lock()
+	defer n.mtx.Unlock()
 	n.nfInstID = id
 	logger.CtxLog.Infof("Set nfInstID: [%s]", n.nfInstID)
-	n.mtx.Unlock()
 }
 
-func (n *NefContext) GetPcfURI() string {
+func (n *NefContext) NewAfCtx(afID string) *AfContext {
 	n.mtx.RLock()
-	defer n.mtx.RUnlock()
-	return n.pcfURI
+	afc, exist := n.afCtxs[afID]
+	n.mtx.RUnlock()
+	if exist {
+		logger.CtxLog.Infof("AF [%s] found", afID)
+		return afc
+	}
+
+	logger.CtxLog.Infof("No AF found - new AF [%s]", afID)
+	afc = &AfContext{afID: afID}
+	afc.subsc = make(map[string]*AfSubscription)
+	afc.pfdTrans = make(map[string]*AfPfdTransaction)
+	return afc
 }
 
-func (n *NefContext) PcfURI(uri string) {
+func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	n.mtx.Lock()
-	n.pcfURI = uri
-	logger.CtxLog.Infof("Set pcfURI: [%s]", n.pcfURI)
-	n.mtx.Unlock()
+	defer n.mtx.Unlock()
+	n.numCorreID++
+	return afc.newSubsc(n.numCorreID)
 }
 
-func (n *NefContext) GetUdrURI() string {
-	n.mtx.RLock()
-	defer n.mtx.RUnlock()
-	return n.udrURI
-}
-
-func (n *NefContext) UdrURI(uri string) {
+func (n *NefContext) AddAfCtx(afc *AfContext) {
 	n.mtx.Lock()
-	n.udrURI = uri
-	logger.CtxLog.Infof("Set udrURI: [%s]", n.udrURI)
-	n.mtx.Unlock()
+	defer n.mtx.Unlock()
+
+	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
+	n.afCtxs[afc.afID] = afc
 }

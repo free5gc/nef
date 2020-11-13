@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/antihax/optional"
-
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
@@ -23,6 +21,8 @@ type ConsumerNRFService struct {
 	nefCtx         *context.NefContext
 	clientNFMngmnt *Nnrf_NFManagement.APIClient
 	clientNFDisc   *Nnrf_NFDiscovery.APIClient
+	pcfURI         string //PCF URI discovered from NRF
+	udrURI         string //UDR URI discovered from NRF
 }
 
 func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *ConsumerNRFService {
@@ -113,12 +113,10 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 	}
 }
 
-func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName string) (string, error) {
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]models.ServiceName{models.ServiceName(srvName)}),
-	}
+func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName string,
+	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (string, error) {
 	result, rsp, err := c.clientNFDisc.NFInstancesStoreApi.SearchNFInstances(ctx.Background(),
-		models.NfType(targetNfType), models.NfType_NEF, &param)
+		models.NfType(targetNfType), models.NfType_NEF, param)
 	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
 		err = fmt.Errorf("SearchNFInstance Error: Temporary Redirect")
 	}
