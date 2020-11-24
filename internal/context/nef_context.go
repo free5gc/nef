@@ -77,3 +77,14 @@ func (n *NefContext) NewAfPfdTrans(afc *AfContext) *AfPfdTransaction {
 	defer n.mtx.Unlock()
 	return afc.newPfdTrans()
 }
+
+func (n *NefContext) IsAppIDExisted(appID string) bool {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	for _, afCtx := range n.afCtxs {
+		if afCtx.IsAppIDExisted(appID) {
+			return true
+		}
+	}
+	return false
+}

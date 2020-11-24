@@ -30,3 +30,12 @@ func ProblemDetailsDataNotFound(detail string) *models.ProblemDetails {
 		Detail: detail,
 	}
 }
+
+func AddLocationheader(header map[string][]string, location string) {
+	locations := header["Location"]
+	if locations == nil {
+		header["Location"] = []string{location}
+	} else {
+		header["Location"] = append(locations, location)
+	}
+}

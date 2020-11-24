@@ -8,8 +8,8 @@ bitbucket.org/free5gc-team/logger_conf v0.0.0-20200925082105-8f148a8a82a3/go.mod
 bitbucket.org/free5gc-team/logger_util v0.0.0-20200915032249-cd1bf694e835/go.mod h1:UQytjJkq9guRYfPlO3jXNjAwfj92kkNnw5O6tnx6fu0=
 bitbucket.org/free5gc-team/logger_util v0.0.0-20201028095229-a00bec1e66ea h1:cXotD+Win6SRAVVrLx4y2izHQXwuVlqNwqMsCHE60x8=
 bitbucket.org/free5gc-team/logger_util v0.0.0-20201028095229-a00bec1e66ea/go.mod h1:poyN/lZRT3WxLydQy2Ov0S/5Ii/tO3xFA+Mqw2bmwxE=
-bitbucket.org/free5gc-team/openapi v0.0.0-20201107101320-b56742e74e07 h1:m/+aSlU3ARRn0ip5FSeuo4PiKLwJkCrQxvndqbJT360=
-bitbucket.org/free5gc-team/openapi v0.0.0-20201107101320-b56742e74e07/go.mod h1:OPBqpY9KpaTgGnmZMNUe+yVx56L0cCmvBHnZ6llCKhs=
+bitbucket.org/free5gc-team/openapi v0.0.0-20201128031102-279accd8c2be h1:lioOl29EZBcKMkc4Ag1TC5cmXM17iRSLHSxjnh6O8BA=
+bitbucket.org/free5gc-team/openapi v0.0.0-20201128031102-279accd8c2be/go.mod h1:OPBqpY9KpaTgGnmZMNUe+yVx56L0cCmvBHnZ6llCKhs=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200915032418-20c65dc7664b/go.mod h1:YOubpf9itrS2U04mpnHFlB7X7SOwP50KqDaM8ptBA/Q=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200925075253-6a41479bd567 h1:wdBLG5CRrNUGPuD2Rzm45Bxh1ly413s2U06chl2Ts0E=
 bitbucket.org/free5gc-team/path_util v0.0.0-20200925075253-6a41479bd567/go.mod h1:YOubpf9itrS2U04mpnHFlB7X7SOwP50KqDaM8ptBA/Q=

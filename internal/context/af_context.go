@@ -38,12 +38,12 @@ func (a *AfContext) AddSubsc(afSubsc *AfSubscription) {
 func (a *AfContext) newPfdTrans() *AfPfdTransaction {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-
 	a.numTransID++
-	afPfdTrans := AfPfdTransaction{
-		transID: strconv.FormatUint(a.numTransID, 10),
+	afPfdTrans := &AfPfdTransaction{
+		transID:        strconv.FormatUint(a.numTransID, 10),
+		externalAppIDs: make(map[string]bool),
 	}
-	return &afPfdTrans
+	return afPfdTrans
 }
 
 func (a *AfContext) AddPfdTrans(afPfdTrans *AfPfdTransaction) {
@@ -51,4 +51,32 @@ func (a *AfContext) AddPfdTrans(afPfdTrans *AfPfdTransaction) {
 	a.pfdTrans[afPfdTrans.transID] = afPfdTrans
 	a.mtx.Unlock()
 	logger.CtxLog.Infof("New AF PFD transaction[%s] added", afPfdTrans.transID)
+}
+
+func (a *AfContext) GetPfdTrans(transID string) *AfPfdTransaction {
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
+	return a.pfdTrans[transID]
+}
+
+func (a *AfContext) GetAllPfdTrans() []*AfPfdTransaction {
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
+
+	allPfdTrans := make([]*AfPfdTransaction, 0, len(a.pfdTrans))
+	for _, afPfdTran := range a.pfdTrans {
+		allPfdTrans = append(allPfdTrans, afPfdTran)
+	}
+	return allPfdTrans
+}
+
+func (a *AfContext) IsAppIDExisted(appID string) bool {
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
+	for _, pfdTrans := range a.pfdTrans {
+		if pfdTrans.IsAppIDExisted(appID) {
+			return true
+		}
+	}
+	return false
 }
