@@ -37,3 +37,9 @@ func (a *AfPfdTransaction) AddExtAppID(appID string) {
 	defer a.mtx.Unlock()
 	a.externalAppIDs[appID] = true
 }
+
+func (a *AfPfdTransaction) DeleteExtAppID(appID string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	delete(a.externalAppIDs, appID)
+}

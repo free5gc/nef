@@ -70,6 +70,13 @@ func (a *AfContext) GetAllPfdTrans() []*AfPfdTransaction {
 	return allPfdTrans
 }
 
+func (a *AfContext) DeletePfdTrans(transID string) {
+	a.mtx.Lock()
+	delete(a.pfdTrans, transID)
+	a.mtx.Unlock()
+	logger.CtxLog.Infof("Individual PFD Management Transaction[%s] is removed", transID)
+}
+
 func (a *AfContext) IsAppIDExisted(appID string) bool {
 	a.mtx.RLock()
 	defer a.mtx.RUnlock()

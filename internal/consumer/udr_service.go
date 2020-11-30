@@ -160,3 +160,33 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *mo
 
 	return rspCode, rspBody
 }
+
+// TS 29.519 v15.3.0 6.2.4.3.2
+func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		rsp     *http.Response
+	)
+
+	if err = c.initDataRepoAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	c.clientMtx.RLock()
+	rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsAppIdDelete(ctx.Background(), appID)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}

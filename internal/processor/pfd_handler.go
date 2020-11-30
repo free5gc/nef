@@ -101,7 +101,26 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("DeletePFDManagementTransactions - scsAsID[%s]", scsAsID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	afCtx := p.nefCtx.GetAfCtx(scsAsID)
+	if afCtx == nil {
+		problemDetails := util.ProblemDetailsDataNotFound("Given AF is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	for _, afPfdTrans := range afCtx.GetAllPfdTrans() {
+		for _, extAppID := range afPfdTrans.GetExtAppIDs() {
+			rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(extAppID)
+			if rspCode != http.StatusNoContent {
+				return &HandlerResponse{rspCode, nil, rspBody}
+			}
+		}
+		afCtx.DeletePfdTrans(afPfdTrans.GetTransID())
+	}
+
+	// TODO: Remove AfCtx if its subscriptions and transactions are both empty
+
+	return &HandlerResponse{http.StatusNoContent, nil, nil}
 }
 
 func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
