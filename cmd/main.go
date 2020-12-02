@@ -5,8 +5,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	"bitbucket.org/free5gc-team/nef/pkg"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg"
 	"bitbucket.org/free5gc-team/version"
 )
 

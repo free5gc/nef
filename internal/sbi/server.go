@@ -17,6 +17,10 @@ import (
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
+const (
+	CORS_CONFIG_MAXAGE = 86400
+)
+
 type SBIServer struct {
 	cfg       *factory.Config
 	server    *http.Server
@@ -52,7 +56,7 @@ func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer 
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowAllOrigins:  true,
-		MaxAge:           86400,
+		MaxAge:           CORS_CONFIG_MAXAGE,
 	}))
 
 	bindAddr := s.cfg.GetSbiBindingAddr()

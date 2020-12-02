@@ -51,6 +51,14 @@ func (n *NefContext) NewAfCtx(afID string) *AfContext {
 	return afc
 }
 
+func (n *NefContext) AddAfCtx(afc *AfContext) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
+	n.afCtxs[afc.afID] = afc
+}
+
 func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
@@ -58,10 +66,8 @@ func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	return afc.newSubsc(n.numCorreID)
 }
 
-func (n *NefContext) AddAfCtx(afc *AfContext) {
+func (n *NefContext) NewAfPfdTrans(afc *AfContext) *AfPfdTransaction {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
-
-	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
-	n.afCtxs[afc.afID] = afc
+	return afc.newPfdTrans()
 }

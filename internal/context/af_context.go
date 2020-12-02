@@ -17,18 +17,38 @@ type AfContext struct {
 }
 
 func (a *AfContext) newSubsc(numCorreID uint64) *AfSubscription {
-	afs := AfSubscription{notifCorreID: strconv.FormatUint(numCorreID, 10)}
-	a.mtx.Lock()
-	a.numSubscID++
-	afs.subscID = strconv.FormatUint(a.numSubscID, 10)
-	a.mtx.Unlock()
-	return &afs
-}
-
-func (a *AfContext) AddSubsc(afs *AfSubscription) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	logger.CtxLog.Infof("New AF subscription[%s] added", afs.subscID)
-	a.subsc[afs.subscID] = afs
+	a.numSubscID++
+	afSubsc := AfSubscription{
+		notifCorreID: strconv.FormatUint(numCorreID, 10),
+		subscID:      strconv.FormatUint(a.numSubscID, 10),
+	}
+	return &afSubsc
+}
+
+func (a *AfContext) AddSubsc(afSubsc *AfSubscription) {
+	a.mtx.Lock()
+	a.subsc[afSubsc.subscID] = afSubsc
+	a.mtx.Unlock()
+	logger.CtxLog.Infof("New AF subscription[%s] added", afSubsc.subscID)
+}
+
+func (a *AfContext) newPfdTrans() *AfPfdTransaction {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	a.numTransID++
+	afPfdTrans := AfPfdTransaction{
+		transID: strconv.FormatUint(a.numTransID, 10),
+	}
+	return &afPfdTrans
+}
+
+func (a *AfContext) AddPfdTrans(afPfdTrans *AfPfdTransaction) {
+	a.mtx.Lock()
+	a.pfdTrans[afPfdTrans.transID] = afPfdTrans
+	a.mtx.Unlock()
+	logger.CtxLog.Infof("New AF PFD transaction[%s] added", afPfdTrans.transID)
 }
