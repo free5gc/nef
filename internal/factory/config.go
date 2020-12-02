@@ -15,13 +15,17 @@ import (
 
 // Path of HTTP2 key and log file
 var (
-	NEF_LOG_PATH               = path_util.Free5gcPath("free5gc/nefsslkey.log")
-	NEF_PEM_PATH               = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
-	NEF_KEY_PATH               = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NEF_CONFIG_PATH            = path_util.Free5gcPath("free5gc/config/nefcfg.conf")
+	NEF_LOG_PATH    = path_util.Free5gcPath("free5gc/nefsslkey.log")
+	NEF_PEM_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
+	NEF_KEY_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
+	NEF_CONFIG_PATH = path_util.Free5gcPath("free5gc/config/nefcfg.conf")
+)
+
+const (
 	NEF_DEFAULT_VERSION        = "1.0.0"
 	NEF_DEFAULT_IPV4           = "127.0.0.1"
 	NEF_DEFAULT_PORT           = "29505"
+	NEF_DEFAULT_PORT_INT       = 29505
 	NEF_DEFAULT_SCHEME         = "https"
 	NEF_DEFAULT_NRFURI         = "https://127.0.0.1:29510"
 	TRAFF_INFLU_RES_URI_PREFIX = "/3gpp-traffic-influence/v1"
@@ -107,8 +111,7 @@ func (c *Config) GetSbiPort() int {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
 	}
-	port, _ := strconv.Atoi(NEF_DEFAULT_PORT)
-	return port
+	return NEF_DEFAULT_PORT_INT
 }
 
 func (c *Config) GetSbiBindingAddr() string {

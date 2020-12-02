@@ -222,12 +222,13 @@ linters:
     # Additional
     - lll
     - godox
-    # - gomnd
+    - gomnd
     #- maligned
     #- nestif
-    #- goconst
+    - goconst
     #- gocognit
     - nakedret
+    #- golint
   #disable-all: false
   fast: true
 issues:

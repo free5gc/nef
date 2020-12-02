@@ -36,6 +36,14 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		afSubsc.InfluenceID(uuid.New().String())
 		rsp = p.udrPutAppData(afSubsc, tiSub)
 	} else {
+		//Invalid case. Return Error
+		rsp = &HandlerResponse{
+			Status: http.StatusBadRequest,
+			Body: &models.ProblemDetails{
+				Title:  "Invalid Request",
+				Status: http.StatusBadRequest,
+			},
+		}
 	}
 
 	if rsp.Status >= http.StatusOK && rsp.Status <= http.StatusAlreadyReported {
@@ -45,10 +53,8 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		//Create Location URI
 		locUri := p.cfg.GetSbiUri() + factory.TRAFF_INFLU_RES_URI_PREFIX + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
-		if rsp != nil {
-			rsp.Headers = map[string][]string{
-				"Location": {locUri},
-			}
+		rsp.Headers = map[string][]string{
+			"Location": {locUri},
 		}
 	}
 	return rsp
@@ -80,7 +86,8 @@ func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerRespons
 	return nil
 }
 
-func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription, tiSub *models.TrafficInfluSub) *HandlerResponse {
+func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
+	tiSub *models.TrafficInfluSub) *HandlerResponse {
 	asc := models.AppSessionContext{
 		AscReqData: &models.AppSessionContextReqData{
 			AfAppId: tiSub.AfAppId,

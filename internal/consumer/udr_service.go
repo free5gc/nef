@@ -59,7 +59,8 @@ func (c *ConsumerUDRService) initDataRepoAPIClient() error {
 	return nil
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string, tiData *models.TrafficInfluData) (int, interface{}) {
+func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
+	tiData *models.TrafficInfluData) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -67,12 +68,13 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string, tiData 
 		result  models.TrafficInfluData
 		rsp     *http.Response
 	)
-	if err := c.initDataRepoAPIClient(); err != nil {
+	if err = c.initDataRepoAPIClient(); err != nil {
 		goto END
 	}
 
 	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataInfluenceDataInfluenceIdPut(ctx.Background(), influenceID, *tiData)
+	result, rsp, err = c.clientDataRepo.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdPut(ctx.Background(), influenceID, *tiData)
 	c.clientMtx.RUnlock()
 
 	if rsp != nil {

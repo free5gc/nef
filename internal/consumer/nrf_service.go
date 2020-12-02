@@ -16,13 +16,15 @@ import (
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
+const (
+	RETRY_REGISTER_NRF_DURATION = 2 * time.Second
+)
+
 type ConsumerNRFService struct {
 	cfg            *factory.Config
 	nefCtx         *context.NefContext
 	clientNFMngmnt *Nnrf_NFManagement.APIClient
 	clientNFDisc   *Nnrf_NFDiscovery.APIClient
-	pcfURI         string //PCF URI discovered from NRF
-	udrURI         string //UDR URI discovered from NRF
 }
 
 func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *ConsumerNRFService {
@@ -92,7 +94,7 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
 		if err != nil || rsp == nil {
 			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(RETRY_REGISTER_NRF_DURATION)
 			continue
 		}
 		status := rsp.StatusCode
