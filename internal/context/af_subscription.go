@@ -1,6 +1,7 @@
 package context
 
 import (
+	"bitbucket.org/free5gc-team/openapi/models"
 	"sync"
 )
 
@@ -10,6 +11,8 @@ type AfSubscription struct {
 	influID         string //use in multiple UE case
 	notifCorreID    string
 	notificationURI string
+	tiSub           models.TrafficInfluSub
+	storeLoc        bool // 0 in PCF, 1 in UDR
 	mtx             sync.RWMutex
 }
 
@@ -41,4 +44,16 @@ func (s *AfSubscription) SetNotificationURI(uri string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.notificationURI = uri
+}
+
+func (s *AfSubscription) GetStoreLoc() bool {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return s.storeLoc
+}
+
+func (s *AfSubscription) GetTiSub() models.TrafficInfluSub {
+	s.mtx.RLock()
+	defer s.mtx.RUnlock()
+	return s.tiSub
 }

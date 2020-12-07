@@ -93,3 +93,13 @@ func (a *AfContext) IsAppIDExisted(appID string) (bool, string) {
 	}
 	return false, ""
 }
+
+func (a *AfContext) GetAllSubsc() []AfSubscription {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	var subList []AfSubscription
+	for _, sub := range a.subsc {
+		subList = append(subList, *sub)
+	}
+	return subList
+}

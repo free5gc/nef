@@ -59,6 +59,27 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	return nil
 }
 
+/*func (c *ConsumerPCFService) GetTisubAppSessions(afID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  []models.TrafficInfluSub
+		rsp     *http.Response
+	)
+
+	if err = c.initPolicyAuthAPIClient(); err != nil {
+		goto END
+	}
+
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.GetAppSession(ctx.Background(), afID)
+	c.clientMtx.RUnlock()
+
+END:
+	return rspCode, rspBody
+}*/
+
 func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int, interface{}, string) {
 	var (
 		err       error

@@ -14,7 +14,24 @@ import (
 
 func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetTrafficInfluenceSubscription - afID[%s]", afID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	if !p.nefCtx.CheckAfExisted(afID) {
+		problemDetails := models.ProblemDetails{
+			Status: http.StatusNotFound,
+		}
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+	afCtx := p.nefCtx.GetAfCtx(afID)
+
+	// TO DO: Check where the subs stored
+
+	var tiSubs []models.TrafficInfluSub
+
+	for _, sub := range afCtx.GetAllSubsc() {
+		tiSubs = append(tiSubs, sub.GetTiSub())
+	}
+
+	return &HandlerResponse{http.StatusOK, nil, tiSubs}
 }
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
