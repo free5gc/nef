@@ -28,7 +28,7 @@ func (n *NefContext) GetNfInstID() string {
 	return n.nfInstID
 }
 
-func (n *NefContext) NfInstID(id string) {
+func (n *NefContext) SetNfInstID(id string) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
 	n.nfInstID = id
@@ -53,15 +53,21 @@ func (n *NefContext) NewAfCtx(afID string) *AfContext {
 
 func (n *NefContext) AddAfCtx(afc *AfContext) {
 	n.mtx.Lock()
-	defer n.mtx.Unlock()
-
-	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
 	n.afCtxs[afc.afID] = afc
+	n.mtx.Unlock()
+	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
+}
+
+func (n *NefContext) GetAfCtx(afID string) *AfContext {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	return n.afCtxs[afID]
 }
 
 func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
+
 	n.numCorreID++
 	return afc.newSubsc(n.numCorreID)
 }

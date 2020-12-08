@@ -8,6 +8,7 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -18,6 +19,7 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	tiSub *models.TrafficInfluSub) *HandlerResponse {
+
 	var rsp *HandlerResponse
 	logger.TrafInfluLog.Infof("PostTrafficInfluenceSubscription - afID[%s]", afID)
 
@@ -33,16 +35,14 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		rsp = p.pcfPostAppSessions(afSubsc, tiSub)
 	} else if len(tiSub.ExternalGroupId) > 0 || tiSub.AnyUeInd {
 		//Group or any UE, sent to UDR
-		afSubsc.InfluenceID(uuid.New().String())
+		afSubsc.SetInfluenceID(uuid.New().String())
 		rsp = p.udrPutAppData(afSubsc, tiSub)
 	} else {
 		//Invalid case. Return Error
+		pd := util.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
 		rsp = &HandlerResponse{
-			Status: http.StatusBadRequest,
-			Body: &models.ProblemDetails{
-				Title:  "Invalid Request",
-				Status: http.StatusBadRequest,
-			},
+			Status: int(pd.Status),
+			Body:   pd,
 		}
 	}
 
@@ -103,7 +103,7 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 
 	rspCode, rspBody, appSessID := p.consumer.PcfSrv.PostAppSessions(&asc)
 	if rspCode == http.StatusCreated {
-		afSubsc.AppSessID(appSessID)
+		afSubsc.SetAppSessID(appSessID)
 		return &HandlerResponse{rspCode, nil, nil}
 	}
 	return &HandlerResponse{rspCode, nil, rspBody}

@@ -13,8 +13,8 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
+	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 const (
@@ -107,27 +107,16 @@ func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interfa
 	reqBody, err := ginCtx.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
-		problemDetail := models.ProblemDetails{
-			Title:  "System failure",
-			Status: http.StatusInternalServerError,
-			Detail: err.Error(),
-			Cause:  "SYSTEM_FAILURE",
-		}
-		ginCtx.JSON(http.StatusInternalServerError, problemDetail)
+		ginCtx.JSON(http.StatusInternalServerError,
+			util.ProblemDetailsSystemFailure(err.Error()))
 		return err
 	}
 
 	err = openapi.Deserialize(data, reqBody, "application/json")
 	if err != nil {
 		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
-		detail := "[Request Body] " + err.Error()
-		problemDetail := models.ProblemDetails{
-			Title:  "Malformed request syntax",
-			Status: http.StatusBadRequest,
-			Detail: detail,
-		}
-		logger.SBILog.Errorln(problemDetail)
-		ginCtx.JSON(http.StatusBadRequest, problemDetail)
+		ginCtx.JSON(http.StatusBadRequest,
+			util.ProblemDetailsMalformedReqSyntax(err.Error()))
 		return err
 	}
 
@@ -146,12 +135,7 @@ func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *proces
 
 	if rspBody, err := openapi.Serialize(rsp.Body, "application/json"); err != nil {
 		logger.SBILog.Errorln(err)
-		problemDetails := models.ProblemDetails{
-			Status: http.StatusInternalServerError,
-			Cause:  "SYSTEM_FAILURE",
-			Detail: err.Error(),
-		}
-		ginCtx.JSON(http.StatusInternalServerError, problemDetails)
+		ginCtx.JSON(http.StatusInternalServerError, util.ProblemDetailsSystemFailure(err.Error()))
 	} else {
 		ginCtx.Data(rsp.Status, "application/json", rspBody)
 	}

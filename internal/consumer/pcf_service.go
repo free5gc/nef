@@ -11,7 +11,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -29,8 +28,8 @@ const ServiceName_NPCF_POLICYAUTHORIZATION string = "npcf-policyauthorization"
 
 func NewConsumerPCFService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerPCFService {
-	c := &ConsumerPCFService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 
+	c := &ConsumerPCFService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 	return c
 }
 
@@ -52,6 +51,8 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	}
 	logger.ConsumerLog.Infof("initPolicyAuthAPIClient: uri[%s]", uri)
 
+	//TODO: Subscribe NRF to notify service URI change
+
 	paCfg := Npcf_PolicyAuthorization.NewConfiguration()
 	paCfg.SetBasePath(uri)
 	c.clientPolicyAuth = Npcf_PolicyAuthorization.NewAPIClient(paCfg)
@@ -69,7 +70,7 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 	)
 
 	if err = c.initPolicyAuthAPIClient(); err != nil {
-		goto END
+		return rspCode, rspBody, appSessID
 	}
 
 	c.clientMtx.RLock()
@@ -81,39 +82,25 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 		if rsp.StatusCode == http.StatusCreated {
 			logger.ConsumerLog.Debugf("PostAppSessions RspData: %+v", result)
 			rspBody = &result
-			appSessID = rsp.Header.Get("Location")
-			if strings.Contains(appSessID, "http") {
-				index := strings.LastIndex(appSessID, "/")
-				appSessID = appSessID[index+1:]
-			}
-			logger.ConsumerLog.Infof("PostAppSessions appSessID[%s]", appSessID)
+			appSessID = getAppSessIDFromRspLocationHeader(rsp)
 		} else if err != nil {
-			if rsp.Status != err.Error() {
-				logger.ConsumerLog.Errorf("Deserialize ProblemDetails Error: %s", err.Error())
-				rspBody = &models.ProblemDetails{
-					Status: int32(rsp.StatusCode),
-					Detail: err.Error(),
-				}
-				goto END
-			}
-			pd := err.(openapi.GenericOpenAPIError).Model().(models.ProblemDetails)
-			rspBody = &pd
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		logger.ConsumerLog.Errorf("PostAppSessions: server no response")
-		rspCode = http.StatusInternalServerError
-		detail := "server no response"
-		if err != nil {
-			detail = err.Error()
-		}
-		rspBody = &models.ProblemDetails{
-			Title:  "System failure",
-			Status: http.StatusInternalServerError,
-			Detail: detail,
-			Cause:  "SYSTEM_FAILURE",
-		}
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
-END:
 	return rspCode, rspBody, appSessID
+}
+
+func getAppSessIDFromRspLocationHeader(rsp *http.Response) string {
+	appSessID := ""
+	loc := rsp.Header.Get("Location")
+	if strings.Contains(loc, "http") {
+		index := strings.LastIndex(loc, "/")
+		appSessID = loc[index+1:]
+	}
+	logger.ConsumerLog.Infof("appSessID=%q", appSessID)
+	return appSessID
 }

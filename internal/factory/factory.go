@@ -17,6 +17,7 @@ func InitConfigFactory(f string, cfg *Config) error {
 		//Use default config path
 		f = NEF_CONFIG_PATH
 	}
+
 	if content, err := ioutil.ReadFile(f); err != nil {
 		return fmt.Errorf("[Factory] %+v", err)
 	} else {

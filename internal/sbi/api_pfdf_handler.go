@@ -52,6 +52,7 @@ func (s *SBIServer) apiPostPFDSubscriptions(ginCtx *gin.Context) {
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdSubsc); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PostPFDSubscriptions(&pfdSubsc)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)

@@ -75,6 +75,7 @@ func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PostPFDManagementTransactions(
 		ginCtx.Param("scsAsID"), &pfdMng)
 
@@ -100,6 +101,7 @@ func (s *SBIServer) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PutIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), &pfdMng)
 
@@ -132,6 +134,7 @@ func (s *SBIServer) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PutIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
@@ -143,6 +146,7 @@ func (s *SBIServer) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Conte
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PatchIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 

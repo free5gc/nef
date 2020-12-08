@@ -10,7 +10,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -28,8 +27,8 @@ const ServiceName_NUDR_DR string = "nudr-dr"
 
 func NewConsumerUDRService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerUDRService {
-	c := &ConsumerUDRService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 
+	c := &ConsumerUDRService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 	return c
 }
 
@@ -69,7 +68,7 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
 		rsp     *http.Response
 	)
 	if err = c.initDataRepoAPIClient(); err != nil {
-		goto END
+		return rspCode, rspBody
 	}
 
 	c.clientMtx.RLock()
@@ -82,32 +81,12 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
 		if rsp.StatusCode == http.StatusCreated { //TODO: check more status codes
 			rspBody = &result
 		} else if err != nil {
-			if rsp.Status != err.Error() {
-				logger.ConsumerLog.Errorf("Deserialize ProblemDetails Error: %s", err.Error())
-				rspBody = &models.ProblemDetails{
-					Status: int32(rsp.StatusCode),
-					Detail: err.Error(),
-				}
-				goto END
-			}
-			pd := err.(openapi.GenericOpenAPIError).Model().(models.ProblemDetails)
-			rspBody = &pd
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		logger.ConsumerLog.Errorf("PostAppSessions: server no response")
-		rspCode = http.StatusInternalServerError
-		detail := "server no response"
-		if err != nil {
-			detail = err.Error()
-		}
-		rspBody = &models.ProblemDetails{
-			Title:  "System failure",
-			Status: http.StatusInternalServerError,
-			Detail: detail,
-			Cause:  "SYSTEM_FAILURE",
-		}
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
-END:
 	return rspCode, rspBody
 }
