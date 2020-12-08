@@ -135,9 +135,16 @@ func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interfa
 }
 
 func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
+	if hdlRsp.Status == 0 {
+		// No Response to send
+		return
+	}
+
 	rsp := http_wrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
-	rspBody, err := openapi.Serialize(rsp.Body, "application/json")
-	if err != nil {
+
+	buildHttpResponseHeader(ginCtx, rsp)
+
+	if rspBody, err := openapi.Serialize(rsp.Body, "application/json"); err != nil {
 		logger.SBILog.Errorln(err)
 		problemDetails := models.ProblemDetails{
 			Status: http.StatusInternalServerError,
@@ -147,5 +154,20 @@ func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *proces
 		ginCtx.JSON(http.StatusInternalServerError, problemDetails)
 	} else {
 		ginCtx.Data(rsp.Status, "application/json", rspBody)
+	}
+}
+
+func buildHttpResponseHeader(ginCtx *gin.Context, rsp *http_wrapper.Response) {
+	for k, v := range rsp.Header {
+		// Concatenate all values of the Header with ','
+		allValues := ""
+		for i, vv := range v {
+			if i == 0 {
+				allValues += vv
+			} else {
+				allValues += "," + vv
+			}
+		}
+		ginCtx.Header(k, allValues)
 	}
 }
