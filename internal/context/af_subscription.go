@@ -25,19 +25,19 @@ func (s *AfSubscription) GetNotifCorreID() string {
 	return s.notifCorreID
 }
 
-func (s *AfSubscription) AppSessID(id string) {
+func (s *AfSubscription) SetAppSessID(id string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.appSessID = id
 }
 
-func (s *AfSubscription) InfluenceID(id string) {
+func (s *AfSubscription) SetInfluenceID(id string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.influID = id
 }
 
-func (s *AfSubscription) NotificationURI(uri string) {
+func (s *AfSubscription) SetNotificationURI(uri string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.notificationURI = uri

@@ -25,6 +25,7 @@ type ConsumerNRFService struct {
 	nefCtx         *context.NefContext
 	clientNFMngmnt *Nnrf_NFManagement.APIClient
 	clientNFDisc   *Nnrf_NFDiscovery.APIClient
+	resouceURI     string
 }
 
 func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *ConsumerNRFService {
@@ -38,6 +39,45 @@ func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *
 	nfDiscConfig.SetBasePath(c.cfg.GetNrfUri())
 	c.clientNFDisc = Nnrf_NFDiscovery.NewAPIClient(nfDiscConfig)
 	return c
+}
+
+func (c *ConsumerNRFService) SetResourceURI(uri string) {
+	logger.ConsumerLog.Infof("Resource URI from NRF: [%s]", uri)
+	c.resouceURI = uri
+}
+
+func (c *ConsumerNRFService) RegisterNFInstance() {
+	var rsp *http.Response
+	var err error
+
+	list := c.cfg.GetServiceList()
+	if list == nil {
+		logger.ConsumerLog.Warnf("No service to register to NRF")
+		return
+	}
+
+	for {
+		_, rsp, err = c.clientNFMngmnt.NFInstanceIDDocumentApi.RegisterNFInstance(
+			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
+		if err != nil || rsp == nil {
+			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
+			time.Sleep(RETRY_REGISTER_NRF_DURATION)
+			continue
+		}
+		status := rsp.StatusCode
+		if status == http.StatusOK {
+			// NFUpdate
+			logger.ConsumerLog.Infof("NFRegister Update")
+			break
+		} else if status == http.StatusCreated {
+			// NFRegister
+			c.SetResourceURI(rsp.Header.Get("Location"))
+			logger.ConsumerLog.Infof("NFRegister Created")
+			break
+		} else {
+			logger.ConsumerLog.Infof("NRF return wrong status: %d", status)
+		}
+	}
 }
 
 func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *models.NfProfile {
@@ -79,44 +119,9 @@ func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *mode
 	return profile
 }
 
-func (c *ConsumerNRFService) RegisterNFInstance() {
-	var rsp *http.Response
-	var err error
-
-	list := c.cfg.GetServiceList()
-	if list == nil {
-		logger.ConsumerLog.Warnf("No service to register to NRF")
-		return
-	}
-
-	for {
-		_, rsp, err = c.clientNFMngmnt.NFInstanceIDDocumentApi.RegisterNFInstance(
-			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
-		if err != nil || rsp == nil {
-			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
-			time.Sleep(RETRY_REGISTER_NRF_DURATION)
-			continue
-		}
-		status := rsp.StatusCode
-		if status == http.StatusOK {
-			// NFUpdate
-			logger.ConsumerLog.Infof("NFRegister Update")
-			break
-		} else if status == http.StatusCreated {
-			// NFRegister
-			resrcUri := rsp.Header.Get("Location")
-			//resrcNrfUri := resrcUri[:strings.Index(resrcUri, "/nnrf-nfm/")]
-			c.nefCtx.NfInstID(resrcUri[strings.LastIndex(resrcUri, "/")+1:])
-			logger.ConsumerLog.Infof("NFRegister Created")
-			break
-		} else {
-			logger.ConsumerLog.Infof("NRF return wrong status: %d", status)
-		}
-	}
-}
-
 func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName string,
 	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (string, error) {
+
 	result, rsp, err := c.clientNFDisc.NFInstancesStoreApi.SearchNFInstances(ctx.Background(),
 		models.NfType(targetNfType), models.NfType_NEF, param)
 	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
@@ -143,6 +148,7 @@ func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName str
 // searchUriFromNfProfile returns NF Uri derived from NfProfile with corresponding service
 func searchUriFromNfProfile(nfProfile models.NfProfile, serviceName models.ServiceName,
 	nfServiceStatus models.NfServiceStatus) string {
+
 	nfUri := ""
 	if nfProfile.NfServices != nil {
 		for _, service := range *nfProfile.NfServices {

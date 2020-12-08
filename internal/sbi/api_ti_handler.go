@@ -55,6 +55,7 @@ func (s *SBIServer) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PostTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), &tiSub)
 
@@ -73,6 +74,7 @@ func (s *SBIServer) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Con
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PutIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSub)
 
@@ -84,6 +86,7 @@ func (s *SBIServer) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.C
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSubPatch); err != nil {
 		return
 	}
+
 	hdlRsp := s.processor.PatchIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSubPatch)
 
