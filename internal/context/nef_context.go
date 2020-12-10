@@ -1,6 +1,7 @@
 package context
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/google/uuid"
@@ -87,4 +88,22 @@ func (n *NefContext) IsAppIDExisted(appID string) bool {
 		}
 	}
 	return false
+}
+
+func (n *NefContext) GetPfdTransWithAppID(afID, transID, appID string) (*AfPfdTransaction, error) {
+	afCtx := n.GetAfCtx(afID)
+	if afCtx == nil {
+		return nil, errors.New("AF not found")
+	}
+
+	afPfdTrans := afCtx.GetPfdTrans(transID)
+	if afPfdTrans == nil {
+		return nil, errors.New("Transaction not found")
+	}
+
+	if !afPfdTrans.IsAppIDExisted(appID) {
+		return nil, errors.New("Application ID not found")
+	}
+
+	return afPfdTrans, nil
 }

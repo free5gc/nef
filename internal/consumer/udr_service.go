@@ -190,3 +190,36 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interfac
 
 	return rspCode, rspBody
 }
+
+// TS 29.519 v15.3.0 6.2.4.3.1
+func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  models.PfdDataForApp
+		rsp     *http.Response
+	)
+
+	if err = c.initDataRepoAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsAppIdGet(ctx.Background(), appID)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
