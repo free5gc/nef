@@ -182,9 +182,36 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 
 func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appID string,
 	pfdData *models.PfdData) *HandlerResponse {
+
 	logger.PFDManageLog.Infof("PutIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Authorize the AF
+
+	_, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID)
+	if err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	}
+
+	problemDetails := validatePfdData(pfdData, p.nefCtx)
+	if problemDetails != nil {
+		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
+	}
+
+	pfdDataForApp := convertPfdDataToPfdDataForApp(pfdData)
+	rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
+	if rspCode != http.StatusOK {
+		// The PFDs for the application were not updated successfully.
+		pfdReport := &models.PfdReport{
+			ExternalAppIds: []string{appID},
+			FailureCode:    models.FailureCode_MALFUNCTION,
+		}
+		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
+	} else {
+		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
+	}
+
+	return &HandlerResponse{http.StatusOK, nil, pfdData}
 }
 
 func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, appID string,
@@ -245,27 +272,13 @@ func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefCont
 	}
 
 	for appID, pfdData := range pfdMng.PfdDatas {
-		if appID == "" {
-			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID)
-		}
-
-		if len(pfdData.Pfds) == 0 {
-			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD)
-		}
-
 		// Check whether the received external Application Identifier(s) are already provisioned
 		if nefCtx.IsAppIDExisted(appID) {
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, appID, models.FailureCode_APP_ID_DUPLICATED)
 		}
-
-		for pfdID, pfd := range pfdData.Pfds {
-			if pfdID == "" {
-				return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID)
-			}
-			if len(pfd.FlowDescriptions) == 0 && len(pfd.Urls) == 0 && len(pfd.DomainNames) == 0 {
-				return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
-			}
+		if problemDetail := validatePfdData(&pfdData, nefCtx); problemDetail != nil {
+			return problemDetail
 		}
 	}
 
@@ -276,6 +289,27 @@ func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefCont
 	} else {
 		return nil
 	}
+}
+
+func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext) *models.ProblemDetails {
+	if pfdData.ExternalAppId == "" {
+		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID)
+	}
+
+	if len(pfdData.Pfds) == 0 {
+		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD)
+	}
+
+	for pfdID, pfd := range pfdData.Pfds {
+		if pfdID == "" {
+			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID)
+		}
+		if len(pfd.FlowDescriptions) == 0 && len(pfd.Urls) == 0 && len(pfd.DomainNames) == 0 {
+			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
+		}
+	}
+
+	return nil
 }
 
 func addPfdReport(pfdMng *models.PfdManagement, appID string, failureCode models.FailureCode) {
