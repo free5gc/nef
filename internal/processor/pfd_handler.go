@@ -193,7 +193,7 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	problemDetails := validatePfdData(pfdData, p.nefCtx)
+	problemDetails := validatePfdData(pfdData, p.nefCtx, false)
 	if problemDetails != nil {
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
@@ -216,15 +216,72 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 
 func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, appID string,
 	pfdData *models.PfdData) *HandlerResponse {
+
 	logger.PFDManageLog.Infof("PatchIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Authorize the AF
+
+	_, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID)
+	if err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	}
+
+	problemDetails := validatePfdData(pfdData, p.nefCtx, true)
+	if problemDetails != nil {
+		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
+	}
+
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
+	if rspCode != http.StatusOK {
+		return &HandlerResponse{rspCode, nil, rspBody}
+	}
+
+	oldPfdData := convertPfdDataForAppToPfdData(rspBody.(*models.PfdDataForApp))
+	problemDetails = patchModifyPfdData(oldPfdData, pfdData)
+	if problemDetails != nil {
+		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
+	}
+
+	rspCode, _ = p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, convertPfdDataToPfdDataForApp(oldPfdData))
+	if rspCode != http.StatusOK {
+		// The PFDs for the application were not updated successfully.
+		pfdReport := &models.PfdReport{
+			ExternalAppIds: []string{appID},
+			FailureCode:    models.FailureCode_MALFUNCTION,
+		}
+		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
+	} else {
+		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
+	}
+
+	return &HandlerResponse{http.StatusOK, nil, oldPfdData}
+}
+
+// The behavior of PATCH update is based on TS 29.250 v1.15.1 clause 4.4.1
+func patchModifyPfdData(old, new *models.PfdData) *models.ProblemDetails {
+	for pfdID, newPfd := range new.Pfds {
+		_, exist := old.Pfds[pfdID]
+		if len(newPfd.FlowDescriptions) == 0 && len(newPfd.Urls) == 0 && len(newPfd.DomainNames) == 0 {
+			if exist {
+				// New Pfd with existing PfdID and empty content implies deletion from old PfdData.
+				delete(old.Pfds, pfdID)
+			} else {
+				// Otherwire, if the PfdID doesn't exist yet, the Pfd still needs valid content.
+				return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
+			}
+		} else {
+			// Either add or update the Pfd to the old PfdData.
+			old.Pfds[pfdID] = newPfd
+		}
+	}
+	return nil
 }
 
 func convertPfdDataForAppToPfdData(pfdDataForApp *models.PfdDataForApp) *models.PfdData {
 	pfdData := &models.PfdData{
 		ExternalAppId: pfdDataForApp.ApplicationId,
-		Pfds:          make(map[string]models.Pfd),
+		Pfds:          make(map[string]models.Pfd, len(pfdDataForApp.Pfds)),
 	}
 	for _, pfdContent := range pfdDataForApp.Pfds {
 		var pfd models.Pfd
@@ -277,8 +334,8 @@ func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefCont
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, appID, models.FailureCode_APP_ID_DUPLICATED)
 		}
-		if problemDetail := validatePfdData(&pfdData, nefCtx); problemDetail != nil {
-			return problemDetail
+		if problemDetails := validatePfdData(&pfdData, nefCtx, false); problemDetails != nil {
+			return problemDetails
 		}
 	}
 
@@ -291,7 +348,7 @@ func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefCont
 	}
 }
 
-func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext) *models.ProblemDetails {
+func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext, isPatch bool) *models.ProblemDetails {
 	if pfdData.ExternalAppId == "" {
 		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID)
 	}
@@ -304,7 +361,8 @@ func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext) *model
 		if pfdID == "" {
 			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID)
 		}
-		if len(pfd.FlowDescriptions) == 0 && len(pfd.Urls) == 0 && len(pfd.DomainNames) == 0 {
+		// For PATCH method, empty these three attributes is used to imply the deletion of this PFD
+		if !isPatch && len(pfd.FlowDescriptions) == 0 && len(pfd.Urls) == 0 && len(pfd.DomainNames) == 0 {
 			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
 		}
 	}
