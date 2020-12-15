@@ -17,18 +17,23 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 
 	afCtx := p.nefCtx.GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := models.ProblemDetails{
-			Status: http.StatusNotFound,
-		}
+		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	// TO DO: Check where the subs stored
-
 	var tiSubs []models.TrafficInfluSub
 
-	for _, sub := range afCtx.GetAllSubsc() {
-		tiSubs = append(tiSubs, sub.GetTiSub())
+	for _, subsc := range afCtx.GetAllSubsc() {
+		if subsc.GetStoreLoc() == true {
+			rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataSubsIdGet(subsc.GetSubscID())
+			if rspCode != http.StatusOK {
+				return &HandlerResponse{rspCode, nil, rspBody}
+			}
+			tiSub := rspBody.(models.TrafficInfluSub)
+			tiSubs = append(tiSubs, tiSub)
+		} else {
+
+		}
 	}
 
 	return &HandlerResponse{http.StatusOK, nil, tiSubs}
@@ -82,18 +87,25 @@ func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID stri
 
 	afCtx := p.nefCtx.GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := models.ProblemDetails{
-			Status: http.StatusNotFound,
-		}
+		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
 	subsc := afCtx.GetSubsc(subscID)
 	if afCtx == nil {
-		problemDetails := models.ProblemDetails{
-			Status: http.StatusNotFound,
-		}
+		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	if subsc.GetStoreLoc() == true {
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataSubsIdGet(subscID)
+		if rspCode != http.StatusOK {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		tiSub := rspBody.(models.TrafficInfluSub)
+		return &HandlerResponse{http.StatusOK, nil, tiSub}
+	} else {
+
 	}
 
 	return &HandlerResponse{http.StatusOK, nil, nil}
