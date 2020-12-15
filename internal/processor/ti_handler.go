@@ -15,13 +15,13 @@ import (
 func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetTrafficInfluenceSubscription - afID[%s]", afID)
 
-	if !p.nefCtx.CheckAfExisted(afID) {
+	afCtx := p.nefCtx.GetAfCtx(afID)
+	if afCtx == nil {
 		problemDetails := models.ProblemDetails{
 			Status: http.StatusNotFound,
 		}
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
-	afCtx := p.nefCtx.GetAfCtx(afID)
 
 	// TO DO: Check where the subs stored
 
@@ -79,6 +79,23 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 
 func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
+
+	afCtx := p.nefCtx.GetAfCtx(afID)
+	if afCtx == nil {
+		problemDetails := models.ProblemDetails{
+			Status: http.StatusNotFound,
+		}
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	subsc := afCtx.GetSubsc(subscID)
+	if afCtx == nil {
+		problemDetails := models.ProblemDetails{
+			Status: http.StatusNotFound,
+		}
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
 	return &HandlerResponse{http.StatusOK, nil, nil}
 }
 

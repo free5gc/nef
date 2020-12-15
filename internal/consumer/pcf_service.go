@@ -59,7 +59,7 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	return nil
 }
 
-/*func (c *ConsumerPCFService) GetTisubAppSessions(afID string) (int, interface{}) {
+/*func (c *ConsumerPCFService) GetAppSession(afID string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
