@@ -90,15 +90,24 @@ func (n *NefContext) IsAppIDExisted(appID string) bool {
 	return false
 }
 
-func (n *NefContext) GetPfdTransWithAppID(afID, transID, appID string) (*AfPfdTransaction, error) {
+func (n *NefContext) GetAfCtxAndPfdTransWithTransID(afID, transID string) (*AfContext, *AfPfdTransaction, error) {
 	afCtx := n.GetAfCtx(afID)
 	if afCtx == nil {
-		return nil, errors.New("AF not found")
+		return nil, nil, errors.New("AF not found")
 	}
 
 	afPfdTrans := afCtx.GetPfdTrans(transID)
 	if afPfdTrans == nil {
-		return nil, errors.New("Transaction not found")
+		return nil, nil, errors.New("Transaction not found")
+	}
+
+	return afCtx, afPfdTrans, nil
+}
+
+func (n *NefContext) GetPfdTransWithAppID(afID, transID, appID string) (*AfPfdTransaction, error) {
+	_, afPfdTrans, err := n.GetAfCtxAndPfdTransWithTransID(afID, transID)
+	if err != nil {
+		return nil, err
 	}
 
 	if !afPfdTrans.IsAppIDExisted(appID) {

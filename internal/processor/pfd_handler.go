@@ -125,7 +125,28 @@ func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResp
 
 func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("GetIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	_, afPfdTrans, err := p.nefCtx.GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
+	if err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	}
+
+	pfdMng := &models.PfdManagement{
+		Self:     genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, transID),
+		PfdDatas: make(map[string]models.PfdData),
+	}
+
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(afPfdTrans.GetExtAppIDs())
+	if rspCode != http.StatusOK {
+		return &HandlerResponse{rspCode, nil, rspBody}
+	}
+	for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
+		pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
+		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, pfdData.ExternalAppId)
+		pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
+	}
+
+	return &HandlerResponse{http.StatusOK, nil, pfdMng}
 }
 
 func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID string,
