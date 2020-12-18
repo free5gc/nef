@@ -151,8 +151,50 @@ func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID strin
 
 func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID string,
 	pfdMng *models.PfdManagement) *HandlerResponse {
+
 	logger.PFDManageLog.Infof("PutIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Authorize the AF
+
+	problemDetails := validatePfdManagement(pfdMng, p.nefCtx)
+	if problemDetails != nil {
+		if problemDetails.Status == http.StatusInternalServerError {
+			return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
+		} else {
+			return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
+		}
+	}
+
+	_, afPfdTrans, err := p.nefCtx.GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
+	if err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	}
+
+	afPfdTrans.DeleteAllExtAppIDs()
+	for appID, pfdData := range pfdMng.PfdDatas {
+		afPfdTrans.AddExtAppID(appID)
+		pfdDataForApp := convertPfdDataToPfdDataForApp(&pfdData)
+		rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
+		if rspCode != http.StatusCreated {
+			delete(pfdMng.PfdDatas, appID)
+			addPfdReport(pfdMng, appID, models.FailureCode_MALFUNCTION)
+		} else {
+			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
+			pfdMng.PfdDatas[appID] = pfdData
+		}
+	}
+	if len(pfdMng.PfdDatas) == 0 {
+		// The PFDs for all applications were not created successfully.
+		// PfdReport is included with detailed information.
+		return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
+	}
+
+	pfdMng.Self = genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID())
+	// Not mandated by TS 29.122 v1.15.3
+	hdrs := make(map[string][]string)
+	util.AddLocationheader(hdrs, pfdMng.Self)
+
+	return &HandlerResponse{http.StatusOK, hdrs, pfdMng}
 }
 
 func (p *Processor) DeleteIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {

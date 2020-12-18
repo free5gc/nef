@@ -43,3 +43,9 @@ func (a *AfPfdTransaction) DeleteExtAppID(appID string) {
 	defer a.mtx.Unlock()
 	delete(a.externalAppIDs, appID)
 }
+
+func (a *AfPfdTransaction) DeleteAllExtAppIDs() {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	a.externalAppIDs = make(map[string]bool)
+}
