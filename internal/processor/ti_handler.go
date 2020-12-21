@@ -105,13 +105,13 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		afCtx.AddSubsc(afSubsc)
 
 		//Create Location URI
-		locUri := p.cfg.GetSbiUri() + factory.TRAFF_INFLU_RES_URI_PREFIX + "/" + afID +
-			"/subscriptions/" + afSubsc.GetSubscID()
+		locUri := genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, afSubsc.GetSubscID())
+		tiSub.Self = locUri
 		rsp.Headers = map[string][]string{
 			"Location": {locUri},
 		}
 	}
-	return rsp
+	return &HandlerResponse{rsp.Status, rsp.Headers, tiSub}
 }
 
 func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
@@ -167,6 +167,18 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID s
 }
 
 func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerResponse {
+	if tiSub.AfAppId == "" && len(tiSub.TrafficFilters) == 0 && len(tiSub.EthTrafficFilters) == 0 {
+		problemDetails := util.
+			ProblemDetailsMalformedReqSyntax("One of afAppId, trafficFilters or ethTrafficFilters shall be included")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+	if tiSub.Gpsi == "" && tiSub.Ipv4Addr == "" && tiSub.Ipv6Addr == "" && tiSub.ExternalGroupId == "" &&
+		tiSub.AnyUeInd == false {
+		problemDetails := util.
+			ProblemDetailsMalformedReqSyntax("One of individual UE identifier, External Group Identifier" +
+				" or any UE indication anyUeInd shall be included")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
 	return nil
 }
 
