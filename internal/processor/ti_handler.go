@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -15,28 +16,53 @@ import (
 func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetTrafficInfluenceSubscription - afID[%s]", afID)
 
+	var (
+		tiSubList []models.TrafficInfluSub
+		subInPCF  []string
+		subInUDR  []string
+	)
+
 	afCtx := p.nefCtx.GetAfCtx(afID)
 	if afCtx == nil {
 		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	var tiSubs []models.TrafficInfluSub
-
 	for _, subsc := range afCtx.GetAllSubsc() {
-		if subsc.GetStoreLoc() == true {
-			rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataSubsIdGet(subsc.GetSubscID())
-			if rspCode != http.StatusOK {
-				return &HandlerResponse{rspCode, nil, rspBody}
-			}
-			tiSub := rspBody.(models.TrafficInfluSub)
-			tiSubs = append(tiSubs, tiSub)
+		if subsc.GetIsIndividualUEAddr() == true {
+			subInPCF = append(subInPCF, subsc.GetAppSessID())
 		} else {
-
+			subInUDR = append(subInUDR, subsc.GetInfluenceID())
 		}
 	}
 
-	return &HandlerResponse{http.StatusOK, nil, tiSubs}
+	if len(subInPCF) > 0 {
+		for _, appSessID := range subInPCF {
+			rspCode, rspBody := p.consumer.PcfSrv.GetAppSession(appSessID)
+			if rspCode != http.StatusOK {
+				return &HandlerResponse{rspCode, nil, rspBody}
+			}
+			tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
+			// Not Complete: Need to advise the Self IE
+			tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, appSessID)
+			tiSubList = append(tiSubList, *tiSub)
+		}
+	}
+	if len(subInUDR) > 0 {
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataGet(subInUDR)
+		if rspCode != http.StatusOK {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+
+		for _, tiData := range *rspBody.(*[]models.TrafficInfluData) {
+			tiSub := convertTrafficInfluDataToTrafficInfluSub(&tiData)
+			// Not Complete: Need to advise the Self IE
+			tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, "0")
+			tiSubList = append(tiSubList, *tiSub)
+		}
+	}
+
+	return &HandlerResponse{http.StatusOK, nil, &tiSubList}
 }
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
@@ -57,8 +83,14 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		rsp = p.pcfPostAppSessions(afSubsc, tiSub)
 	} else if len(tiSub.ExternalGroupId) > 0 || tiSub.AnyUeInd {
 		//Group or any UE, sent to UDR
-		afSubsc.SetInfluenceID(uuid.New().String())
-		rsp = p.udrPutAppData(afSubsc, tiSub)
+		influenceID := uuid.New().String()
+		afSubsc.SetInfluenceID(influenceID)
+		tiData := convertTrafficInfluSubToTrafficInfluData(tiSub)
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataPut(influenceID, tiData)
+		rsp = &HandlerResponse{
+			Status: rspCode,
+			Body:   rspBody,
+		}
 	} else {
 		//Invalid case. Return Error
 		pd := util.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
@@ -97,18 +129,24 @@ func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID stri
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	if subsc.GetStoreLoc() == true {
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataSubsIdGet(subscID)
+	if subsc.GetIsIndividualUEAddr() {
+		rspCode, rspBody := p.consumer.PcfSrv.GetAppSession(subsc.GetAppSessID())
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
-		tiSub := rspBody.(models.TrafficInfluSub)
+		tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
+		tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, subscID)
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	} else {
-
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataIdGet(subsc.GetInfluenceID())
+		if rspCode != http.StatusOK {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		tiSub := convertTrafficInfluDataToTrafficInfluSub(rspBody.(*models.TrafficInfluData))
+		tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, subscID)
+		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	}
 
-	return &HandlerResponse{http.StatusOK, nil, nil}
 }
 
 func (p *Processor) PutIndividualTrafficInfluenceSubscription(afID, subscID string,
@@ -155,6 +193,49 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 	return &HandlerResponse{rspCode, nil, rspBody}
 }
 
-func (p *Processor) udrPutAppData(afSubsc *context.AfSubscription, tiSub *models.TrafficInfluSub) *HandlerResponse {
-	return nil
+func genTrafficInfluSubURI(sbiURI, afID, subscriptionId string) string {
+	// E.g. https://localhost:29505/3gpp-traffic-Influence/v1/{afId}/subscriptions/{subscriptionId}
+	return fmt.Sprintf("%s%s/%s/subscriptions/%s",
+		sbiURI, factory.TRAFF_INFLU_RES_URI_PREFIX, afID, subscriptionId)
+}
+
+func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *models.TrafficInfluSub {
+	tiSub := &models.TrafficInfluSub{
+		AppReloInd:        tiData.AppReloInd,
+		AfAppId:           tiData.AfAppId,
+		Dnn:               tiData.Dnn,
+		EthTrafficFilters: tiData.EthTrafficFilters,
+		Snssai:            tiData.Snssai,
+		TrafficFilters:    tiData.TrafficFilters,
+		TrafficRoutes:     tiData.TrafficRoutes,
+	}
+
+	return tiSub
+}
+
+func convertTrafficInfluSubToTrafficInfluData(tiSub *models.TrafficInfluSub) *models.TrafficInfluData {
+	tiData := &models.TrafficInfluData{
+		AppReloInd:        tiSub.AppReloInd,
+		AfAppId:           tiSub.AfAppId,
+		Dnn:               tiSub.Dnn,
+		EthTrafficFilters: tiSub.EthTrafficFilters,
+		Snssai:            tiSub.Snssai,
+		TrafficFilters:    tiSub.TrafficFilters,
+		TrafficRoutes:     tiSub.TrafficRoutes,
+	}
+
+	return tiData
+}
+
+func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionContext) *models.TrafficInfluSub {
+	tiSub := &models.TrafficInfluSub{
+		AfAppId:     appSessionCtx.AscReqData.AfAppId,
+		AppReloInd:  appSessionCtx.AscReqData.AfRoutReq.AppReloc,
+		DnaiChgType: appSessionCtx.AscReqData.AfRoutReq.UpPathChgSub.DnaiChgType,
+		Dnn:         appSessionCtx.AscReqData.Dnn,
+		Gpsi:        appSessionCtx.AscReqData.Gpsi,
+		SuppFeat:    appSessionCtx.AscReqData.SuppFeat,
+	}
+
+	return tiSub
 }

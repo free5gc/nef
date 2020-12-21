@@ -58,12 +58,12 @@ func (c *ConsumerUDRService) initDataRepoAPIClient() error {
 	return nil
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataSubsIdGet(subscID string) (int, interface{}) {
+func (c *ConsumerUDRService) AppDataInfluenceDataGet(influenceIDs []string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
 		rspBody interface{}
-		result  models.TrafficInfluSub
+		result  []models.TrafficInfluData
 		rsp     *http.Response
 	)
 
@@ -71,9 +71,50 @@ func (c *ConsumerUDRService) AppDataInfluenceDataSubsIdGet(subscID string) (int,
 		return rspCode, rspBody
 	}
 
+	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
+		InfluenceIds: optional.NewInterface(influenceIDs),
+	}
+
 	c.clientMtx.RLock()
 	result, rsp, err = c.clientDataRepo.DefaultApi.
-		ApplicationDataInfluenceDataSubsToNotifySubscriptionIdGet(ctx.Background(), subscID)
+		ApplicationDataInfluenceDataGet(ctx.Background(), param)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
+func (c *ConsumerUDRService) AppDataInfluenceDataIdGet(influenceID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  []models.TrafficInfluData
+		rsp     *http.Response
+	)
+
+	if err = c.initDataRepoAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
+		InfluenceIds: optional.NewInterface(influenceID),
+	}
+
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientDataRepo.DefaultApi.
+		ApplicationDataInfluenceDataGet(ctx.Background(), param)
 	c.clientMtx.RUnlock()
 
 	if rsp != nil {

@@ -5,13 +5,13 @@ import (
 )
 
 type AfSubscription struct {
-	subscID         string
-	appSessID       string //use in single UE case
-	influID         string //use in multiple UE case
-	notifCorreID    string
-	notificationURI string
-	storeLoc        bool // 0 in PCF, 1 in UDR
-	mtx             sync.RWMutex
+	subscID            string
+	appSessID          string //use in single UE case
+	influID            string //use in multiple UE case
+	notifCorreID       string
+	notificationURI    string
+	isIndividualUEAddr bool // false in UDR, true in PCF
+	mtx                sync.RWMutex
 }
 
 func (s *AfSubscription) GetSubscID() string {
@@ -44,8 +44,20 @@ func (s *AfSubscription) SetNotificationURI(uri string) {
 	s.notificationURI = uri
 }
 
-func (s *AfSubscription) GetStoreLoc() bool {
+func (s *AfSubscription) GetAppSessID() string {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	return s.appSessID
+}
+
+func (s *AfSubscription) GetInfluenceID() string {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+	return s.influID
+}
+
+func (s *AfSubscription) GetIsIndividualUEAddr() bool {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
-	return s.storeLoc
+	return s.isIndividualUEAddr
 }

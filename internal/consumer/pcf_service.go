@@ -59,26 +59,38 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	return nil
 }
 
-/*func (c *ConsumerPCFService) GetAppSession(afID string) (int, interface{}) {
+func (c *ConsumerPCFService) GetAppSession(appSessionId string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
 		rspBody interface{}
-		result  []models.TrafficInfluSub
+		result  models.AppSessionContext
 		rsp     *http.Response
 	)
 
 	if err = c.initPolicyAuthAPIClient(); err != nil {
-		goto END
+		return rspCode, rspBody
 	}
 
 	c.clientMtx.RLock()
-	result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.GetAppSession(ctx.Background(), afID)
+	result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.
+		GetAppSession(ctx.Background(), appSessionId)
 	c.clientMtx.RUnlock()
 
-END:
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
 	return rspCode, rspBody
-}*/
+}
 
 func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int, interface{}, string) {
 	var (
