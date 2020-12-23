@@ -18,7 +18,7 @@ var (
 	NEF_LOG_PATH    = path_util.Free5gcPath("free5gc/nefsslkey.log")
 	NEF_PEM_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
 	NEF_KEY_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NEF_CONFIG_PATH = path_util.Free5gcPath("free5gc/config/nefcfg.conf")
+	NEF_CONFIG_PATH = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
 )
 
 const (
