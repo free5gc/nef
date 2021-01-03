@@ -65,6 +65,16 @@ func (n *NefContext) GetAfCtx(afID string) *AfContext {
 	return n.afCtxs[afID]
 }
 
+func (n *NefContext) DeleteAfCtx(afID string) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	if _, exist := n.afCtxs[afID]; !exist {
+		logger.CtxLog.Infof("AF [%s] does not exist", afID)
+		return
+	}
+	delete(n.afCtxs, afID)
+}
+
 func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
