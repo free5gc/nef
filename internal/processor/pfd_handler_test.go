@@ -108,6 +108,53 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	}
 }
 
+func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
+	initUDRDrDeletePfdDataStub()
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		transID          string
+		appID            string
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name:    "Valid input",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNoContent,
+			},
+		},
+		{
+			name:    "Invalid ID test",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app2",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+			afPfdTans.AddExtAppID("app1")
+
+			rsp := nefProcessor.DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func validateResult(t *testing.T, expected, got interface{}) {
 	if !reflect.DeepEqual(expected, got) {
 		e, err := json.MarshalIndent(expected, "", "  ")
@@ -208,4 +255,11 @@ func initUDRDrGetPfdDataStub() {
 		Persist().
 		Reply(http.StatusOK).
 		JSON(pfdDataForApp)
+}
+
+func initUDRDrDeletePfdDataStub() {
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Delete("/application-data/pfds/.*").
+		Persist().
+		Reply(http.StatusNoContent)
 }
