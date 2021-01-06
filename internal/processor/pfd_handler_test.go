@@ -12,6 +12,7 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
+	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
@@ -151,6 +152,75 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 
 			rsp := nefProcessor.DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
 			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
+func TestValidatePfdData(t *testing.T) {
+	testCases := []struct {
+		name           string
+		pfdData        *models.PfdData
+		expectedResult *models.ProblemDetails
+	}{
+		{
+			name: "Valid",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+			expectedResult: nil,
+		},
+		{
+			name: "Invalid, without ExternalAppId",
+			pfdData: &models.PfdData{
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID),
+		},
+		{
+			name: "Invalid, empty Pfds",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+			},
+			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD),
+		},
+		{
+			name: "Invalid, without PfdID",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						FlowDescriptions: []string{
+							"permit in ip from 10.68.28.39 80 to any",
+							"permit out ip from any to 10.68.28.39 80",
+						},
+					},
+				},
+			},
+			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID),
+		},
+		{
+			name: "Invalid, FlowDescriptions, Urls and DomainNames are all empty",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+					},
+				},
+			},
+			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			rst := validatePfdData(tc.pfdData, nefContext, false)
+			validateResult(t, tc.expectedResult, rst)
 		})
 	}
 }

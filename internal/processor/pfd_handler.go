@@ -436,8 +436,8 @@ func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext, isPatc
 		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD)
 	}
 
-	for pfdID, pfd := range pfdData.Pfds {
-		if pfdID == "" {
+	for _, pfd := range pfdData.Pfds {
+		if pfd.PfdId == "" {
 			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID)
 		}
 		// For PATCH method, empty these three attributes is used to imply the deletion of this PFD
