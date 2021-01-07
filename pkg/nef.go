@@ -1,6 +1,8 @@
 package nef
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
@@ -24,6 +26,7 @@ type NefApp struct {
 func NewNEF(nefcfgPath string) *NefApp {
 	nef := &NefApp{cfg: &factory.Config{}}
 	if err := nef.initConfig(nefcfgPath); err != nil {
+		logger.CfgLog.Errorf("%+v", err)
 		return nil
 	}
 	if nef.nefCtx = context.NewNefContext(); nef.nefCtx == nil {
@@ -43,7 +46,9 @@ func NewNEF(nefcfgPath string) *NefApp {
 
 func (n *NefApp) initConfig(nefcfgPath string) error {
 	if err := factory.InitConfigFactory(nefcfgPath, n.cfg); err != nil {
-		logger.InitLog.Errorf("initConfig [%s] Error: %+v", nefcfgPath, err)
+		return fmt.Errorf("initConfig [%s] Error: %+v", nefcfgPath, err)
+	}
+	if err := factory.CheckConfigVersion(n.cfg); err != nil {
 		return err
 	}
 	n.cfg.Print()
