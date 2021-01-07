@@ -156,6 +156,94 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 	}
 }
 
+func TestPutIndividualApplicationPFDManagement(t *testing.T) {
+	initUDRDrPutPfdDataStub(http.StatusOK)
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		transID          string
+		appID            string
+		pfdData          *models.PfdData
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name:    "Valid input",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app1",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+					"pfd2": pfd2,
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusOK,
+				Body: &models.PfdData{
+					ExternalAppId: "app1",
+					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Pfds: map[string]models.Pfd{
+						"pfd1": pfd1,
+						"pfd2": pfd2,
+					},
+				},
+			},
+		},
+		{
+			name:    "Invalid ID test",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app2",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app2",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+					"pfd2": pfd2,
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+			},
+		},
+		{
+			name:    "Invalid PfdData test",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app1",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+			afPfdTans.AddExtAppID("app1")
+
+			rsp := nefProcessor.PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestValidatePfdData(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -332,4 +420,31 @@ func initUDRDrDeletePfdDataStub() {
 		Delete("/application-data/pfds/.*").
 		Persist().
 		Reply(http.StatusNoContent)
+}
+
+func initUDRDrPutPfdDataStub(statusCode int) {
+	pfdDataForApp := models.PfdDataForApp{
+		ApplicationId: "app1",
+		Pfds: []models.PfdContent{
+			{
+				PfdId: "pfd1",
+				FlowDescriptions: []string{
+					"permit in ip from 10.68.28.39 80 to any",
+					"permit out ip from any to 10.68.28.39 80",
+				},
+			},
+			{
+				PfdId: "pfd2",
+				Urls: []string{
+					"^http://test.example.com(/\\S*)?$",
+				},
+			},
+		},
+	}
+
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Put("/application-data/pfds/.*").
+		Persist().
+		Reply(statusCode).
+		JSON(pfdDataForApp)
 }
