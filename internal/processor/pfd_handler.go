@@ -331,7 +331,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 		}
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	} else {
-		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
+		oldPfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
 	}
 
 	return &HandlerResponse{http.StatusOK, nil, oldPfdData}

@@ -244,6 +244,96 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 	}
 }
 
+func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
+	initUDRDrGetPfdDataStub()
+	initUDRDrPutPfdDataStub(http.StatusOK)
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		transID          string
+		appID            string
+		pfdData          *models.PfdData
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name:    "Valid input",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app1",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusOK,
+				Body: &models.PfdData{
+					ExternalAppId: "app1",
+					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Pfds: map[string]models.Pfd{
+						"pfd2": pfd2,
+					},
+				},
+			},
+		},
+		{
+			name:    "Invalid ID test",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app2",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app2",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+			},
+		},
+		{
+			name:    "Invalid PfdData test",
+			afID:    "af1",
+			transID: "1",
+			appID:   "app1",
+			pfdData: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd3": {
+						PfdId: "pfd3",
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+			afPfdTans.AddExtAppID("app1")
+
+			rsp := nefProcessor.PatchIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestValidatePfdData(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -309,6 +399,129 @@ func TestValidatePfdData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rst := validatePfdData(tc.pfdData, nefContext, false)
 			validateResult(t, tc.expectedResult, rst)
+		})
+	}
+}
+
+func TestPatchModifyPfdData(t *testing.T) {
+	testCases := []struct {
+		name            string
+		old             *models.PfdData
+		new             *models.PfdData
+		expectedProblem *models.ProblemDetails
+		expectedResult  *models.PfdData
+	}{
+		{
+			name: "Add Pfd",
+			old: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+			new: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd2": pfd2,
+				},
+			},
+			expectedProblem: nil,
+			expectedResult: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+					"pfd2": pfd2,
+				},
+			},
+		},
+		{
+			name: "Update Pfd",
+			old: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+			new: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+						Urls: []string{
+							"^http://test.example.com(/\\S*)?$",
+						},
+					},
+				},
+			},
+			expectedProblem: nil,
+			expectedResult: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+						Urls: []string{
+							"^http://test.example.com(/\\S*)?$",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Delete Pfd",
+			old: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+					"pfd2": pfd2,
+				},
+			},
+			new: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": {
+						PfdId: "pfd1",
+					},
+				},
+			},
+			expectedProblem: nil,
+			expectedResult: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd2": pfd2,
+				},
+			},
+		},
+		{
+			name: "Invalid Update Pfd",
+			old: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+			new: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd2": {
+						PfdId: "pfd2",
+					},
+				},
+			},
+			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			expectedResult: &models.PfdData{
+				ExternalAppId: "app1",
+				Pfds: map[string]models.Pfd{
+					"pfd1": pfd1,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			problemDetail := patchModifyPfdData(tc.old, tc.new)
+			validateResult(t, tc.expectedProblem, problemDetail)
+			validateResult(t, tc.expectedResult, tc.old)
 		})
 	}
 }
