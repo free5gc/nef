@@ -125,6 +125,49 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	}
 }
 
+func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
+	initUDRDrDeletePfdDataStub()
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		transID          string
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name:    "Valid input",
+			afID:    "af1",
+			transID: "1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNoContent,
+			},
+		},
+		{
+			name:    "Invalid ID test",
+			afID:    "af2",
+			transID: "1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("AF not found"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+
+			rsp := nefProcessor.DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	initUDRDrGetPfdDataStub()
 	defer gock.Off()
