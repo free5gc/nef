@@ -448,6 +448,107 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 	}
 }
 
+func TestValidatePfdManagement(t *testing.T) {
+	testCases := []struct {
+		name            string
+		pfdManagement   *models.PfdManagement
+		expectedProblem *models.ProblemDetails
+		expectedReports map[string]models.PfdReport
+	}{
+		{
+			name: "Valid",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app1": {
+						ExternalAppId: "app1",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+							"pfd2": pfd2,
+						},
+					},
+					"app2": {
+						ExternalAppId: "app2",
+						Pfds: map[string]models.Pfd{
+							"pfd3": pfd3,
+						},
+					},
+				},
+			},
+			expectedProblem: nil,
+			expectedReports: map[string]models.PfdReport{},
+		},
+		{
+			name: "Invalid, empty PfdDatas",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{},
+			},
+			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+			expectedReports: map[string]models.PfdReport{},
+		},
+		{
+			name: "Invalid, an appID is already provisioned",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app100": {
+						ExternalAppId: "app100",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+						},
+					},
+					"app101": {
+						ExternalAppId: "app101",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+						},
+					},
+				},
+			},
+			expectedProblem: nil,
+			expectedReports: map[string]models.PfdReport{
+				string(models.FailureCode_APP_ID_DUPLICATED): {
+					ExternalAppIds: []string{"app100"},
+					FailureCode:    models.FailureCode_APP_ID_DUPLICATED,
+				},
+			},
+		},
+		{
+			name: "Invalid, none of the PFDs were created",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app100": {
+						ExternalAppId: "app100",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+						},
+					},
+				},
+			},
+			expectedProblem: util.ProblemDetailsSystemFailure("None of the PFDs were created"),
+			expectedReports: map[string]models.PfdReport{
+				string(models.FailureCode_APP_ID_DUPLICATED): {
+					ExternalAppIds: []string{"app100"},
+					FailureCode:    models.FailureCode_APP_ID_DUPLICATED,
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+			afPfdTans.AddExtAppID("app100")
+
+			rst := validatePfdManagement(tc.pfdManagement, nefContext)
+			validateResult(t, tc.expectedProblem, rst)
+			validateResult(t, tc.expectedReports, tc.pfdManagement.PfdReports)
+		})
+	}
+}
+
 func TestValidatePfdData(t *testing.T) {
 	testCases := []struct {
 		name           string
