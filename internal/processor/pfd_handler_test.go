@@ -168,6 +168,117 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 	}
 }
 
+func TestPutIndividualPFDManagementTransaction(t *testing.T) {
+	initUDRDrPutPfdDataStub(http.StatusOK)
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		transID          string
+		pfdManagement    *models.PfdManagement
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name:    "Valid input",
+			afID:    "af1",
+			transID: "1",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app1": {
+						ExternalAppId: "app1",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+							"pfd2": pfd2,
+						},
+					},
+					"app2": {
+						ExternalAppId: "app2",
+						Pfds: map[string]models.Pfd{
+							"pfd3": pfd3,
+						},
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusOK,
+				Body: &models.PfdManagement{
+					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					PfdDatas: map[string]models.PfdData{
+						"app1": {
+							ExternalAppId: "app1",
+							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Pfds: map[string]models.Pfd{
+								"pfd1": pfd1,
+								"pfd2": pfd2,
+							},
+						},
+						"app2": {
+							ExternalAppId: "app2",
+							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Pfds: map[string]models.Pfd{
+								"pfd3": pfd3,
+							},
+						},
+					},
+					PfdReports: map[string]models.PfdReport{},
+				},
+			},
+		},
+		{
+			name:    "Invalid ID test",
+			afID:    "af1",
+			transID: "-1",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app1": {
+						ExternalAppId: "app1",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+							"pfd2": pfd2,
+						},
+					},
+					"app2": {
+						ExternalAppId: "app2",
+						Pfds: map[string]models.Pfd{
+							"pfd3": pfd3,
+						},
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Transaction not found"),
+			},
+		},
+		{
+			name:    "Invalid PfdManagement test",
+			afID:    "af1",
+			transID: "1",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+
+			rsp := nefProcessor.PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	initUDRDrGetPfdDataStub()
 	defer gock.Off()
@@ -542,7 +653,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			afCtx.AddPfdTrans(afPfdTans)
 			afPfdTans.AddExtAppID("app100")
 
-			rst := validatePfdManagement(tc.pfdManagement, nefContext)
+			rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefContext)
 			validateResult(t, tc.expectedProblem, rst)
 			validateResult(t, tc.expectedReports, tc.pfdManagement.PfdReports)
 		})

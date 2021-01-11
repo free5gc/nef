@@ -55,7 +55,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 	// TODO: Authorize the AF
 
-	problemDetails := validatePfdManagement(pfdMng, p.nefCtx)
+	problemDetails := validatePfdManagement(scsAsID, "-1", pfdMng, p.nefCtx)
 	if problemDetails != nil {
 		if problemDetails.Status == http.StatusInternalServerError {
 			return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
@@ -156,7 +156,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 
 	// TODO: Authorize the AF
 
-	problemDetails := validatePfdManagement(pfdMng, p.nefCtx)
+	problemDetails := validatePfdManagement(scsAsID, transID, pfdMng, p.nefCtx)
 	if problemDetails != nil {
 		if problemDetails.Status == http.StatusInternalServerError {
 			return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
@@ -170,12 +170,26 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
+	// Delete PfdDataForApps in UDR with appID absent in new PfdManagement
+	deprecatedAppIDs := []string{}
+	for _, appID := range afPfdTrans.GetExtAppIDs() {
+		if _, exist := pfdMng.PfdDatas[appID]; !exist {
+			deprecatedAppIDs = append(deprecatedAppIDs, appID)
+		}
+	}
+	for _, appID := range deprecatedAppIDs {
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(appID)
+		if rspCode != http.StatusNoContent {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+	}
+
 	afPfdTrans.DeleteAllExtAppIDs()
 	for appID, pfdData := range pfdMng.PfdDatas {
 		afPfdTrans.AddExtAppID(appID)
 		pfdDataForApp := convertPfdDataToPfdDataForApp(&pfdData)
 		rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
-		if rspCode != http.StatusCreated {
+		if rspCode != http.StatusCreated && rspCode != http.StatusOK {
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, appID, models.FailureCode_MALFUNCTION)
 		} else {
@@ -190,11 +204,8 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 	}
 
 	pfdMng.Self = genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID())
-	// Not mandated by TS 29.122 v1.15.3
-	hdrs := make(map[string][]string)
-	util.AddLocationheader(hdrs, pfdMng.Self)
 
-	return &HandlerResponse{http.StatusOK, hdrs, pfdMng}
+	return &HandlerResponse{http.StatusOK, nil, pfdMng}
 }
 
 func (p *Processor) DeleteIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
@@ -400,7 +411,9 @@ func genPfdDataURI(sbiURI, afID, transID, appID string) string {
 		sbiURI, factory.PFD_MNG_RES_URI_PREFIX, afID, transID, appID)
 }
 
-func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefContext) *models.ProblemDetails {
+func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
+	nefCtx *context.NefContext) *models.ProblemDetails {
+
 	pfdMng.PfdReports = make(map[string]models.PfdReport)
 
 	if len(pfdMng.PfdDatas) == 0 {
@@ -409,7 +422,8 @@ func validatePfdManagement(pfdMng *models.PfdManagement, nefCtx *context.NefCont
 
 	for appID, pfdData := range pfdMng.PfdDatas {
 		// Check whether the received external Application Identifier(s) are already provisioned
-		if nefCtx.IsAppIDExisted(appID) {
+		exist, appAfID, appTransID := nefCtx.IsAppIDExisted(appID)
+		if exist && (appAfID != afID || appTransID != transID) {
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, appID, models.FailureCode_APP_ID_DUPLICATED)
 		}
