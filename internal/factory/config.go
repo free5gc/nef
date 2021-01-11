@@ -22,16 +22,16 @@ var (
 )
 
 const (
-	NEF_DEFAULT_VERSION        = "1.0.0"
-	NEF_DEFAULT_IPV4           = "127.0.0.5"
-	NEF_DEFAULT_PORT           = "8000"
-	NEF_DEFAULT_PORT_INT       = 8000
-	NEF_DEFAULT_SCHEME         = "https"
-	NEF_DEFAULT_NRFURI         = "https://127.0.0.10:8000"
-	TRAFF_INFLU_RES_URI_PREFIX = "/3gpp-traffic-influence/v1"
-	PFD_MNG_RES_URI_PREFIX     = "/3gpp-pfd-management/v1"
-	NEF_PFD_MNG_RES_URI_PREFIX = "/nnef-pfdmanagement/v1"
-	NEF_OAM_RES_URI_PREFIX     = "/nnef-oam/v1"
+	NEF_EXPECTED_CONFIG_VERSION = "1.0.0"
+	NEF_DEFAULT_IPV4            = "127.0.0.5"
+	NEF_DEFAULT_PORT            = "8000"
+	NEF_DEFAULT_PORT_INT        = 8000
+	NEF_DEFAULT_SCHEME          = "https"
+	NEF_DEFAULT_NRFURI          = "https://127.0.0.10:8000"
+	TRAFF_INFLU_RES_URI_PREFIX  = "/3gpp-traffic-influence/v1"
+	PFD_MNG_RES_URI_PREFIX      = "/3gpp-pfd-management/v1"
+	NEF_PFD_MNG_RES_URI_PREFIX  = "/nnef-pfdmanagement/v1"
+	NEF_OAM_RES_URI_PREFIX      = "/nnef-oam/v1"
 )
 
 type Config struct {
@@ -97,7 +97,7 @@ func (c *Config) GetVersion() string {
 	if c.Info != nil && c.Info.Version != "" {
 		return c.Info.Version
 	}
-	return NEF_DEFAULT_VERSION
+	return ""
 }
 
 func (c *Config) GetSbiScheme() string {

@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
+
+	"bitbucket.org/free5gc-team/nef/internal/logger"
 )
 
 // TODO: Support configuration update from REST api
@@ -25,6 +27,19 @@ func InitConfigFactory(f string, cfg *Config) error {
 			return fmt.Errorf("[Factory] %+v", yamlErr)
 		}
 	}
+
+	return nil
+}
+
+func CheckConfigVersion(cfg *Config) error {
+	currentVersion := cfg.GetVersion()
+
+	if currentVersion != NEF_EXPECTED_CONFIG_VERSION {
+		return fmt.Errorf("config version is [%s], but expected is [%s].",
+			currentVersion, NEF_EXPECTED_CONFIG_VERSION)
+	}
+
+	logger.CfgLog.Infof("config version [%s]", currentVersion)
 
 	return nil
 }
