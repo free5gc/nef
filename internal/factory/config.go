@@ -47,7 +47,6 @@ type Info struct {
 
 type Configuration struct {
 	Sbi         *Sbi      `yaml:"sbi,omitempty"`
-	TimeFormat  string    `yaml:"timeFormat,omitempty"`
 	NrfUri      string    `yaml:"nrfUri,omitempty"`
 	ServiceList []Service `yaml:"serviceList,omitempty"`
 }
@@ -81,7 +80,6 @@ func (c *Config) Print() {
 			logger.CfgLog.Infof("    BindingIPv4: %s", c.Configuration.Sbi.BindingIPv4)
 			logger.CfgLog.Infof("    Port: %d", c.Configuration.Sbi.Port)
 		}
-		logger.CfgLog.Infof("  TimeFormat: %s", c.Configuration.TimeFormat)
 		logger.CfgLog.Infof("  NrfUri: %s", c.Configuration.NrfUri)
 		if c.Configuration.ServiceList != nil {
 			logger.CfgLog.Infof("ServiceList -")
