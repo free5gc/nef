@@ -297,3 +297,35 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}
 
 	return rspCode, rspBody
 }
+
+func (c *ConsumerUDRService) AppDataInfluenceDataDelete(influenceID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		rsp     *http.Response
+	)
+
+	if err = c.initDataRepoAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	c.clientMtx.RLock()
+	rsp, err = c.clientDataRepo.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdDelete(ctx.Background(), influenceID)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &rsp.Body
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}

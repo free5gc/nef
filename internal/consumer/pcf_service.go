@@ -127,6 +127,43 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 	return rspCode, rspBody, appSessID
 }
 
+func (c *ConsumerPCFService) DeleteAppSession(appSessionId string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  models.AppSessionContext
+		rsp     *http.Response
+	)
+
+	if err = c.initPolicyAuthAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	param := &Npcf_PolicyAuthorization.DeleteAppSessionParamOpts{
+		EventsSubscReqData: optional.NewInterface(models.EventsSubscReqData{}),
+	}
+
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.DeleteAppSession(ctx.Background(), appSessionId, param)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusCreated {
+			logger.ConsumerLog.Debugf("PostAppSessions RspData: %+v", result)
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
 func getAppSessIDFromRspLocationHeader(rsp *http.Response) string {
 	appSessID := ""
 	loc := rsp.Header.Get("Location")

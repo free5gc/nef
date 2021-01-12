@@ -163,7 +163,34 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID st
 
 func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("DeleteIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	afCtx := p.nefCtx.GetAfCtx(afID)
+	if afCtx == nil {
+		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	subsc := afCtx.GetSubsc(subscID)
+	if afCtx == nil {
+		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	if subsc.GetIsIndividualUEAddr() {
+		rspCode, rspBody := p.consumer.PcfSrv.DeleteAppSession(subsc.GetAppSessID())
+		if rspCode != http.StatusOK {
+			afCtx.DeleteSubsc(subscID)
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		return &HandlerResponse{http.StatusOK, nil, nil}
+	} else {
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataDelete(subsc.GetInfluenceID())
+		if rspCode != http.StatusOK {
+			afCtx.DeleteSubsc(subscID)
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		return &HandlerResponse{http.StatusOK, nil, nil}
+	}
 }
 
 func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerResponse {

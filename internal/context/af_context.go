@@ -105,3 +105,9 @@ func (a *AfContext) GetSubsc(subscID string) *AfSubscription {
 	defer a.mtx.Unlock()
 	return a.subsc[subscID]
 }
+
+func (a *AfContext) DeleteSubsc(subscID string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	delete(a.subsc, subscID)
+}
