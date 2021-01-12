@@ -1,4 +1,4 @@
-package nef
+package app
 
 import (
 	"fmt"
@@ -23,9 +23,9 @@ type NefApp struct {
 	consumer  *consumer.Consumer
 }
 
-func NewNEF(nefcfgPath string) *NefApp {
+func NewApp(cfgPath string) *NefApp {
 	nef := &NefApp{cfg: &factory.Config{}}
-	if err := nef.initConfig(nefcfgPath); err != nil {
+	if err := nef.initConfig(cfgPath); err != nil {
 		logger.CfgLog.Errorf("%+v", err)
 		return nil
 	}
@@ -44,9 +44,9 @@ func NewNEF(nefcfgPath string) *NefApp {
 	return nef
 }
 
-func (n *NefApp) initConfig(nefcfgPath string) error {
-	if err := factory.InitConfigFactory(nefcfgPath, n.cfg); err != nil {
-		return fmt.Errorf("initConfig [%s] Error: %+v", nefcfgPath, err)
+func (n *NefApp) initConfig(cfgPath string) error {
+	if err := factory.InitConfigFactory(cfgPath, n.cfg); err != nil {
+		return fmt.Errorf("initConfig [%s] Error: %+v", cfgPath, err)
 	}
 	if err := factory.CheckConfigVersion(n.cfg); err != nil {
 		return err

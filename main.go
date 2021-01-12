@@ -5,20 +5,20 @@ import (
 
 	"github.com/urfave/cli"
 
+	nefApp "bitbucket.org/free5gc-team/nef/app"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg"
 	"bitbucket.org/free5gc-team/version"
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "nef"
-	app.Usage = "-nefcfg nef configuration file"
+	app.Usage = "5G Network Exposure Function (NEF)"
 	app.Action = action
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "nefcfg",
-			Usage: "config file",
+			Name:  "config, c",
+			Usage: "Load configuration from `FILE`",
 		},
 	}
 	logger.MainLog.Infoln("NEF version: ", version.GetVersion())
@@ -29,13 +29,13 @@ func main() {
 }
 
 func action(cliCtx *cli.Context) {
-	nefApp := nef.NewNEF(cliCtx.String("nefcfg"))
-	if nefApp == nil {
+	nef := nefApp.NewApp(cliCtx.String("config"))
+	if nef == nil {
 		logger.MainLog.Errorf("New NEF failed")
 		return
 	}
 
-	if err := nefApp.Run(); err != nil {
+	if err := nef.Run(); err != nil {
 		logger.MainLog.Errorf("NEF Run err: %v", err)
 	}
 }

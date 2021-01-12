@@ -3,6 +3,8 @@
 .idea/
 # Visual Studio Code
 .vscode/
+# Build
+build/
 # emacs/vim
 GPATH
 GRTAGS
