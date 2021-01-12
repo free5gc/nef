@@ -164,6 +164,111 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 	}
 }
 
+func TestPostPFDManagementTransactions(t *testing.T) {
+	initUDRDrPutPfdDataStub(http.StatusCreated)
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		pfdManagement    *models.PfdManagement
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name: "Valid input",
+			afID: "af1",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app1": {
+						ExternalAppId: "app1",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+							"pfd2": pfd2,
+						},
+					},
+					"app2": {
+						ExternalAppId: "app2",
+						Pfds: map[string]models.Pfd{
+							"pfd3": pfd3,
+						},
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusCreated,
+				Body: &models.PfdManagement{
+					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					PfdDatas: map[string]models.PfdData{
+						"app1": {
+							ExternalAppId: "app1",
+							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Pfds: map[string]models.Pfd{
+								"pfd1": pfd1,
+								"pfd2": pfd2,
+							},
+						},
+						"app2": {
+							ExternalAppId: "app2",
+							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Pfds: map[string]models.Pfd{
+								"pfd3": pfd3,
+							},
+						},
+					},
+					PfdReports: map[string]models.PfdReport{},
+				},
+			},
+		},
+		{
+			name: "Invalid ID test",
+			afID: "af2",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{
+					"app1": {
+						ExternalAppId: "app1",
+						Pfds: map[string]models.Pfd{
+							"pfd1": pfd1,
+							"pfd2": pfd2,
+						},
+					},
+					"app2": {
+						ExternalAppId: "app2",
+						Pfds: map[string]models.Pfd{
+							"pfd3": pfd3,
+						},
+					},
+				},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+			},
+		},
+		{
+			name: "Invalid PfdManagement test",
+			afID: "af1",
+			pfdManagement: &models.PfdManagement{
+				PfdDatas: map[string]models.PfdData{},
+			},
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+
+			rsp := nefProcessor.PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	initUDRDrGetPfdDatasStub()
 	defer gock.Off()

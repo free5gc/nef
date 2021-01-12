@@ -66,7 +66,8 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 	afCtx := p.nefCtx.GetAfCtx(scsAsID)
 	if afCtx == nil {
-		afCtx = p.nefCtx.NewAfCtx(scsAsID)
+		problemDetails := util.ProblemDetailsDataNotFound("Given AF is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 	afTrans := p.nefCtx.NewAfPfdTrans(afCtx)
 
@@ -92,11 +93,8 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 	p.nefCtx.AddAfCtx(afCtx)
 
 	pfdMng.Self = genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, afTrans.GetTransID())
-	// Not mandated by TS 29.122 v1.15.3
-	hdrs := make(map[string][]string)
-	util.AddLocationheader(hdrs, pfdMng.Self)
 
-	return &HandlerResponse{http.StatusCreated, hdrs, pfdMng}
+	return &HandlerResponse{http.StatusCreated, nil, pfdMng}
 }
 
 func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResponse {
