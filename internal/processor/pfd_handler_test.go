@@ -60,6 +60,70 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
+func TestGetPFDManagementTransactions(t *testing.T) {
+	initUDRDrGetPfdDatasStub()
+	defer gock.Off()
+
+	testCases := []struct {
+		name             string
+		afID             string
+		expectedResponse *HandlerResponse
+	}{
+		{
+			name: "Valid input",
+			afID: "af1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusOK,
+				Body: &[]models.PfdManagement{
+					{
+						Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+						PfdDatas: map[string]models.PfdData{
+							"app1": {
+								ExternalAppId: "app1",
+								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+								Pfds: map[string]models.Pfd{
+									"pfd1": pfd1,
+									"pfd2": pfd2,
+								},
+							},
+							"app2": {
+								ExternalAppId: "app2",
+								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+								Pfds: map[string]models.Pfd{
+									"pfd3": pfd3,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Invalid ID test",
+			afID: "af2",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			afCtx := nefContext.NewAfCtx("af1")
+			nefContext.AddAfCtx(afCtx)
+			defer nefContext.DeleteAfCtx("af1")
+			afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+			afCtx.AddPfdTrans(afPfdTans)
+			afPfdTans.AddExtAppID("app1")
+			afPfdTans.AddExtAppID("app2")
+
+			rsp := nefProcessor.GetPFDManagementTransactions(tc.afID)
+			validateResult(t, tc.expectedResponse, rsp)
+		})
+	}
+}
+
 func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	initUDRDrGetPfdDatasStub()
 	defer gock.Off()
