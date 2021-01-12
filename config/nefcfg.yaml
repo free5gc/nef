@@ -10,13 +10,12 @@ configuration:
     port: 8000 # port used to bind the service
   nrfUri: http://127.0.0.10:8000 # A valid URI of NRF
   serviceList: # the SBI services provided by this NEF
-    - serviceName: nnef-pfdmanagement
+    - serviceName: nnef-pfdmanagement # Nnef_PFDManagement Service
 
 
 # the kind of log output
   # debugLevel: how detialed to output, value: trace, debug, info, warn, error, fatal, panic
   # ReportCaller: enable the caller report or not, value: true or false
-
 logger:
   NEF:
     debugLevel: info

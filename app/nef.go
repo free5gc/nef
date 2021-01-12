@@ -1,4 +1,4 @@
-package nef
+package app
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ type NefApp struct {
 	consumer  *consumer.Consumer
 }
 
-func NewNEF(cfgPath string) *NefApp {
+func NewApp(cfgPath string) *NefApp {
 	nef := &NefApp{cfg: &factory.Config{}}
 	if err := nef.initConfig(cfgPath); err != nil {
 		logger.CfgLog.Errorf("%+v", err)
