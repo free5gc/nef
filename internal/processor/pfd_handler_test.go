@@ -47,9 +47,21 @@ func TestMain(m *testing.M) {
 	initNRFNfmStub()
 	initNRFDiscStub()
 
-	nefConfig := &factory.Config{}
-	if err := factory.InitConfigFactory("", nefConfig); err != nil {
-		return
+	nefConfig := &factory.Config{
+		Configuration: &factory.Configuration{
+			Sbi: &factory.Sbi{
+				Scheme:       "http",
+				RegisterIPv4: "127.0.0.5",
+				BindingIPv4:  "127.0.0.5",
+				Port:         8000,
+			},
+			NrfUri: "http://127.0.0.10:8000",
+			ServiceList: []factory.Service{
+				{
+					ServiceName: "nnef-pfdmanagement",
+				},
+			},
+		},
 	}
 	nefContext = context.NewNefContext()
 	nefConsumer := consumer.NewConsumer(nefConfig, nefContext)
