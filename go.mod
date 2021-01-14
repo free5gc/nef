@@ -16,6 +16,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/google/uuid v1.1.2
 	github.com/sirupsen/logrus v1.7.0
+	github.com/smartystreets/goconvey v1.6.4
 	github.com/urfave/cli v1.22.4
 	gopkg.in/h2non/gock.v1 v1.0.16
 	gopkg.in/yaml.v2 v2.4.0
