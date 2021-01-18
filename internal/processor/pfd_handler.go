@@ -30,21 +30,11 @@ func (p *Processor) GetPFDManagementTransactions(scsAsID string) *HandlerRespons
 
 	var pfdMngs []models.PfdManagement
 	for _, afPfdTrans := range afCtx.GetAllPfdTrans() {
-		pfdMng := models.PfdManagement{
-			Self:     genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID()),
-			PfdDatas: make(map[string]models.PfdData),
+		pfdMng, rsp := p.buildPfdManagement(scsAsID, afPfdTrans)
+		if pfdMng == nil {
+			return rsp
 		}
-
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(afPfdTrans.GetExtAppIDs())
-		if rspCode != http.StatusOK {
-			return &HandlerResponse{rspCode, nil, rspBody}
-		}
-		for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
-			pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
-			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID(), pfdData.ExternalAppId)
-			pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
-		}
-		pfdMngs = append(pfdMngs, pfdMng)
+		pfdMngs = append(pfdMngs, *pfdMng)
 	}
 
 	return &HandlerResponse{http.StatusOK, nil, &pfdMngs}
@@ -73,11 +63,9 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 	for appID, pfdData := range pfdMng.PfdDatas {
 		afTrans.AddExtAppID(appID)
-		pfdDataForApp := convertPfdDataToPfdDataForApp(&pfdData)
-		rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
-		if rspCode != http.StatusCreated {
+		if pfdReport := p.storePfdDataToUDR(appID, &pfdData); pfdReport != nil {
 			delete(pfdMng.PfdDatas, appID)
-			addPfdReport(pfdMng, appID, models.FailureCode_MALFUNCTION)
+			addPfdReport(pfdMng, pfdReport)
 		} else {
 			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
@@ -108,9 +96,8 @@ func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResp
 
 	for _, afPfdTrans := range afCtx.GetAllPfdTrans() {
 		for _, extAppID := range afPfdTrans.GetExtAppIDs() {
-			rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(extAppID)
-			if rspCode != http.StatusNoContent {
-				return &HandlerResponse{rspCode, nil, rspBody}
+			if rsp := p.deletePfdDataFromUDR(extAppID); rsp != nil {
+				return rsp
 			}
 		}
 		afCtx.DeletePfdTrans(afPfdTrans.GetTransID())
@@ -129,19 +116,9 @@ func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID strin
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdMng := &models.PfdManagement{
-		Self:     genPfdManagementURI(p.cfg.GetSbiUri(), scsAsID, transID),
-		PfdDatas: make(map[string]models.PfdData),
-	}
-
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(afPfdTrans.GetExtAppIDs())
-	if rspCode != http.StatusOK {
-		return &HandlerResponse{rspCode, nil, rspBody}
-	}
-	for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
-		pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
-		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, pfdData.ExternalAppId)
-		pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
+	pfdMng, rsp := p.buildPfdManagement(scsAsID, afPfdTrans)
+	if pfdMng == nil {
+		return rsp
 	}
 
 	return &HandlerResponse{http.StatusOK, nil, pfdMng}
@@ -185,11 +162,9 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 	afPfdTrans.DeleteAllExtAppIDs()
 	for appID, pfdData := range pfdMng.PfdDatas {
 		afPfdTrans.AddExtAppID(appID)
-		pfdDataForApp := convertPfdDataToPfdDataForApp(&pfdData)
-		rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
-		if rspCode != http.StatusCreated && rspCode != http.StatusOK {
+		if pfdReport := p.storePfdDataToUDR(appID, &pfdData); pfdReport != nil {
 			delete(pfdMng.PfdDatas, appID)
-			addPfdReport(pfdMng, appID, models.FailureCode_MALFUNCTION)
+			addPfdReport(pfdMng, pfdReport)
 		} else {
 			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
@@ -215,9 +190,8 @@ func (p *Processor) DeleteIndividualPFDManagementTransaction(scsAsID, transID st
 	}
 
 	for _, extAppID := range afPfdTrans.GetExtAppIDs() {
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(extAppID)
-		if rspCode != http.StatusNoContent {
-			return &HandlerResponse{rspCode, nil, rspBody}
+		if rsp := p.deletePfdDataFromUDR(extAppID); rsp != nil {
+			return rsp
 		}
 	}
 	afCtx.DeletePfdTrans(afPfdTrans.GetTransID())
@@ -255,9 +229,8 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(appID)
-	if rspCode != http.StatusNoContent {
-		return &HandlerResponse{rspCode, nil, rspBody}
+	if rsp := p.deletePfdDataFromUDR(appID); rsp != nil {
+		return rsp
 	}
 	afPfdTrans.DeleteExtAppID(appID)
 
@@ -286,18 +259,10 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	pfdDataForApp := convertPfdDataToPfdDataForApp(pfdData)
-	rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
-	if rspCode != http.StatusOK {
-		// The PFDs for the application were not updated successfully.
-		pfdReport := &models.PfdReport{
-			ExternalAppIds: []string{appID},
-			FailureCode:    models.FailureCode_MALFUNCTION,
-		}
+	if pfdReport := p.storePfdDataToUDR(appID, pfdData); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
-	} else {
-		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
 	}
+	pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
 
 	return &HandlerResponse{http.StatusOK, nil, pfdData}
 }
@@ -331,19 +296,54 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	rspCode, _ = p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, convertPfdDataToPfdDataForApp(oldPfdData))
+	if pfdReport := p.storePfdDataToUDR(appID, oldPfdData); pfdReport != nil {
+		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
+	}
+	oldPfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
+
+	return &HandlerResponse{http.StatusOK, nil, oldPfdData}
+}
+
+func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTransaction) (*models.PfdManagement,
+	*HandlerResponse) {
+
+	transID := afPfdTrans.GetTransID()
+	appIDs := afPfdTrans.GetExtAppIDs()
+	pfdMng := &models.PfdManagement{
+		Self:     genPfdManagementURI(p.cfg.GetSbiUri(), afID, transID),
+		PfdDatas: make(map[string]models.PfdData, len(appIDs)),
+	}
+
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(appIDs)
 	if rspCode != http.StatusOK {
-		// The PFDs for the application were not updated successfully.
-		pfdReport := &models.PfdReport{
+		return nil, &HandlerResponse{rspCode, nil, rspBody}
+	}
+	for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
+		pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
+		pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), afID, transID, pfdData.ExternalAppId)
+		pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
+	}
+	return pfdMng, nil
+}
+
+func (p *Processor) storePfdDataToUDR(appID string, pfdData *models.PfdData) *models.PfdReport {
+	pfdDataForApp := convertPfdDataToPfdDataForApp(pfdData)
+	rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
+	if rspCode != http.StatusCreated && rspCode != http.StatusOK {
+		return &models.PfdReport{
 			ExternalAppIds: []string{appID},
 			FailureCode:    models.FailureCode_MALFUNCTION,
 		}
-		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
-	} else {
-		oldPfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
 	}
+	return nil
+}
 
-	return &HandlerResponse{http.StatusOK, nil, oldPfdData}
+func (p *Processor) deletePfdDataFromUDR(appID string) *HandlerResponse {
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(appID)
+	if rspCode != http.StatusNoContent {
+		return &HandlerResponse{rspCode, nil, rspBody}
+	}
+	return nil
 }
 
 // The behavior of PATCH update is based on TS 29.250 v1.15.1 clause 4.4.1
@@ -374,10 +374,10 @@ func convertPfdDataForAppToPfdData(pfdDataForApp *models.PfdDataForApp) *models.
 	for _, pfdContent := range pfdDataForApp.Pfds {
 		var pfd models.Pfd
 		pfd.PfdId = pfdContent.PfdId
-		pfd.DomainNames = pfdContent.DomainNames
 		pfd.FlowDescriptions = pfdContent.FlowDescriptions
 		pfd.Urls = pfdContent.Urls
-		pfdData.Pfds[pfd.PfdId] = pfd
+		pfd.DomainNames = pfdContent.DomainNames
+		pfdData.Pfds[pfdContent.PfdId] = pfd
 	}
 	return pfdData
 }
@@ -423,7 +423,10 @@ func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
 		exist, appAfID, appTransID := nefCtx.IsAppIDExisted(appID)
 		if exist && (appAfID != afID || appTransID != transID) {
 			delete(pfdMng.PfdDatas, appID)
-			addPfdReport(pfdMng, appID, models.FailureCode_APP_ID_DUPLICATED)
+			addPfdReport(pfdMng, &models.PfdReport{
+				ExternalAppIds: []string{appID},
+				FailureCode:    models.FailureCode_APP_ID_DUPLICATED,
+			})
 		}
 		if problemDetails := validatePfdData(&pfdData, nefCtx, false); problemDetails != nil {
 			return problemDetails
@@ -461,13 +464,10 @@ func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext, isPatc
 	return nil
 }
 
-func addPfdReport(pfdMng *models.PfdManagement, appID string, failureCode models.FailureCode) {
-	if pfdReport, ok := pfdMng.PfdReports[string(failureCode)]; ok {
-		pfdReport.ExternalAppIds = append(pfdReport.ExternalAppIds, appID)
+func addPfdReport(pfdMng *models.PfdManagement, newReport *models.PfdReport) {
+	if oldReport, ok := pfdMng.PfdReports[string(newReport.FailureCode)]; ok {
+		oldReport.ExternalAppIds = append(oldReport.ExternalAppIds, newReport.ExternalAppIds...)
 	} else {
-		pfdMng.PfdReports[string(failureCode)] = models.PfdReport{
-			ExternalAppIds: []string{appID},
-			FailureCode:    failureCode,
-		}
+		pfdMng.PfdReports[string(newReport.FailureCode)] = *newReport
 	}
 }
