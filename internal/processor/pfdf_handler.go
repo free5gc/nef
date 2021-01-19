@@ -20,7 +20,11 @@ func (p *Processor) GetApplicationsPFD(appIDs []string) *HandlerResponse {
 
 func (p *Processor) GetIndividualApplicationPFD(appID string) *HandlerResponse {
 	logger.PFDFLog.Infof("GetIndividualApplicationPFD - appID[%s]", appID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Support SupportedFeatures
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
+
+	return &HandlerResponse{rspCode, nil, rspBody}
 }
 
 func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *HandlerResponse {
