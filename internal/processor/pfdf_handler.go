@@ -4,12 +4,18 @@ import (
 	"net/http"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-func (p *Processor) GetApplicationsPFD() *HandlerResponse {
+func (p *Processor) GetApplicationsPFD(appIDs []string) *HandlerResponse {
 	logger.PFDFLog.Infof("GetApplicationsPFD")
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Support SupportedFeatures
+	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(appIDs)
+
+	// return &HandlerResponse{http.StatusOK, nil, pfdDataForApps}
+	return &HandlerResponse{rspCode, nil, rspBody}
 }
 
 func (p *Processor) GetIndividualApplicationPFD(appID string) *HandlerResponse {
