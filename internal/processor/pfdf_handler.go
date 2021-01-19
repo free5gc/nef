@@ -1,8 +1,10 @@
 package processor
 
 import (
+	"fmt"
 	"net/http"
 
+	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -29,10 +31,25 @@ func (p *Processor) GetIndividualApplicationPFD(appID string) *HandlerResponse {
 
 func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *HandlerResponse {
 	logger.PFDFLog.Infof("PostPFDSubscriptions")
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	// TODO: Support SupportedFeatures
+	if len(pfdSubsc.NotifyUri) == 0 {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Absent of Notify URI")}
+	}
+
+	subID := p.nefCtx.AddPfdSub(pfdSubsc)
+	hdrs := make(map[string][]string)
+	util.AddLocationheader(hdrs, genPfdSubscriptionURI(p.cfg.GetSbiUri(), subID))
+
+	return &HandlerResponse{http.StatusCreated, hdrs, pfdSubsc}
 }
 
 func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResponse {
 	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
 	return &HandlerResponse{http.StatusOK, nil, nil}
+}
+
+func genPfdSubscriptionURI(sbiURI, subID string) string {
+	// E.g. "https://localhost:29505/nnef-pfdmanagement/v1/subscriptions/{subscriptionId}
+	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NEF_PFD_MNG_RES_URI_PREFIX, subID)
 }

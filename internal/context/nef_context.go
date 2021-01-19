@@ -2,11 +2,13 @@ package context
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 type NefContext struct {
@@ -14,11 +16,20 @@ type NefContext struct {
 	numCorreID uint64
 	afCtxs     map[string]*AfContext
 	mtx        sync.RWMutex
+	pfdSubInfo PfdSubInfo
+}
+
+type PfdSubInfo struct {
+	numPfdSubID   uint64
+	appIdToSubIDs map[string]map[string]bool
+	subIdToURI    map[string]string
 }
 
 func NewNefContext() *NefContext {
 	n := &NefContext{nfInstID: uuid.New().String()}
 	n.afCtxs = make(map[string]*AfContext)
+	n.pfdSubInfo.appIdToSubIDs = make(map[string]map[string]bool)
+	n.pfdSubInfo.subIdToURI = make(map[string]string)
 	logger.CtxLog.Infof("New nfInstID: [%s]", n.nfInstID)
 	return n
 }
@@ -125,4 +136,22 @@ func (n *NefContext) GetPfdTransWithAppID(afID, transID, appID string) (*AfPfdTr
 	}
 
 	return afPfdTrans, nil
+}
+
+func (n *NefContext) AddPfdSub(pfdSub *models.PfdSubscription) string {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	n.pfdSubInfo.numPfdSubID++
+	subID := strconv.FormatUint(n.pfdSubInfo.numPfdSubID, 10)
+	n.pfdSubInfo.subIdToURI[subID] = pfdSub.NotifyUri
+	// TODO: If pfdSub.ApplicationIds is empty, it may means monitoring all appIDs
+	for _, appID := range pfdSub.ApplicationIds {
+		if _, exist := n.pfdSubInfo.appIdToSubIDs[appID]; !exist {
+			n.pfdSubInfo.appIdToSubIDs[appID] = make(map[string]bool)
+		}
+		n.pfdSubInfo.appIdToSubIDs[appID][subID] = true
+	}
+
+	return subID
 }
