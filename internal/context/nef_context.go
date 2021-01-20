@@ -155,3 +155,17 @@ func (n *NefContext) AddPfdSub(pfdSub *models.PfdSubscription) string {
 
 	return subID
 }
+
+func (n *NefContext) DeletePfdSub(subID string) error {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	if _, exist := n.pfdSubInfo.subIdToURI[subID]; !exist {
+		return errors.New("Subscription not found")
+	}
+	delete(n.pfdSubInfo.subIdToURI, subID)
+	for _, subIDs := range n.pfdSubInfo.appIdToSubIDs {
+		delete(subIDs, subID)
+	}
+	return nil
+}

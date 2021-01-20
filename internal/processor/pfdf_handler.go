@@ -46,7 +46,12 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 
 func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResponse {
 	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	if err := p.nefCtx.DeletePfdSub(subscID); err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	}
+
+	return &HandlerResponse{http.StatusNoContent, nil, nil}
 }
 
 func genPfdSubscriptionURI(sbiURI, subID string) string {
