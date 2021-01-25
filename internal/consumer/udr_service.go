@@ -298,6 +298,39 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}
 	return rspCode, rspBody
 }
 
+func (c *ConsumerUDRService) AppDataInfluenceDataPatch(influenceID string, tiSubPatch *models.TrafficInfluDataPatch) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  models.TrafficInfluData
+		rsp     *http.Response
+	)
+
+	if err = c.initDataRepoAPIClient(); err != nil {
+		return rspCode, rspBody
+	}
+
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientDataRepo.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdPatch(ctx.Background(), influenceID, *tiSubPatch)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
 func (c *ConsumerUDRService) AppDataInfluenceDataDelete(influenceID string) (int, interface{}) {
 	var (
 		err     error

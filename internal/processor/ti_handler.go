@@ -158,7 +158,37 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(afID, subscID stri
 func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID string,
 	tiSubPatch *models.TrafficInfluSubPatch) *HandlerResponse {
 	logger.TrafInfluLog.Infof("PatchIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
-	return &HandlerResponse{http.StatusOK, nil, nil}
+
+	afCtx := p.nefCtx.GetAfCtx(afID)
+	if afCtx == nil {
+		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	subsc := afCtx.GetSubsc(subscID)
+	if afCtx == nil {
+		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
+		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
+	}
+
+	if subsc.GetIsIndividualUEAddr() {
+		ascUpdateData := convertTrafficInfluSubPatchToAppSessionContextUpdateData(tiSubPatch)
+		rspCode, rspBody := p.consumer.PcfSrv.PatchAppSession(subsc.GetAppSessID(), ascUpdateData)
+		if rspCode != http.StatusOK {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
+		return &HandlerResponse{http.StatusOK, nil, tiSub}
+	} else {
+		tiDataPatch := convertTrafficInfluSubPatchToTrafficInfluDataPatch(tiSubPatch)
+		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataPatch(subsc.GetInfluenceID(), tiDataPatch)
+		if rspCode != http.StatusOK {
+			return &HandlerResponse{rspCode, nil, rspBody}
+		}
+		tiSub := convertTrafficInfluDataToTrafficInfluSub(rspBody.(*models.TrafficInfluData))
+		return &HandlerResponse{http.StatusOK, nil, tiSub}
+	}
+
 }
 
 func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
@@ -277,4 +307,14 @@ func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionC
 	}
 
 	return tiSub
+}
+
+func convertTrafficInfluSubPatchToTrafficInfluDataPatch(tiSubPatch *models.TrafficInfluSubPatch) *models.TrafficInfluDataPatch {
+	tiDataPatch := &models.TrafficInfluDataPatch{}
+	return tiDataPatch
+}
+
+func convertTrafficInfluSubPatchToAppSessionContextUpdateData(tiSubPatch *models.TrafficInfluSubPatch) *models.AppSessionContextUpdateData {
+	appSessionCtxUpdate := &models.AppSessionContextUpdateData{}
+	return appSessionCtxUpdate
 }
