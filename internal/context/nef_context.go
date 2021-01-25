@@ -169,3 +169,20 @@ func (n *NefContext) DeletePfdSub(subID string) error {
 	}
 	return nil
 }
+
+func (n *NefContext) GetSubIDs(appID string) []string {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+
+	subIDs := make([]string, 0, len(n.pfdSubInfo.appIdToSubIDs[appID]))
+	for subID := range n.pfdSubInfo.appIdToSubIDs[appID] {
+		subIDs = append(subIDs, subID)
+	}
+	return subIDs
+}
+
+func (n *NefContext) GetSubURI(subID string) string {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	return n.pfdSubInfo.subIdToURI[subID]
+}
