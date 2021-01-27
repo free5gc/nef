@@ -65,6 +65,16 @@ func (n *NefContext) GetAfCtx(afID string) *AfContext {
 	return n.afCtxs[afID]
 }
 
+func (n *NefContext) DeleteAfCtx(afID string) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	if _, exist := n.afCtxs[afID]; !exist {
+		logger.CtxLog.Infof("AF [%s] does not exist", afID)
+		return
+	}
+	delete(n.afCtxs, afID)
+}
+
 func (n *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
@@ -79,15 +89,15 @@ func (n *NefContext) NewAfPfdTrans(afc *AfContext) *AfPfdTransaction {
 	return afc.newPfdTrans()
 }
 
-func (n *NefContext) IsAppIDExisted(appID string) bool {
+func (n *NefContext) IsAppIDExisted(appID string) (bool, string, string) {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
 	for _, afCtx := range n.afCtxs {
-		if afCtx.IsAppIDExisted(appID) {
-			return true
+		if exist, transID := afCtx.IsAppIDExisted(appID); exist {
+			return true, afCtx.GetAfID(), transID
 		}
 	}
-	return false
+	return false, "", ""
 }
 
 func (n *NefContext) GetAfCtxAndPfdTransWithTransID(afID, transID string) (*AfContext, *AfPfdTransaction, error) {

@@ -16,6 +16,12 @@ type AfContext struct {
 	mtx        sync.RWMutex
 }
 
+func (a *AfContext) GetAfID() string {
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
+	return a.afID
+}
+
 func (a *AfContext) newSubsc(numCorreID uint64) *AfSubscription {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -77,13 +83,13 @@ func (a *AfContext) DeletePfdTrans(transID string) {
 	logger.CtxLog.Infof("Individual PFD Management Transaction[%s] is removed", transID)
 }
 
-func (a *AfContext) IsAppIDExisted(appID string) bool {
+func (a *AfContext) IsAppIDExisted(appID string) (bool, string) {
 	a.mtx.RLock()
 	defer a.mtx.RUnlock()
 	for _, pfdTrans := range a.pfdTrans {
 		if pfdTrans.IsAppIDExisted(appID) {
-			return true
+			return true, pfdTrans.GetTransID()
 		}
 	}
-	return false
+	return false, ""
 }
