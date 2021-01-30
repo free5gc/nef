@@ -115,3 +115,28 @@ func TestPostPFDSubscriptions(t *testing.T) {
 		}
 	})
 }
+
+func TestDeleteIndividualPFDSubscription(t *testing.T) {
+	testCases := []struct {
+		description      string
+		subscriptionID   string
+		expectedResponse *HandlerResponse
+	}{
+		{
+			description:    "Successful unsubscription",
+			subscriptionID: "1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNoContent,
+			},
+		},
+	}
+
+	Convey("Given a subscription ID, should delete the specified subscription", t, func() {
+		for _, tc := range testCases {
+			Convey(tc.description, func() {
+				rsp := nefProcessor.DeleteIndividualPFDSubscription(tc.subscriptionID)
+				So(rsp, ShouldResemble, tc.expectedResponse)
+			})
+		}
+	})
+}
