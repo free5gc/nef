@@ -40,6 +40,36 @@ var (
 			"^http://test.example2.net(/\\S*)?$",
 		},
 	}
+
+	pfdDataForApp1 = models.PfdDataForApp{
+		ApplicationId: "app1",
+		Pfds: []models.PfdContent{
+			{
+				PfdId: "pfd1",
+				FlowDescriptions: []string{
+					"permit in ip from 10.68.28.39 80 to any",
+					"permit out ip from any to 10.68.28.39 80",
+				},
+			},
+			{
+				PfdId: "pfd2",
+				Urls: []string{
+					"^http://test.example.com(/\\S*)?$",
+				},
+			},
+		},
+	}
+	pfdDataForApp2 = models.PfdDataForApp{
+		ApplicationId: "app2",
+		Pfds: []models.PfdContent{
+			{
+				PfdId: "pfd3",
+				Urls: []string{
+					"^http://test.example2.net(/\\S*)?$",
+				},
+			},
+		},
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -1162,71 +1192,35 @@ func initNRFDiscStub() {
 }
 
 func initUDRDrGetPfdDatasStub() {
-	pfdDataForApp := []models.PfdDataForApp{
-		{
-			ApplicationId: "app1",
-			Pfds: []models.PfdContent{
-				{
-					PfdId: "pfd1",
-					FlowDescriptions: []string{
-						"permit in ip from 10.68.28.39 80 to any",
-						"permit out ip from any to 10.68.28.39 80",
-					},
-				},
-				{
-					PfdId: "pfd2",
-					Urls: []string{
-						"^http://test.example.com(/\\S*)?$",
-					},
-				},
-			},
-		},
-		{
-			ApplicationId: "app2",
-			Pfds: []models.PfdContent{
-				{
-					PfdId: "pfd3",
-					Urls: []string{
-						"^http://test.example2.net(/\\S*)?$",
-					},
-				},
-			},
-		},
-	}
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Get("/application-data/pfds").
+		// To Matching the request for both app1 and app2.
+		// Should be clarified if there is a way to exact match multiple paramaters with the same key.
+		MatchParam("appId", "app1").
+		Persist().
+		Reply(http.StatusOK).
+		JSON([]models.PfdDataForApp{pfdDataForApp1, pfdDataForApp2})
 
 	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
 		Get("/application-data/pfds").
-		ParamPresent("appId").
+		MatchParam("appId", "app3").
 		Persist().
-		Reply(http.StatusOK).
-		JSON(pfdDataForApp)
+		Reply(http.StatusNotFound).
+		JSON(models.ProblemDetails{Status: http.StatusNotFound})
 }
 
 func initUDRDrGetPfdDataStub() {
-	pfdDataForApp := models.PfdDataForApp{
-		ApplicationId: "app1",
-		Pfds: []models.PfdContent{
-			{
-				PfdId: "pfd1",
-				FlowDescriptions: []string{
-					"permit in ip from 10.68.28.39 80 to any",
-					"permit out ip from any to 10.68.28.39 80",
-				},
-			},
-			{
-				PfdId: "pfd2",
-				Urls: []string{
-					"^http://test.example.com(/\\S*)?$",
-				},
-			},
-		},
-	}
-
 	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
-		Get("/application-data/pfds/.*").
+		Get("/application-data/pfds/app1").
 		Persist().
 		Reply(http.StatusOK).
-		JSON(pfdDataForApp)
+		JSON(pfdDataForApp1)
+
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Get("/application-data/pfds/app3").
+		Persist().
+		Reply(http.StatusNotFound).
+		JSON(models.ProblemDetails{Status: http.StatusNotFound})
 }
 
 func initUDRDrDeletePfdDataStub() {
@@ -1237,28 +1231,9 @@ func initUDRDrDeletePfdDataStub() {
 }
 
 func initUDRDrPutPfdDataStub(statusCode int) {
-	pfdDataForApp := models.PfdDataForApp{
-		ApplicationId: "app1",
-		Pfds: []models.PfdContent{
-			{
-				PfdId: "pfd1",
-				FlowDescriptions: []string{
-					"permit in ip from 10.68.28.39 80 to any",
-					"permit out ip from any to 10.68.28.39 80",
-				},
-			},
-			{
-				PfdId: "pfd2",
-				Urls: []string{
-					"^http://test.example.com(/\\S*)?$",
-				},
-			},
-		},
-	}
-
 	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
 		Put("/application-data/pfds/.*").
 		Persist().
 		Reply(statusCode).
-		JSON(pfdDataForApp)
+		JSON(pfdDataForApp1)
 }
