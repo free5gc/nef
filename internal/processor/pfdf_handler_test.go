@@ -46,3 +46,40 @@ func TestGetApplicationsPFD(t *testing.T) {
 		}
 	})
 }
+
+func TestGetIndividualApplicationPFD(t *testing.T) {
+	initUDRDrGetPfdDataStub()
+	defer gock.Off()
+
+	testCases := []struct {
+		description      string
+		appID            string
+		expectedResponse *HandlerResponse
+	}{
+		{
+			description: "App ID found, should return the PfdDataforApp",
+			appID:       "app1",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusOK,
+				Body:   &pfdDataForApp1,
+			},
+		},
+		{
+			description: "App ID not found, should return ProblemDetails",
+			appID:       "app3",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   &models.ProblemDetails{Status: http.StatusNotFound},
+			},
+		},
+	}
+
+	Convey("Given App IDs, should get a list of PfdDataForApp", t, func() {
+		for _, tc := range testCases {
+			Convey(tc.description, func() {
+				rsp := nefProcessor.GetIndividualApplicationPFD(tc.appID)
+				So(rsp, ShouldResemble, tc.expectedResponse)
+			})
+		}
+	})
+}
