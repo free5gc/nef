@@ -83,3 +83,35 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 		}
 	})
 }
+
+func TestPostPFDSubscriptions(t *testing.T) {
+	pfdSubsc := &models.PfdSubscription{
+		ApplicationIds: []string{"app1", "app2"},
+		NotifyUri:      "http://pfdSub1URI/notify",
+	}
+
+	testCases := []struct {
+		description      string
+		subscription     *models.PfdSubscription
+		expectedResponse *HandlerResponse
+	}{
+		{
+			description:  "Successful subscription, should return PfdSubscription",
+			subscription: pfdSubsc,
+			expectedResponse: &HandlerResponse{
+				Status:  http.StatusCreated,
+				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefProcessor.cfg.GetSbiUri(), "1")}},
+				Body:    pfdSubsc,
+			},
+		},
+	}
+
+	Convey("Given a subscription, should store it and return the resource URI", t, func() {
+		for _, tc := range testCases {
+			Convey(tc.description, func() {
+				rsp := nefProcessor.PostPFDSubscriptions(tc.subscription)
+				So(rsp, ShouldResemble, tc.expectedResponse)
+			})
+		}
+	})
+}
