@@ -9,6 +9,7 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/internal/notifier"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
 	openApiLogger "bitbucket.org/free5gc-team/openapi/logger"
@@ -21,6 +22,7 @@ type NefApp struct {
 	processor *processor.Processor
 	sbiServer *sbi.SBIServer
 	consumer  *consumer.Consumer
+	notifier  *notifier.Notifier
 }
 
 func NewApp(cfgPath string) *NefApp {
@@ -35,7 +37,10 @@ func NewApp(cfgPath string) *NefApp {
 	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
 		return nil
 	}
-	if nef.processor = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer); nef.processor == nil {
+	if nef.notifier = notifier.NewNotifier(); nef.notifier == nil {
+		return nil
+	}
+	if nef.processor = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer, nef.notifier); nef.processor == nil {
 		return nil
 	}
 	if nef.sbiServer = sbi.NewSBIServer(nef.cfg, nef.processor); nef.sbiServer == nil {

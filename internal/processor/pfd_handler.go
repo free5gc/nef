@@ -1,7 +1,6 @@
 package processor
 
 import (
-	ctx "context"
 	"fmt"
 	"net/http"
 
@@ -9,7 +8,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/util"
-	"bitbucket.org/free5gc-team/openapi/Nnef_PFDmanagement"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -20,12 +18,6 @@ const (
 	PFD_ERR_NO_PFD_ID          = "Absent of Pfd.PfdID"
 	PFD_ERR_NO_FLOW_IDENT      = "One of FlowDescriptions, Urls or DomainNames should be provided"
 )
-
-type PfdNotifyContext struct {
-	nefCtx               *context.NefContext
-	appIdToNotification  map[string]models.PfdChangeNotification
-	subIdToChangedAppIDs map[string][]string
-}
 
 func (p *Processor) GetPFDManagementTransactions(scsAsID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("GetPFDManagementTransactions - scsAsID[%s]", scsAsID)
@@ -66,8 +58,8 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 	}
 	afTrans := p.nefCtx.NewAfPfdTrans(afCtx)
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	for appID, pfdData := range pfdMng.PfdDatas {
 		afTrans.AddExtAppID(appID)
@@ -78,7 +70,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 		} else {
 			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
-			pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
 				Pfds:          pfdDataForApp.Pfds,
 			})
@@ -106,15 +98,15 @@ func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResp
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Given AF is not existed")}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	for _, afPfdTrans := range afCtx.GetAllPfdTrans() {
 		for _, extAppID := range afPfdTrans.GetExtAppIDs() {
 			if rsp := p.deletePfdDataFromUDR(extAppID); rsp != nil {
 				return rsp
 			}
-			pfdNotifyContext.addNotification(extAppID, &models.PfdChangeNotification{
+			pfdNotifyContext.AddNotification(extAppID, &models.PfdChangeNotification{
 				ApplicationId: extAppID,
 				RemovalFlag:   true,
 			})
@@ -163,8 +155,8 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	// Delete PfdDataForApps in UDR with appID absent in new PfdManagement
 	deprecatedAppIDs := []string{}
@@ -177,7 +169,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		if rsp := p.deletePfdDataFromUDR(appID); rsp != nil {
 			return rsp
 		}
-		pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+		pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 			ApplicationId: appID,
 			RemovalFlag:   true,
 		})
@@ -193,7 +185,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		} else {
 			pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
-			pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
 				Pfds:          pfdDataForApp.Pfds,
 			})
@@ -218,14 +210,14 @@ func (p *Processor) DeleteIndividualPFDManagementTransaction(scsAsID, transID st
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	for _, extAppID := range afPfdTrans.GetExtAppIDs() {
 		if rsp := p.deletePfdDataFromUDR(extAppID); rsp != nil {
 			return rsp
 		}
-		pfdNotifyContext.addNotification(extAppID, &models.PfdChangeNotification{
+		pfdNotifyContext.AddNotification(extAppID, &models.PfdChangeNotification{
 			ApplicationId: extAppID,
 			RemovalFlag:   true,
 		})
@@ -265,14 +257,14 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	if rsp := p.deletePfdDataFromUDR(appID); rsp != nil {
 		return rsp
 	}
 	afPfdTrans.DeleteExtAppID(appID)
-	pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		RemovalFlag:   true,
 	})
@@ -300,15 +292,15 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	pfdDataForApp := convertPfdDataToPfdDataForApp(pfdData)
 	if pfdReport := p.storePfdDataToUDR(appID, pfdDataForApp); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
 	pfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
-	pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
 	})
@@ -332,8 +324,8 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	pfdNotifyContext := p.newPfdNotifyContext()
-	defer pfdNotifyContext.flushNotifications()
+	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	defer pfdNotifyContext.FlushNotifications()
 
 	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
 	if rspCode != http.StatusOK {
@@ -350,7 +342,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
 	oldPfdData.Self = genPfdDataURI(p.cfg.GetSbiUri(), scsAsID, transID, appID)
-	pfdNotifyContext.addNotification(appID, &models.PfdChangeNotification{
+	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
 	})
@@ -522,40 +514,5 @@ func addPfdReport(pfdMng *models.PfdManagement, newReport *models.PfdReport) {
 		oldReport.ExternalAppIds = append(oldReport.ExternalAppIds, newReport.ExternalAppIds...)
 	} else {
 		pfdMng.PfdReports[string(newReport.FailureCode)] = *newReport
-	}
-}
-
-func (p *Processor) newPfdNotifyContext() *PfdNotifyContext {
-	return &PfdNotifyContext{
-		nefCtx:               p.nefCtx,
-		appIdToNotification:  make(map[string]models.PfdChangeNotification),
-		subIdToChangedAppIDs: make(map[string][]string),
-	}
-}
-
-func (nc *PfdNotifyContext) addNotification(appID string, notif *models.PfdChangeNotification) {
-	nc.appIdToNotification[appID] = *notif
-	for _, subID := range nc.nefCtx.GetSubIDs(appID) {
-		nc.subIdToChangedAppIDs[subID] = append(nc.subIdToChangedAppIDs[subID], appID)
-	}
-}
-
-func (nc *PfdNotifyContext) flushNotifications() {
-	for subID, appIDs := range nc.subIdToChangedAppIDs {
-		pfdChangeNotifications := make([]models.PfdChangeNotification, 0, len(appIDs))
-		for _, appID := range appIDs {
-			pfdChangeNotifications = append(pfdChangeNotifications, nc.appIdToNotification[appID])
-		}
-
-		configuration := Nnef_PFDmanagement.NewConfiguration()
-		client := Nnef_PFDmanagement.NewAPIClient(configuration)
-		go func(id string) {
-			_, _, err := client.NotificationApi.NotificationPost(
-				ctx.Background(), nc.nefCtx.GetSubURI(id), pfdChangeNotifications)
-			if err != nil {
-				logger.PFDManageLog.Fatal(err)
-			}
-		}(subID)
-		// TODO: Handle the response of notification properly
 	}
 }

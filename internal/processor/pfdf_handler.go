@@ -37,7 +37,7 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Absent of Notify URI")}
 	}
 
-	subID := p.nefCtx.AddPfdSub(pfdSubsc)
+	subID := p.notifier.PfdChangeNotifier.AddPfdSub(pfdSubsc)
 	hdrs := make(map[string][]string)
 	util.AddLocationheader(hdrs, genPfdSubscriptionURI(p.cfg.GetSbiUri(), subID))
 
@@ -47,7 +47,7 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResponse {
 	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
 
-	if err := p.nefCtx.DeletePfdSub(subscID); err != nil {
+	if err := p.notifier.PfdChangeNotifier.DeletePfdSub(subscID); err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
 	}
 

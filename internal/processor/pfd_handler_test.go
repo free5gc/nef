@@ -11,6 +11,7 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
+	"bitbucket.org/free5gc-team/nef/internal/notifier"
 	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -64,7 +65,8 @@ func TestMain(m *testing.M) {
 	}
 	nefContext = context.NewNefContext()
 	nefConsumer := consumer.NewConsumer(nefConfig, nefContext)
-	nefProcessor = NewProcessor(nefConfig, nefContext, nefConsumer)
+	nefNotifier := notifier.NewNotifier()
+	nefProcessor = NewProcessor(nefConfig, nefContext, nefConsumer, nefNotifier)
 
 	exitVal := m.Run()
 	openapi.RestoreH2CClient()
