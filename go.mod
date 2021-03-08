@@ -7,7 +7,7 @@ require (
 	bitbucket.org/free5gc-team/http_wrapper v0.0.0-20200915033914-6b902db12ee5
 	bitbucket.org/free5gc-team/logger_conf v0.0.0-20201212235533-db34fd2deea0
 	bitbucket.org/free5gc-team/logger_util v0.0.0-20201212235752-9e3276664162
-	bitbucket.org/free5gc-team/openapi v0.0.0-20210106141213-a003c6e9f7ce
+	bitbucket.org/free5gc-team/openapi v0.0.0-20210305131418-7a3654b6ba5a
 	bitbucket.org/free5gc-team/path_util v0.0.0-20201212235135-42ce24f2b9c9
 	bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c
 	github.com/antihax/optional v1.0.0

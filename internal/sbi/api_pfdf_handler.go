@@ -34,8 +34,8 @@ func (s *SBIServer) getPFDFEndpoints() []Endpoint {
 }
 
 func (s *SBIServer) apiGetApplicationsPFD(ginCtx *gin.Context) {
-	//TODO: support URI query parameters: application-ids, supported-features
-	hdlRsp := s.processor.GetApplicationsPFD()
+	//TODO: support URI query parameters: supported-features
+	hdlRsp := s.processor.GetApplicationsPFD(ginCtx.QueryArray("application-ids"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
