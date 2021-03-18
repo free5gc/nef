@@ -127,6 +127,60 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 	return rspCode, rspBody, appSessID
 }
 
+func (c *ConsumerPCFService) PutAppSession(appSessionId string, ascUpdateData *models.AppSessionContextUpdateData, asc *models.AppSessionContext) (int, interface{}, string) {
+	var (
+		err       error
+		rspCode   int
+		rspBody   interface{}
+		appSessID string
+		result    models.AppSessionContext
+		rsp       *http.Response
+	)
+
+	if err = c.initPolicyAuthAPIClient(); err != nil {
+		return rspCode, rspBody, appSessID
+	}
+
+	appSessID = appSessionId
+	c.clientMtx.RLock()
+	result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.
+		GetAppSession(ctx.Background(), appSessionId)
+	c.clientMtx.RUnlock()
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			// Patch
+			c.clientMtx.RLock()
+			result, rsp, err = c.clientPolicyAuth.IndividualApplicationSessionContextDocumentApi.ModAppSession(ctx.Background(), appSessionId, *ascUpdateData)
+			c.clientMtx.RUnlock()
+
+			if rsp != nil {
+				rspCode = rsp.StatusCode
+				if rsp.StatusCode == http.StatusOK {
+					logger.ConsumerLog.Debugf("PatchAppSessions RspData: %+v", result)
+					rspBody = &result
+				} else if err != nil {
+					rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+				}
+			} else {
+				//API Service Internal Error or Server No Response
+				rspCode, rspBody = handleAPIServiceNoResponse(err)
+			}
+
+			return rspCode, rspBody, appSessID
+		} else if err != nil {
+			//Post
+		}
+	} else {
+		//API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+		return rspCode, rspBody, appSessID
+	}
+
+	return rspCode, rspBody, appSessID
+}
+
 func (c *ConsumerPCFService) PatchAppSession(appSessionId string, ascUpdateData *models.AppSessionContextUpdateData) (int, interface{}) {
 	var (
 		err     error
