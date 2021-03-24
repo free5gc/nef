@@ -5,10 +5,9 @@ go 1.14
 require (
 	bitbucket.org/free5gc-team/http2_util v0.0.0-20201212235925-bd3a307d110a
 	bitbucket.org/free5gc-team/http_wrapper v0.0.0-20200915033914-6b902db12ee5
-	bitbucket.org/free5gc-team/logger_conf v0.0.0-20201212235533-db34fd2deea0
-	bitbucket.org/free5gc-team/logger_util v0.0.0-20201212235752-9e3276664162
-	bitbucket.org/free5gc-team/openapi v0.0.0-20210305131418-7a3654b6ba5a
-	bitbucket.org/free5gc-team/path_util v0.0.0-20201212235135-42ce24f2b9c9
+	bitbucket.org/free5gc-team/logger_util v0.0.0-20210309092142-45babfcdab5a
+	bitbucket.org/free5gc-team/openapi v0.0.0-20210310054439-5aa53778eb95
+	bitbucket.org/free5gc-team/path_util v0.0.0-20210310053142-9b06de73fd52
 	bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c
 	github.com/antihax/optional v1.0.0
 	github.com/antonfisher/nested-logrus-formatter v1.3.0

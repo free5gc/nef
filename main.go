@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/urfave/cli"
@@ -20,22 +21,45 @@ func main() {
 			Name:  "config, c",
 			Usage: "Load configuration from `FILE`",
 		},
+		cli.StringFlag{
+			Name:  "log, l",
+			Usage: "Output NF log to `FILE`",
+		},
+		cli.StringFlag{
+			Name:  "log5gc, lc",
+			Usage: "Output free5gc log to `FILE`",
+		},
 	}
-	logger.MainLog.Infoln("NEF version: ", version.GetVersion())
 
 	if err := app.Run(os.Args); err != nil {
-		logger.MainLog.Errorf("NEF Cli Run err: %v", err)
+		logger.MainLog.Errorf("NEF Cli Run err: %v\n", err)
 	}
 }
 
-func action(cliCtx *cli.Context) {
+func action(cliCtx *cli.Context) error {
+	if err := initLogFile(cliCtx.String("log"), cliCtx.String("log5gc")); err != nil {
+		logger.MainLog.Errorf("%+v", err)
+		return err
+	}
+
+	logger.MainLog.Infoln("NEF version: ", version.GetVersion())
+
 	nef := nefApp.NewApp(cliCtx.String("config"))
 	if nef == nil {
-		logger.MainLog.Errorf("New NEF failed")
-		return
+		return fmt.Errorf("New NEF failed")
 	}
 
 	if err := nef.Run(); err != nil {
 		logger.MainLog.Errorf("NEF Run err: %v", err)
+		return err
 	}
+
+	return nil
+}
+
+func initLogFile(logNfPath, log5gcPath string) error {
+	if err := logger.LogFileHook(logNfPath, log5gcPath); err != nil {
+		return err
+	}
+	return nil
 }
