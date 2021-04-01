@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -119,6 +120,13 @@ func (nc *PfdNotifyContext) FlushNotifications() {
 		}
 
 		go func(id string) {
+			defer func() {
+				if p := recover(); p != nil {
+					// Print stack for panic to log. Fatalf() will let program exit.
+					logger.PFDManageLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+				}
+			}()
+
 			_, _, err := nc.notifier.clientPfdManagement.NotificationApi.NotificationPost(
 				context.Background(), nc.notifier.getSubURI(id), pfdChangeNotifications)
 			if err != nil {

@@ -16,7 +16,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
 	openApiLogger "bitbucket.org/free5gc-team/openapi/logger"
-	pathUtilLogger "bitbucket.org/free5gc-team/path_util/logger"
 )
 
 type NefApp struct {
@@ -31,7 +30,6 @@ type NefApp struct {
 }
 
 func NewApp(ctx context.Context, cfgPath string) *NefApp {
-
 	nef := &NefApp{ctx: ctx, cfg: &factory.Config{}}
 
 	if err := nef.initConfig(cfgPath); err != nil {
@@ -108,10 +106,6 @@ func (n *NefApp) setLogLevel() {
 	if cLogger.NEF != nil {
 		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
 			logger.SetLogLevel, logger.SetReportCaller)
-	}
-	if cLogger.PathUtil != nil {
-		setLoggerLogLevel("PathUtil", cLogger.PathUtil.DebugLevel, cLogger.PathUtil.ReportCaller,
-			pathUtilLogger.SetLogLevel, pathUtilLogger.SetReportCaller)
 	}
 	if cLogger.OpenApi != nil {
 		setLoggerLogLevel("OpenApi", cLogger.OpenApi.DebugLevel, cLogger.OpenApi.ReportCaller,

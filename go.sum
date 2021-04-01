@@ -6,8 +6,6 @@ bitbucket.org/free5gc-team/logger_util v0.0.0-20210309092142-45babfcdab5a h1:F16
 bitbucket.org/free5gc-team/logger_util v0.0.0-20210309092142-45babfcdab5a/go.mod h1:di3i5yJROrZiHsdl/SUNZU0DjiJa7k7Kr1YgBp10KI4=
 bitbucket.org/free5gc-team/openapi v0.0.0-20210310054439-5aa53778eb95 h1:H+NW04I0f9RgKhd8ruuCwGWDF4V5ft/BhLJJhCa/iIU=
 bitbucket.org/free5gc-team/openapi v0.0.0-20210310054439-5aa53778eb95/go.mod h1:gR4X9f+PehijY2n/l2HgxmSmW0ZLatADz8B7hh8PYZ8=
-bitbucket.org/free5gc-team/path_util v0.0.0-20210310053142-9b06de73fd52 h1:C2sh9t7TvW2ANJdtwRMg5VgMxttDUmJTb+DBnJ5M8zE=
-bitbucket.org/free5gc-team/path_util v0.0.0-20210310053142-9b06de73fd52/go.mod h1:8KT1mRTxzh0STAR4juLuvsCo3y1kTUHQ9X+OIeagU4k=
 bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c h1:OGCfpcLP9zRISmx6mVRs7CIeWsUoEBCeLx/Q2j87zdM=
 bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c/go.mod h1:xY9j4wEJ3mhrF+0iVdRBrStkThYL/+STXFvJ6TbuzyU=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
