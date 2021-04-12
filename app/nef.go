@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
@@ -34,7 +35,16 @@ func NewApp(ctx context.Context, cfgPath string) *NefApp {
 	nef := &NefApp{ctx: ctx, cfg: &factory.Config{}}
 
 	if err := nef.initConfig(cfgPath); err != nil {
-		logger.CfgLog.Errorf("%+v", err)
+		switch errType := err.(type) {
+		case govalidator.Errors:
+			validErrs := err.(govalidator.Errors).Errors()
+			for _, validErr := range validErrs {
+				logger.MainLog.Errorf("%+v", validErr)
+			}
+		default:
+			logger.MainLog.Errorf("%+v", errType)
+		}
+		logger.MainLog.Errorf("[-- PLEASE REFER TO SAMPLE CONFIG FILE COMMENTS --]")
 		return nil
 	}
 	if nef.nefCtx = nefctx.NewNefContext(); nef.nefCtx == nil {
@@ -62,6 +72,10 @@ func (n *NefApp) initConfig(cfgPath string) error {
 	if err := factory.CheckConfigVersion(n.cfg); err != nil {
 		return err
 	}
+	if _, err := n.cfg.Validate(); err != nil {
+		return err
+	}
+
 	n.cfg.Print()
 	n.setLogLevel()
 	return nil

@@ -5,12 +5,15 @@
 package factory
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 
 	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/path_util"
+	"github.com/asaskevich/govalidator"
 )
 
 // Path of HTTP2 key and log file
@@ -35,28 +38,80 @@ const (
 )
 
 type Config struct {
-	Info          *Info               `yaml:"info"`
-	Configuration *Configuration      `yaml:"configuration"`
-	Logger        *logger_util.Logger `yaml:"logger"`
+	Info          *Info               `yaml:"info" valid:"required"`
+	Configuration *Configuration      `yaml:"configuration" valid:"required"`
+	Logger        *logger_util.Logger `yaml:"logger" valid:"optional"`
+}
+
+func (c *Config) Validate() (bool, error) {
+	if info := c.Info; info != nil {
+		if result, err := info.validate(); err != nil {
+			return result, err
+		}
+	}
+	if configuration := c.Configuration; configuration != nil {
+		if result, err := configuration.validate(); err != nil {
+			return result, err
+		}
+	}
+	if logger := c.Logger; logger != nil {
+		if result, err := logger.Validate(); err != nil {
+			return result, err
+		}
+	}
+	result, err := govalidator.ValidateStruct(c)
+	return result, appendInvalid(err)
 }
 
 type Info struct {
-	Version     string `yaml:"version,omitempty"`
-	Description string `yaml:"description,omitempty"`
+	Version     string `yaml:"version,omitempty" valid:"type(string)"`
+	Description string `yaml:"description,omitempty" valid:"type(string)"`
+}
+
+func (i *Info) validate() (bool, error) {
+	result, err := govalidator.ValidateStruct(i)
+	return result, appendInvalid(err)
 }
 
 type Configuration struct {
-	Sbi         *Sbi      `yaml:"sbi,omitempty"`
-	NrfUri      string    `yaml:"nrfUri,omitempty"`
-	ServiceList []Service `yaml:"serviceList,omitempty"`
+	Sbi         *Sbi      `yaml:"sbi,omitempty" valid:"required"`
+	NrfUri      string    `yaml:"nrfUri,omitempty" valid:"required"`
+	ServiceList []Service `yaml:"serviceList,omitempty" valid:"required"`
+}
+
+func (c *Configuration) validate() (bool, error) {
+	if sbi := c.Sbi; sbi != nil {
+		if result, err := sbi.validate(); err != nil {
+			return result, err
+		}
+	}
+	for index, serviceName := range c.ServiceList {
+		switch {
+		case serviceName.ServiceName == "nnef-pfdmanagement":
+		default:
+			err := errors.New("Invalid serviceList[" + strconv.Itoa(index) + "]: " +
+				serviceName.ServiceName + ", should be nnef-pfdmanagement.")
+			return false, err
+		}
+	}
+	result, err := govalidator.ValidateStruct(c)
+	return result, appendInvalid(err)
 }
 
 type Sbi struct {
-	Scheme       string `yaml:"scheme"`
-	RegisterIPv4 string `yaml:"registerIPv4,omitempty"` // IP that is registered at NRF.
+	Scheme       string `yaml:"scheme" valid:"scheme,required"`
+	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"ipv4,optional"` // IP that is registered at NRF.
 	// IPv6Addr  string `yaml:"ipv6Addr,omitempty"`
-	BindingIPv4 string `yaml:"bindingIPv4,omitempty"` // IP used to run the server in the node.
-	Port        int    `yaml:"port,omitempty"`
+	BindingIPv4 string `yaml:"bindingIPv4,omitempty" valid:"ipv4,required"` // IP used to run the server in the node.
+	Port        int    `yaml:"port,omitempty" valid:"port,optional"`
+}
+
+func (s *Sbi) validate() (bool, error) {
+	govalidator.TagMap["scheme"] = govalidator.Validator(func(str string) bool {
+		return str == "https" || str == "http"
+	})
+	result, err := govalidator.ValidateStruct(s)
+	return result, appendInvalid(err)
 }
 
 type Service struct {
@@ -168,4 +223,16 @@ func (c *Config) GetServiceList() []Service {
 		return c.Configuration.ServiceList
 	}
 	return nil
+}
+
+func appendInvalid(err error) error {
+	var errs govalidator.Errors
+	if err == nil {
+		return nil
+	}
+	es := err.(govalidator.Errors).Errors()
+	for _, e := range es {
+		errs = append(errs, fmt.Errorf("Invalid %w", e))
+	}
+	return error(errs)
 }
