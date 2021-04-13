@@ -8,7 +8,7 @@ import (
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-func (s *SBIServer) getPFDManagementEndpoints() []Endpoint {
+func (s *Server) getPFDManagementEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Method:  strings.ToUpper("Get"),
@@ -63,14 +63,14 @@ func (s *SBIServer) getPFDManagementEndpoints() []Endpoint {
 	}
 }
 
-func (s *SBIServer) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
 	hdlRsp := s.processor.GetPFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
 		return
@@ -82,21 +82,21 @@ func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
 	hdlRsp := s.processor.DeletePFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 	hdlRsp := s.processor.GetIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
 		return
@@ -108,28 +108,28 @@ func (s *SBIServer) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 	hdlRsp := s.processor.DeleteIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	hdlRsp := s.processor.GetIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	hdlRsp := s.processor.DeleteIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
 		return
@@ -141,7 +141,7 @@ func (s *SBIServer) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
 		return

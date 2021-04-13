@@ -23,15 +23,15 @@ const (
 	CorsConfigMaxAge = 86400
 )
 
-type SBIServer struct {
+type Server struct {
 	cfg        *factory.Config
 	httpServer *http.Server
 	router     *gin.Engine
 	processor  *processor.Processor
 }
 
-func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer {
-	s := &SBIServer{cfg: nefCfg, processor: proc}
+func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
+	s := &Server{cfg: nefCfg, processor: proc}
 
 	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
 
@@ -95,7 +95,7 @@ func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
 	}
 }
 
-func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
+func (s *Server) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
 	reqBody, err := ginCtx.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
@@ -115,13 +115,13 @@ func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interfa
 	return nil
 }
 
-func (s *SBIServer) Run(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *Server) Run(ctx context.Context, wg *sync.WaitGroup) error {
 	wg.Add(1)
 	go s.startServer(wg)
 	return nil
 }
 
-func (s *SBIServer) Stop(ctx context.Context, wg *sync.WaitGroup) {
+func (s *Server) Stop(ctx context.Context, wg *sync.WaitGroup) {
 	if s.httpServer != nil {
 		logger.SBILog.Infof("Stop SBI server (listen on %s)", s.httpServer.Addr)
 		if err := s.httpServer.Close(); err != nil {
@@ -130,7 +130,7 @@ func (s *SBIServer) Stop(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (s *SBIServer) startServer(wg *sync.WaitGroup) {
+func (s *Server) startServer(wg *sync.WaitGroup) {
 	var err error
 	defer wg.Done()
 	logger.SBILog.Infof("Start SBI server (listen on %s)", s.httpServer.Addr)
@@ -151,7 +151,7 @@ func (s *SBIServer) startServer(wg *sync.WaitGroup) {
 	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
 }
 
-func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
+func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
 	if hdlRsp.Status == 0 {
 		// No Response to send
 		return

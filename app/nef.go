@@ -24,8 +24,8 @@ type NefApp struct {
 	wg        sync.WaitGroup
 	cfg       *factory.Config
 	nefCtx    *nefctx.NefContext
-	processor *processor.Processor
-	sbiServer *sbi.SBIServer
+	proc      *processor.Processor
+	sbiServer *sbi.Server
 	consumer  *consumer.Consumer
 	notifier  *notifier.Notifier
 }
@@ -39,12 +39,12 @@ func NewApp(ctx context.Context, cfgPath string) *NefApp {
 		case govalidator.Errors:
 			validErrs := err.(govalidator.Errors).Errors()
 			for _, validErr := range validErrs {
-				logger.MainLog.Errorf("%+v", validErr)
+				logger.InitLog.Errorf("%+v", validErr)
 			}
 		default:
-			logger.MainLog.Errorf("%+v", errType)
+			logger.InitLog.Errorf("%+v", errType)
 		}
-		logger.MainLog.Errorf("[-- PLEASE REFER TO SAMPLE CONFIG FILE COMMENTS --]")
+		logger.InitLog.Errorf("[-- PLEASE REFER TO SAMPLE CONFIG FILE COMMENTS --]")
 		return nil
 	}
 	if nef.nefCtx = nefctx.NewNefContext(); nef.nefCtx == nil {
@@ -56,10 +56,10 @@ func NewApp(ctx context.Context, cfgPath string) *NefApp {
 	if nef.notifier = notifier.NewNotifier(); nef.notifier == nil {
 		return nil
 	}
-	if nef.processor = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer, nef.notifier); nef.processor == nil {
+	if nef.proc = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer, nef.notifier); nef.proc == nil {
 		return nil
 	}
-	if nef.sbiServer = sbi.NewSBIServer(nef.cfg, nef.processor); nef.sbiServer == nil {
+	if nef.sbiServer = sbi.NewServer(nef.cfg, nef.proc); nef.sbiServer == nil {
 		return nil
 	}
 	return nef
@@ -120,7 +120,6 @@ func (n *NefApp) setLogLevel() {
 }
 
 func (n *NefApp) Run() error {
-
 	n.wg.Add(1)
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */
@@ -131,11 +130,13 @@ func (n *NefApp) Run() error {
 	}
 	return nil
 }
+
 func (n *NefApp) listenShutdownEvent() {
 	defer n.wg.Done()
 	<-n.ctx.Done()
 	n.sbiServer.Stop(n.ctx, &n.wg)
 }
+
 func (n *NefApp) WaitRoutineStopped() {
 	n.wg.Wait()
 }
