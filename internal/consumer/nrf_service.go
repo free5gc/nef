@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	RETRY_REGISTER_NRF_DURATION = 2 * time.Second
+	RetryRegisterNrfDuration = 2 * time.Second
 )
 
 type ConsumerNRFService struct {
@@ -61,7 +61,7 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
 		if err != nil || rsp == nil {
 			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
-			time.Sleep(RETRY_REGISTER_NRF_DURATION)
+			time.Sleep(RetryRegisterNrfDuration)
 			continue
 		}
 		status := rsp.StatusCode

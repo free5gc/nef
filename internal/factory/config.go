@@ -5,58 +5,112 @@
 package factory
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 
 	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/path_util"
+	"github.com/asaskevich/govalidator"
 )
 
 // Path of HTTP2 key and log file
 var (
-	NEF_LOG_PATH    = path_util.Free5gcPath("free5gc/nefsslkey.log")
-	NEF_PEM_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
-	NEF_KEY_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NEF_CONFIG_PATH = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
+	NefDefaultKeyLogPath = path_util.Free5gcPath("free5gc/nefsslkey.log")
+	NefDefaultPemPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
+	NefDefaultKeyPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
+	NefDefaultConfigPath = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
 )
 
 const (
-	NEF_EXPECTED_CONFIG_VERSION = "1.0.0"
-	NEF_DEFAULT_IPV4            = "127.0.0.5"
-	NEF_DEFAULT_PORT            = "8000"
-	NEF_DEFAULT_PORT_INT        = 8000
-	NEF_DEFAULT_SCHEME          = "https"
-	NEF_DEFAULT_NRFURI          = "https://127.0.0.10:8000"
-	TRAFF_INFLU_RES_URI_PREFIX  = "/3gpp-traffic-influence/v1"
-	PFD_MNG_RES_URI_PREFIX      = "/3gpp-pfd-management/v1"
-	NEF_PFD_MNG_RES_URI_PREFIX  = "/nnef-pfdmanagement/v1"
-	NEF_OAM_RES_URI_PREFIX      = "/nnef-oam/v1"
+	NefExpectedConfigVersion = "1.0.0"
+	NefSbiDefaultIPv4        = "127.0.0.5"
+	NefSbiDefaultPort        = 8000
+	NefSbiDefaultScheme      = "https"
+	NefDefaultNrfUri         = "https://127.0.0.10:8000"
+	TraffInfluResUriPrefix   = "/3gpp-traffic-influence/v1"
+	PfdMngResUriPrefix       = "/3gpp-pfd-management/v1"
+	NefPfdMngResUriPrefix    = "/nnef-pfdmanagement/v1"
+	NefOamResUriPrefix       = "/nnef-oam/v1"
 )
 
 type Config struct {
-	Info          *Info               `yaml:"info"`
-	Configuration *Configuration      `yaml:"configuration"`
-	Logger        *logger_util.Logger `yaml:"logger"`
+	Info          *Info               `yaml:"info" valid:"required"`
+	Configuration *Configuration      `yaml:"configuration" valid:"required"`
+	Logger        *logger_util.Logger `yaml:"logger" valid:"optional"`
+}
+
+func (c *Config) Validate() (bool, error) {
+	if info := c.Info; info != nil {
+		if result, err := info.validate(); err != nil {
+			return result, err
+		}
+	}
+	if configuration := c.Configuration; configuration != nil {
+		if result, err := configuration.validate(); err != nil {
+			return result, err
+		}
+	}
+	if logger := c.Logger; logger != nil {
+		if result, err := logger.Validate(); err != nil {
+			return result, err
+		}
+	}
+	result, err := govalidator.ValidateStruct(c)
+	return result, appendInvalid(err)
 }
 
 type Info struct {
-	Version     string `yaml:"version,omitempty"`
-	Description string `yaml:"description,omitempty"`
+	Version     string `yaml:"version,omitempty" valid:"type(string)"`
+	Description string `yaml:"description,omitempty" valid:"type(string)"`
+}
+
+func (i *Info) validate() (bool, error) {
+	result, err := govalidator.ValidateStruct(i)
+	return result, appendInvalid(err)
 }
 
 type Configuration struct {
-	Sbi         *Sbi      `yaml:"sbi,omitempty"`
-	NrfUri      string    `yaml:"nrfUri,omitempty"`
-	ServiceList []Service `yaml:"serviceList,omitempty"`
+	Sbi         *Sbi      `yaml:"sbi,omitempty" valid:"required"`
+	NrfUri      string    `yaml:"nrfUri,omitempty" valid:"required"`
+	ServiceList []Service `yaml:"serviceList,omitempty" valid:"required"`
+}
+
+func (c *Configuration) validate() (bool, error) {
+	if sbi := c.Sbi; sbi != nil {
+		if result, err := sbi.validate(); err != nil {
+			return result, err
+		}
+	}
+	for index, serviceName := range c.ServiceList {
+		switch {
+		case serviceName.ServiceName == "nnef-pfdmanagement":
+		default:
+			err := errors.New("Invalid serviceList[" + strconv.Itoa(index) + "]: " +
+				serviceName.ServiceName + ", should be nnef-pfdmanagement.")
+			return false, err
+		}
+	}
+	result, err := govalidator.ValidateStruct(c)
+	return result, appendInvalid(err)
 }
 
 type Sbi struct {
-	Scheme       string `yaml:"scheme"`
-	RegisterIPv4 string `yaml:"registerIPv4,omitempty"` // IP that is registered at NRF.
+	Scheme       string `yaml:"scheme" valid:"scheme,required"`
+	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"ipv4,required"` // IP that is registered at NRF.
 	// IPv6Addr  string `yaml:"ipv6Addr,omitempty"`
-	BindingIPv4 string `yaml:"bindingIPv4,omitempty"` // IP used to run the server in the node.
-	Port        int    `yaml:"port,omitempty"`
+	BindingIPv4 string `yaml:"bindingIPv4,omitempty" valid:"ipv4,required"` // IP used to run the server in the node.
+	Port        int    `yaml:"port,omitempty" valid:"port,optional"`
+}
+
+func (s *Sbi) validate() (bool, error) {
+	govalidator.TagMap["scheme"] = govalidator.Validator(func(str string) bool {
+		return str == "https" || str == "http"
+	})
+	result, err := govalidator.ValidateStruct(s)
+	return result, appendInvalid(err)
 }
 
 type Service struct {
@@ -102,54 +156,44 @@ func (c *Config) GetSbiScheme() string {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Scheme != "" {
 		return c.Configuration.Sbi.Scheme
 	}
-	return NEF_DEFAULT_SCHEME
+	return NefSbiDefaultScheme
 }
 
 func (c *Config) GetSbiPort() int {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
 	}
-	return NEF_DEFAULT_PORT_INT
+	return NefSbiDefaultPort
+}
+
+func (c *Config) GetSbiBindingIP() string {
+	bindIP := "0.0.0.0"
+	if c.Configuration == nil || c.Configuration.Sbi == nil {
+		return bindIP
+	}
+	if c.Configuration.Sbi.BindingIPv4 != "" {
+		if bindIP = os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIP != "" {
+			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIP)
+		} else {
+			bindIP = c.Configuration.Sbi.BindingIPv4
+		}
+	}
+	return bindIP
 }
 
 func (c *Config) GetSbiBindingAddr() string {
-	var bindAddr string
-	if c.Configuration == nil || c.Configuration.Sbi == nil {
-		return "0.0.0.0:" + NEF_DEFAULT_PORT
-	}
-	if c.Configuration.Sbi.BindingIPv4 != "" {
-		if bindIPv4 := os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIPv4 != "" {
-			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIPv4)
-			bindAddr = bindIPv4 + ":"
-		} else {
-			bindAddr = c.Configuration.Sbi.BindingIPv4 + ":"
-		}
-	} else {
-		bindAddr = "0.0.0.0:"
-	}
-	if c.Configuration.Sbi.Port != 0 {
-		bindAddr = bindAddr + strconv.Itoa(c.Configuration.Sbi.Port)
-	} else {
-		bindAddr = bindAddr + NEF_DEFAULT_PORT
-	}
-	return bindAddr
+	return c.GetSbiBindingIP() + ":" + strconv.Itoa(c.GetSbiPort())
 }
 
 func (c *Config) GetSbiRegisterIP() string {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.RegisterIPv4 != "" {
 		return c.Configuration.Sbi.RegisterIPv4
 	}
-	return NEF_DEFAULT_IPV4
+	return NefSbiDefaultIPv4
 }
 
 func (c *Config) GetSbiRegisterAddr() string {
-	regAddr := c.GetSbiRegisterIP() + ":"
-	if c.Configuration.Sbi.Port != 0 {
-		regAddr = regAddr + strconv.Itoa(c.Configuration.Sbi.Port)
-	} else {
-		regAddr = regAddr + NEF_DEFAULT_PORT
-	}
-	return regAddr
+	return c.GetSbiRegisterIP() + ":" + strconv.Itoa(c.GetSbiPort())
 }
 
 func (c *Config) GetSbiUri() string {
@@ -160,7 +204,7 @@ func (c *Config) GetNrfUri() string {
 	if c.Configuration != nil && c.Configuration.NrfUri != "" {
 		return c.Configuration.NrfUri
 	}
-	return NEF_DEFAULT_NRFURI
+	return NefDefaultNrfUri
 }
 
 func (c *Config) GetServiceList() []Service {
@@ -168,4 +212,16 @@ func (c *Config) GetServiceList() []Service {
 		return c.Configuration.ServiceList
 	}
 	return nil
+}
+
+func appendInvalid(err error) error {
+	var errs govalidator.Errors
+	if err == nil {
+		return nil
+	}
+	es := err.(govalidator.Errors).Errors()
+	for _, e := range es {
+		errs = append(errs, fmt.Errorf("Invalid %w", e))
+	}
+	return error(errs)
 }

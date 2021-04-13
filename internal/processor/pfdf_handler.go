@@ -56,5 +56,5 @@ func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResp
 
 func genPfdSubscriptionURI(sbiURI, subID string) string {
 	// E.g. "https://localhost:29505/nnef-pfdmanagement/v1/subscriptions/{subscriptionId}
-	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NEF_PFD_MNG_RES_URI_PREFIX, subID)
+	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NefPfdMngResUriPrefix, subID)
 }

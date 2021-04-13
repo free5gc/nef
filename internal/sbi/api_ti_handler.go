@@ -8,7 +8,7 @@ import (
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-func (s *SBIServer) getTrafficInfluenceEndpoints() []Endpoint {
+func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Method:  strings.ToUpper("Get"),
@@ -43,14 +43,14 @@ func (s *SBIServer) getTrafficInfluenceEndpoints() []Endpoint {
 	}
 }
 
-func (s *SBIServer) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	hdlRsp := s.processor.GetTrafficInfluenceSubscription(
 		ginCtx.Param("afID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSub models.TrafficInfluSub
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
@@ -62,14 +62,14 @@ func (s *SBIServer) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	hdlRsp := s.processor.GetIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSub models.TrafficInfluSub
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
 		return
@@ -81,7 +81,7 @@ func (s *SBIServer) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Con
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSubPatch models.TrafficInfluSubPatch
 	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSubPatch); err != nil {
 		return
@@ -93,7 +93,7 @@ func (s *SBIServer) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.C
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	hdlRsp := s.processor.DeleteIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"))
 

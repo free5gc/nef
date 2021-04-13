@@ -20,35 +20,35 @@ import (
 )
 
 const (
-	CORS_CONFIG_MAXAGE = 86400
+	CorsConfigMaxAge = 86400
 )
 
-type SBIServer struct {
+type Server struct {
 	cfg        *factory.Config
 	httpServer *http.Server
 	router     *gin.Engine
 	processor  *processor.Processor
 }
 
-func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer {
-	s := &SBIServer{cfg: nefCfg, processor: proc}
+func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
+	s := &Server{cfg: nefCfg, processor: proc}
 
 	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
 
 	endpoints := s.getTrafficInfluenceEndpoints()
-	group := s.router.Group(factory.TRAFF_INFLU_RES_URI_PREFIX)
+	group := s.router.Group(factory.TraffInfluResUriPrefix)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getPFDManagementEndpoints()
-	group = s.router.Group(factory.PFD_MNG_RES_URI_PREFIX)
+	group = s.router.Group(factory.PfdMngResUriPrefix)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getPFDFEndpoints()
-	group = s.router.Group(factory.NEF_PFD_MNG_RES_URI_PREFIX)
+	group = s.router.Group(factory.NefPfdMngResUriPrefix)
 	applyEndpoints(group, endpoints)
 
 	endpoints = s.getOamEndpoints()
-	group = s.router.Group(factory.NEF_OAM_RES_URI_PREFIX)
+	group = s.router.Group(factory.NefOamResUriPrefix)
 	applyEndpoints(group, endpoints)
 
 	s.router.Use(cors.New(cors.Config{
@@ -58,13 +58,13 @@ func NewSBIServer(nefCfg *factory.Config, proc *processor.Processor) *SBIServer 
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowAllOrigins:  true,
-		MaxAge:           CORS_CONFIG_MAXAGE,
+		MaxAge:           CorsConfigMaxAge,
 	}))
 
 	bindAddr := s.cfg.GetSbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
-	if s.httpServer, err = http2_util.NewServer(bindAddr, factory.NEF_LOG_PATH, s.router); err != nil {
+	if s.httpServer, err = http2_util.NewServer(bindAddr, factory.NefDefaultKeyLogPath, s.router); err != nil {
 		logger.InitLog.Errorf("Initialize HTTP server failed: %+v", err)
 		return nil
 	}
@@ -95,7 +95,7 @@ func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
 	}
 }
 
-func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
+func (s *Server) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
 	reqBody, err := ginCtx.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
@@ -115,12 +115,13 @@ func (s *SBIServer) getDataFromHttpRequestBody(ginCtx *gin.Context, data interfa
 	return nil
 }
 
-func (s *SBIServer) Run(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *Server) Run(ctx context.Context, wg *sync.WaitGroup) error {
 	wg.Add(1)
 	go s.startServer(wg)
 	return nil
 }
-func (s *SBIServer) Stop(ctx context.Context, wg *sync.WaitGroup) {
+
+func (s *Server) Stop(ctx context.Context, wg *sync.WaitGroup) {
 	if s.httpServer != nil {
 		logger.SBILog.Infof("Stop SBI server (listen on %s)", s.httpServer.Addr)
 		if err := s.httpServer.Close(); err != nil {
@@ -129,7 +130,7 @@ func (s *SBIServer) Stop(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (s *SBIServer) startServer(wg *sync.WaitGroup) {
+func (s *Server) startServer(wg *sync.WaitGroup) {
 	var err error
 	defer wg.Done()
 	logger.SBILog.Infof("Start SBI server (listen on %s)", s.httpServer.Addr)
@@ -139,7 +140,7 @@ func (s *SBIServer) startServer(wg *sync.WaitGroup) {
 		err = s.httpServer.ListenAndServe()
 	} else if scheme == "https" {
 		//TODO: use config file to config path
-		err = s.httpServer.ListenAndServeTLS(factory.NEF_PEM_PATH, factory.NEF_KEY_PATH)
+		err = s.httpServer.ListenAndServeTLS(factory.NefDefaultPemPath, factory.NefDefaultKeyPath)
 	} else {
 		err = fmt.Errorf("No support this scheme[%s]", scheme)
 	}
@@ -149,7 +150,8 @@ func (s *SBIServer) startServer(wg *sync.WaitGroup) {
 	}
 	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
 }
-func (s *SBIServer) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
+
+func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
 	if hdlRsp.Status == 0 {
 		// No Response to send
 		return

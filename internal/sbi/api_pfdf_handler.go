@@ -8,7 +8,7 @@ import (
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-func (s *SBIServer) getPFDFEndpoints() []Endpoint {
+func (s *Server) getPFDFEndpoints() []Endpoint {
 	return []Endpoint{
 		{
 			Method:  strings.ToUpper("Get"),
@@ -33,21 +33,21 @@ func (s *SBIServer) getPFDFEndpoints() []Endpoint {
 	}
 }
 
-func (s *SBIServer) apiGetApplicationsPFD(ginCtx *gin.Context) {
+func (s *Server) apiGetApplicationsPFD(ginCtx *gin.Context) {
 	//TODO: support URI query parameters: supported-features
 	hdlRsp := s.processor.GetApplicationsPFD(ginCtx.QueryArray("application-ids"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualApplicationPFD(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualApplicationPFD(ginCtx *gin.Context) {
 	//TODO: support URI query parameters: supported-features
 	hdlRsp := s.processor.GetIndividualApplicationPFD(ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPostPFDSubscriptions(ginCtx *gin.Context) {
+func (s *Server) apiPostPFDSubscriptions(ginCtx *gin.Context) {
 	var pfdSubsc models.PfdSubscription
 	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdSubsc); err != nil {
 		return
@@ -58,7 +58,7 @@ func (s *SBIServer) apiPostPFDSubscriptions(ginCtx *gin.Context) {
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualPFDSubscription(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualPFDSubscription(ginCtx *gin.Context) {
 	hdlRsp := s.processor.DeleteIndividualPFDSubscription(ginCtx.Param("subscID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)

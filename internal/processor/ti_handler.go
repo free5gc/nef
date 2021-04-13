@@ -51,7 +51,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		afCtx.AddSubsc(afSubsc)
 
 		//Create Location URI
-		locUri := p.cfg.GetSbiUri() + factory.TRAFF_INFLU_RES_URI_PREFIX + "/" + afID +
+		locUri := p.cfg.GetSbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
 		rsp.Headers = map[string][]string{
 			"Location": {locUri},

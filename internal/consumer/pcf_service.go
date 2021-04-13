@@ -24,7 +24,7 @@ type ConsumerPCFService struct {
 	clientMtx        sync.RWMutex
 }
 
-const ServiceName_NPCF_POLICYAUTHORIZATION string = "npcf-policyauthorization"
+const ServiceNpcfPolicyAuth string = "npcf-policyauthorization"
 
 func NewConsumerPCFService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerPCFService {
@@ -42,9 +42,9 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	}
 
 	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{ServiceName_NPCF_POLICYAUTHORIZATION}),
+		ServiceNames: optional.NewInterface([]string{ServiceNpcfPolicyAuth}),
 	}
-	uri, err := c.nrfSrv.SearchNFServiceUri("PCF", ServiceName_NPCF_POLICYAUTHORIZATION, &param)
+	uri, err := c.nrfSrv.SearchNFServiceUri("PCF", ServiceNpcfPolicyAuth, &param)
 	if err != nil {
 		logger.ConsumerLog.Errorf(err.Error())
 		return err
