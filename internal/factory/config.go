@@ -27,8 +27,7 @@ var (
 const (
 	NEF_EXPECTED_CONFIG_VERSION = "1.0.0"
 	NEF_DEFAULT_IPV4            = "127.0.0.5"
-	NEF_DEFAULT_PORT            = "8000"
-	NEF_DEFAULT_PORT_INT        = 8000
+	NEF_DEFAULT_PORT            = 8000
 	NEF_DEFAULT_SCHEME          = "https"
 	NEF_DEFAULT_NRFURI          = "https://127.0.0.10:8000"
 	TRAFF_INFLU_RES_URI_PREFIX  = "/3gpp-traffic-influence/v1"
@@ -100,7 +99,7 @@ func (c *Configuration) validate() (bool, error) {
 
 type Sbi struct {
 	Scheme       string `yaml:"scheme" valid:"scheme,required"`
-	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"ipv4,optional"` // IP that is registered at NRF.
+	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"ipv4,required"` // IP that is registered at NRF.
 	// IPv6Addr  string `yaml:"ipv6Addr,omitempty"`
 	BindingIPv4 string `yaml:"bindingIPv4,omitempty" valid:"ipv4,required"` // IP used to run the server in the node.
 	Port        int    `yaml:"port,omitempty" valid:"port,optional"`
@@ -164,30 +163,26 @@ func (c *Config) GetSbiPort() int {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
 	}
-	return NEF_DEFAULT_PORT_INT
+	return NEF_DEFAULT_PORT
+}
+
+func (c *Config) GetSbiBindingIP() string {
+	bindIP := "0.0.0.0"
+	if c.Configuration == nil || c.Configuration.Sbi == nil {
+		return bindIP
+	}
+	if c.Configuration.Sbi.BindingIPv4 != "" {
+		if bindIP = os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIP != "" {
+			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIP)
+		} else {
+			bindIP = c.Configuration.Sbi.BindingIPv4
+		}
+	}
+	return bindIP
 }
 
 func (c *Config) GetSbiBindingAddr() string {
-	var bindAddr string
-	if c.Configuration == nil || c.Configuration.Sbi == nil {
-		return "0.0.0.0:" + NEF_DEFAULT_PORT
-	}
-	if c.Configuration.Sbi.BindingIPv4 != "" {
-		if bindIPv4 := os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIPv4 != "" {
-			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIPv4)
-			bindAddr = bindIPv4 + ":"
-		} else {
-			bindAddr = c.Configuration.Sbi.BindingIPv4 + ":"
-		}
-	} else {
-		bindAddr = "0.0.0.0:"
-	}
-	if c.Configuration.Sbi.Port != 0 {
-		bindAddr = bindAddr + strconv.Itoa(c.Configuration.Sbi.Port)
-	} else {
-		bindAddr = bindAddr + NEF_DEFAULT_PORT
-	}
-	return bindAddr
+	return c.GetSbiBindingIP() + ":" + strconv.Itoa(c.GetSbiPort())
 }
 
 func (c *Config) GetSbiRegisterIP() string {
@@ -198,13 +193,7 @@ func (c *Config) GetSbiRegisterIP() string {
 }
 
 func (c *Config) GetSbiRegisterAddr() string {
-	regAddr := c.GetSbiRegisterIP() + ":"
-	if c.Configuration.Sbi.Port != 0 {
-		regAddr = regAddr + strconv.Itoa(c.Configuration.Sbi.Port)
-	} else {
-		regAddr = regAddr + NEF_DEFAULT_PORT
-	}
-	return regAddr
+	return c.GetSbiRegisterIP() + ":" + strconv.Itoa(c.GetSbiPort())
 }
 
 func (c *Config) GetSbiUri() string {
