@@ -23,7 +23,7 @@ type ConsumerUDRService struct {
 	clientMtx      sync.RWMutex
 }
 
-const ServiceName_NUDR_DR string = "nudr-dr"
+const ServiceNudrDr string = "nudr-dr"
 
 func NewConsumerUDRService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerUDRService {
@@ -41,9 +41,9 @@ func (c *ConsumerUDRService) initDataRepoAPIClient() error {
 	}
 
 	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{ServiceName_NUDR_DR}),
+		ServiceNames: optional.NewInterface([]string{ServiceNudrDr}),
 	}
-	uri, err := c.nrfSrv.SearchNFServiceUri("UDR", ServiceName_NUDR_DR, &param)
+	uri, err := c.nrfSrv.SearchNFServiceUri("UDR", ServiceNudrDr, &param)
 	if err != nil {
 		return err
 	}

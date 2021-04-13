@@ -146,7 +146,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -190,7 +190,7 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -288,7 +288,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 		{
@@ -299,7 +299,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -522,7 +522,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -717,7 +717,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -809,7 +809,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -865,7 +865,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+			expectedProblem: util.ProblemDetailsDataNotFound(DetailNoPfdData),
 			expectedReports: map[string]models.PfdReport{},
 		},
 		{
@@ -957,14 +957,14 @@ func TestValidatePfdData(t *testing.T) {
 					"pfd1": pfd1,
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID),
+			expectedResult: util.ProblemDetailsDataNotFound(DetailNoExtAppID),
 		},
 		{
 			description: "Empty Pfds, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD),
+			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfd),
 		},
 		{
 			description: "Without PfdID, should return ProblemDetails",
@@ -979,7 +979,7 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID),
+			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfdID),
 		},
 		{
 			description: "FlowDescriptions, Urls and DomainNames are all empty, should return ProblemDetails",
@@ -991,7 +991,7 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 		},
 	}
 
@@ -1109,7 +1109,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			expectedProblem: util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			expectedResult: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{

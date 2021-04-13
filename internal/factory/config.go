@@ -18,22 +18,22 @@ import (
 
 // Path of HTTP2 key and log file
 var (
-	NEF_LOG_PATH    = path_util.Free5gcPath("free5gc/nefsslkey.log")
-	NEF_PEM_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
-	NEF_KEY_PATH    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NEF_CONFIG_PATH = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
+	NefDefaultKeyLogPath = path_util.Free5gcPath("free5gc/nefsslkey.log")
+	NefDefaultPemPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
+	NefDefaultKeyPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
+	NefDefaultConfigPath = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
 )
 
 const (
-	NEF_EXPECTED_CONFIG_VERSION = "1.0.0"
-	NEF_DEFAULT_IPV4            = "127.0.0.5"
-	NEF_DEFAULT_PORT            = 8000
-	NEF_DEFAULT_SCHEME          = "https"
-	NEF_DEFAULT_NRFURI          = "https://127.0.0.10:8000"
-	TRAFF_INFLU_RES_URI_PREFIX  = "/3gpp-traffic-influence/v1"
-	PFD_MNG_RES_URI_PREFIX      = "/3gpp-pfd-management/v1"
-	NEF_PFD_MNG_RES_URI_PREFIX  = "/nnef-pfdmanagement/v1"
-	NEF_OAM_RES_URI_PREFIX      = "/nnef-oam/v1"
+	NefExpectedConfigVersion = "1.0.0"
+	NefSbiDefaultIPv4        = "127.0.0.5"
+	NefSbiDefaultPort        = 8000
+	NefSbiDefaultScheme      = "https"
+	NefDefaultNrfUri         = "https://127.0.0.10:8000"
+	TraffInfluResUriPrefix   = "/3gpp-traffic-influence/v1"
+	PfdMngResUriPrefix       = "/3gpp-pfd-management/v1"
+	NefPfdMngResUriPrefix    = "/nnef-pfdmanagement/v1"
+	NefOamResUriPrefix       = "/nnef-oam/v1"
 )
 
 type Config struct {
@@ -156,14 +156,14 @@ func (c *Config) GetSbiScheme() string {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Scheme != "" {
 		return c.Configuration.Sbi.Scheme
 	}
-	return NEF_DEFAULT_SCHEME
+	return NefSbiDefaultScheme
 }
 
 func (c *Config) GetSbiPort() int {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
 	}
-	return NEF_DEFAULT_PORT
+	return NefSbiDefaultPort
 }
 
 func (c *Config) GetSbiBindingIP() string {
@@ -189,7 +189,7 @@ func (c *Config) GetSbiRegisterIP() string {
 	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.RegisterIPv4 != "" {
 		return c.Configuration.Sbi.RegisterIPv4
 	}
-	return NEF_DEFAULT_IPV4
+	return NefSbiDefaultIPv4
 }
 
 func (c *Config) GetSbiRegisterAddr() string {
@@ -204,7 +204,7 @@ func (c *Config) GetNrfUri() string {
 	if c.Configuration != nil && c.Configuration.NrfUri != "" {
 		return c.Configuration.NrfUri
 	}
-	return NEF_DEFAULT_NRFURI
+	return NefDefaultNrfUri
 }
 
 func (c *Config) GetServiceList() []Service {

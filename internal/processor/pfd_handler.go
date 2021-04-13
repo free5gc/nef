@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	PFD_ERR_NO_PFD_DATA        = "Absent of PfdManagement.PfdDatas"
-	PFD_ERR_NO_PFD             = "Absent of PfdData.Pfds"
-	PFD_ERR_NO_EXTERNAL_APP_ID = "Absent of PfdData.ExternalAppID"
-	PFD_ERR_NO_PFD_ID          = "Absent of Pfd.PfdID"
-	PFD_ERR_NO_FLOW_IDENT      = "One of FlowDescriptions, Urls or DomainNames should be provided"
+	DetailNoAF       = "Given AF is not existed"
+	DetailNoPfdData  = "Absent of PfdManagement.PfdDatas"
+	DetailNoPfd      = "Absent of PfdData.Pfds"
+	DetailNoExtAppID = "Absent of PfdData.ExternalAppID"
+	DetailNoPfdID    = "Absent of Pfd.PfdID"
+	DetailNoPfdInfo  = "One of FlowDescriptions, Urls or DomainNames should be provided"
 )
 
 func (p *Processor) GetPFDManagementTransactions(scsAsID string) *HandlerResponse {
@@ -24,7 +25,7 @@ func (p *Processor) GetPFDManagementTransactions(scsAsID string) *HandlerRespons
 
 	afCtx := p.nefCtx.GetAfCtx(scsAsID)
 	if afCtx == nil {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Given AF is not existed")}
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
 
 	var pfdMngs []models.PfdManagement
@@ -54,7 +55,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 	afCtx := p.nefCtx.GetAfCtx(scsAsID)
 	if afCtx == nil {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Given AF is not existed")}
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
 	afTrans := p.nefCtx.NewAfPfdTrans(afCtx)
 
@@ -95,7 +96,7 @@ func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResp
 
 	afCtx := p.nefCtx.GetAfCtx(scsAsID)
 	if afCtx == nil {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Given AF is not existed")}
+		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
 
 	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
@@ -401,7 +402,7 @@ func patchModifyPfdData(old, new *models.PfdData) *models.ProblemDetails {
 				delete(old.Pfds, pfdID)
 			} else {
 				// Otherwire, if the PfdID doesn't exist yet, the Pfd still needs valid content.
-				return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
+				return util.ProblemDetailsDataNotFound(DetailNoPfdInfo)
 			}
 		} else {
 			// Either add or update the Pfd to the old PfdData.
@@ -445,13 +446,13 @@ func convertPfdDataToPfdDataForApp(pfdData *models.PfdData) *models.PfdDataForAp
 func genPfdManagementURI(sbiURI, afID, transID string) string {
 	// E.g. https://localhost:29505/3gpp-pfd-management/v1/{afID}/transactions/{transID}
 	return fmt.Sprintf("%s%s/%s/transactions/%s",
-		sbiURI, factory.PFD_MNG_RES_URI_PREFIX, afID, transID)
+		sbiURI, factory.PfdMngResUriPrefix, afID, transID)
 }
 
 func genPfdDataURI(sbiURI, afID, transID, appID string) string {
 	// E.g. https://localhost:29505/3gpp-pfd-management/v1/{afID}/transactions/{transID}/applications/{appID}
 	return fmt.Sprintf("%s%s/%s/transactions/%s/applications/%s",
-		sbiURI, factory.PFD_MNG_RES_URI_PREFIX, afID, transID, appID)
+		sbiURI, factory.PfdMngResUriPrefix, afID, transID, appID)
 }
 
 func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
@@ -460,7 +461,7 @@ func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
 	pfdMng.PfdReports = make(map[string]models.PfdReport)
 
 	if len(pfdMng.PfdDatas) == 0 {
-		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA)
+		return util.ProblemDetailsDataNotFound(DetailNoPfdData)
 	}
 
 	for appID, pfdData := range pfdMng.PfdDatas {
@@ -489,20 +490,20 @@ func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
 
 func validatePfdData(pfdData *models.PfdData, nefCtx *context.NefContext, isPatch bool) *models.ProblemDetails {
 	if pfdData.ExternalAppId == "" {
-		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID)
+		return util.ProblemDetailsDataNotFound(DetailNoExtAppID)
 	}
 
 	if len(pfdData.Pfds) == 0 {
-		return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD)
+		return util.ProblemDetailsDataNotFound(DetailNoPfd)
 	}
 
 	for _, pfd := range pfdData.Pfds {
 		if pfd.PfdId == "" {
-			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID)
+			return util.ProblemDetailsDataNotFound(DetailNoPfdID)
 		}
 		// For PATCH method, empty these three attributes is used to imply the deletion of this PFD
 		if !isPatch && len(pfd.FlowDescriptions) == 0 && len(pfd.Urls) == 0 && len(pfd.DomainNames) == 0 {
-			return util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT)
+			return util.ProblemDetailsDataNotFound(DetailNoPfdInfo)
 		}
 	}
 

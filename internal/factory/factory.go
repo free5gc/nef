@@ -17,7 +17,7 @@ import (
 func InitConfigFactory(f string, cfg *Config) error {
 	if f == "" {
 		//Use default config path
-		f = NEF_CONFIG_PATH
+		f = NefDefaultConfigPath
 	}
 
 	if content, err := ioutil.ReadFile(f); err != nil {
@@ -34,9 +34,9 @@ func InitConfigFactory(f string, cfg *Config) error {
 
 func CheckConfigVersion(cfg *Config) error {
 	currentVersion := cfg.GetVersion()
-	if currentVersion != NEF_EXPECTED_CONFIG_VERSION {
+	if currentVersion != NefExpectedConfigVersion {
 		return fmt.Errorf("config version is [%s], but expected is [%s].",
-			currentVersion, NEF_EXPECTED_CONFIG_VERSION)
+			currentVersion, NefExpectedConfigVersion)
 	}
 	logger.CfgLog.Infof("config version [%s]", currentVersion)
 
