@@ -1,0 +1,54 @@
+time="2021-04-13T13:55:44+08:00" level=info msg="NEF versionasdadasd:  \n\tfree5GC version: v0.0.1-56-gcb2fb6d\n\tbuild time:      2021-04-13T05:55:36Z\n\tcommit hash:     cb2fb6df\n\tcommit time:     2021-03-24T15:25:19Z\n\tgo version:      go1.15.7 linux/amd64" category=Main component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="Read config from [build/config/nefcfg.yaml]" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="config version [1.0.0]" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="==================================================" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="Info -" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="  Version: 1.0.0" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="  Description: NEF initial local configuration" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="Configuration -" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="  Sbi -" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="    Scheme: http" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="    RegisterIPv4: 127.0.0.5" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="    BindingIPv4: 127.0.0.5" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="    Port: 8000" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="  NrfUri: http://127.0.0.10:8000" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="ServiceList -" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="ServiceName: nnef-pfdmanagement, SuppFeat: " category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="==================================================" category=CFG component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="NEF Log level is set to [info] level" category=Init component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="PathUtil Log level is set to [info] level" category=Init component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="set log level : info" category=Path component=LIB
+time="2021-04-13T13:55:44+08:00" level=info msg="set report call : false" category=Path component=LIB
+time="2021-04-13T13:55:44+08:00" level=info msg="OpenApi Log level is set to [info] level" category=Init component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="set log level : info" category=OAPI component=LIB
+time="2021-04-13T13:55:44+08:00" level=info msg="set report call : false" category=OAPI component=LIB
+time="2021-04-13T13:55:44+08:00" level=info msg="New nfInstID: [9f418a2d-4cfd-40c7-b412-c6fd1234786a]" category=CTX component=NEF
+time="2021-04-13T13:55:44+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:46+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:48+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:50+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:52+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:54+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:56+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:55:58+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:00+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:02+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:04+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:06+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:08+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:10+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:12+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:14+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:16+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:18+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:20+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:22+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:24+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:26+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:28+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:30+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:32+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:34+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:36+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:38+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF
+time="2021-04-13T13:56:40+08:00" level=info msg="NEF register to NRF Error[Put \"http://127.0.0.10:8000/nnrf-nfm/v1/nf-instances/9f418a2d-4cfd-40c7-b412-c6fd1234786a\": dial tcp 127.0.0.10:8000: connect: connection refused], sleep 2s and retry" category=Consumer component=NEF

@@ -1,12 +1,15 @@
 package app
 
 import (
+	"context"
+	"sync"
+
 	"fmt"
 
 	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/context"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
@@ -17,21 +20,25 @@ import (
 )
 
 type NefApp struct {
+	ctx       context.Context
+	wg        sync.WaitGroup
 	cfg       *factory.Config
-	nefCtx    *context.NefContext
+	nefCtx    *nefctx.NefContext
 	processor *processor.Processor
 	sbiServer *sbi.SBIServer
 	consumer  *consumer.Consumer
 	notifier  *notifier.Notifier
 }
 
-func NewApp(cfgPath string) *NefApp {
-	nef := &NefApp{cfg: &factory.Config{}}
+func NewApp(ctx context.Context, cfgPath string) *NefApp {
+
+	nef := &NefApp{ctx: ctx, cfg: &factory.Config{}}
+
 	if err := nef.initConfig(cfgPath); err != nil {
 		logger.CfgLog.Errorf("%+v", err)
 		return nil
 	}
-	if nef.nefCtx = context.NewNefContext(); nef.nefCtx == nil {
+	if nef.nefCtx = nefctx.NewNefContext(); nef.nefCtx == nil {
 		return nil
 	}
 	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
@@ -100,5 +107,21 @@ func (n *NefApp) setLogLevel() {
 }
 
 func (n *NefApp) Run() error {
-	return n.sbiServer.ListenAndServe(n.cfg.GetSbiScheme())
+
+	n.wg.Add(1)
+	/* Go Routine is spawned here for listening for cancellation event on
+	 * context */
+	go n.listenShutdownEvent()
+	if err := n.sbiServer.Run(n.ctx, &n.wg); err != nil {
+		return err
+	}
+	return nil
+}
+func (n *NefApp) listenShutdownEvent() {
+	defer n.wg.Done()
+	<-n.ctx.Done()
+	n.sbiServer.Stop(n.ctx, &n.wg)
+}
+func (n *NefApp) WaitRoutineStopped() {
+	n.wg.Wait()
 }
