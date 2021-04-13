@@ -1,8 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/urfave/cli"
 
@@ -44,16 +46,29 @@ func action(cliCtx *cli.Context) error {
 
 	logger.MainLog.Infoln("NEF version: ", version.GetVersion())
 
-	nef := nefApp.NewApp(cliCtx.String("config"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nef := nefApp.NewApp(ctx, cliCtx.String("config"))
 	if nef == nil {
-		return fmt.Errorf("New NEF failed")
+		logger.MainLog.Errorf("New NEF failed")
 	}
 
 	if err := nef.Run(); err != nil {
 		logger.MainLog.Errorf("NEF Run err: %v", err)
-		return err
 	}
 
+	// Wait for interrupt signal to gracefully shutdown UPF
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	// Receive the interrupt signal
+	logger.MainLog.Infof("Shutdown NEF ...")
+	// Notify each goroutine and wait them stopped
+	cancel()
+	nef.WaitRoutineStopped()
+	logger.MainLog.Infof("NEF exited")
 	return nil
 }
 
