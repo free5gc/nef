@@ -2,9 +2,8 @@ package app
 
 import (
 	"context"
-	"sync"
-
 	"fmt"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 
@@ -112,6 +111,7 @@ func (n *NefApp) Run() error {
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */
 	go n.listenShutdownEvent()
+
 	if err := n.sbiServer.Run(n.ctx, &n.wg); err != nil {
 		return err
 	}
