@@ -10,21 +10,17 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/asaskevich/govalidator"
+
 	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/path_util"
-	"github.com/asaskevich/govalidator"
-)
-
-// Path of HTTP2 key and log file
-var (
-	NefDefaultKeyLogPath = path_util.Free5gcPath("free5gc/nefsslkey.log")
-	NefDefaultPemPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.pem")
-	NefDefaultKeyPath    = path_util.Free5gcPath("free5gc/support/TLS/nef.key")
-	NefDefaultConfigPath = path_util.Free5gcPath("free5gc/config/nefcfg.yaml")
 )
 
 const (
+	NefDefaultKeyLogPath     = "./log/nefsslkey.log"
+	NefDefaultPemPath        = "./config/TLS/nef.pem"
+	NefDefaultKeyPath        = "./config/TLS/nef.key"
+	NefDefaultConfigPath     = "./config/nefcfg.yaml"
 	NefExpectedConfigVersion = "1.0.0"
 	NefSbiDefaultIPv4        = "127.0.0.5"
 	NefSbiDefaultPort        = 8000

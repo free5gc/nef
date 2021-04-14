@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 
 	"github.com/urfave/cli"
@@ -14,6 +15,13 @@ import (
 )
 
 func main() {
+	defer func() {
+		if p := recover(); p != nil {
+			// Print stack for panic to log. Fatalf() will let program exit.
+			logger.MainLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+		}
+	}()
+
 	app := cli.NewApp()
 	app.Name = "nef"
 	app.Usage = "5G Network Exposure Function (NEF)"

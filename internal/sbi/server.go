@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"sync"
 
 	"github.com/gin-contrib/cors"
@@ -131,10 +132,18 @@ func (s *Server) Stop(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (s *Server) startServer(wg *sync.WaitGroup) {
-	var err error
-	defer wg.Done()
+	defer func() {
+		if p := recover(); p != nil {
+			// Print stack for panic to log. Fatalf() will let program exit.
+			logger.SBILog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+		}
+
+		wg.Done()
+	}()
+
 	logger.SBILog.Infof("Start SBI server (listen on %s)", s.httpServer.Addr)
 
+	var err error
 	scheme := s.cfg.GetSbiScheme()
 	if scheme == "http" {
 		err = s.httpServer.ListenAndServe()

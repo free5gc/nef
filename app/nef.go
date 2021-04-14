@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/asaskevich/govalidator"
@@ -16,7 +17,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
 	openApiLogger "bitbucket.org/free5gc-team/openapi/logger"
-	pathUtilLogger "bitbucket.org/free5gc-team/path_util/logger"
 )
 
 type NefApp struct {
@@ -31,7 +31,6 @@ type NefApp struct {
 }
 
 func NewApp(ctx context.Context, cfgPath string) *NefApp {
-
 	nef := &NefApp{ctx: ctx, cfg: &factory.Config{}}
 
 	if err := nef.initConfig(cfgPath); err != nil {
@@ -109,10 +108,6 @@ func (n *NefApp) setLogLevel() {
 		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
 			logger.SetLogLevel, logger.SetReportCaller)
 	}
-	if cLogger.PathUtil != nil {
-		setLoggerLogLevel("PathUtil", cLogger.PathUtil.DebugLevel, cLogger.PathUtil.ReportCaller,
-			pathUtilLogger.SetLogLevel, pathUtilLogger.SetReportCaller)
-	}
 	if cLogger.OpenApi != nil {
 		setLoggerLogLevel("OpenApi", cLogger.OpenApi.DebugLevel, cLogger.OpenApi.ReportCaller,
 			openApiLogger.SetLogLevel, openApiLogger.SetReportCaller)
@@ -132,7 +127,15 @@ func (n *NefApp) Run() error {
 }
 
 func (n *NefApp) listenShutdownEvent() {
-	defer n.wg.Done()
+	defer func() {
+		if p := recover(); p != nil {
+			// Print stack for panic to log. Fatalf() will let program exit.
+			logger.InitLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+		}
+
+		n.wg.Done()
+	}()
+
 	<-n.ctx.Done()
 	n.sbiServer.Stop(n.ctx, &n.wg)
 }
