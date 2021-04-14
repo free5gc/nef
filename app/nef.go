@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 
 	"github.com/asaskevich/govalidator"
@@ -126,7 +127,15 @@ func (n *NefApp) Run() error {
 }
 
 func (n *NefApp) listenShutdownEvent() {
-	defer n.wg.Done()
+	defer func() {
+		if p := recover(); p != nil {
+			// Print stack for panic to log. Fatalf() will let program exit.
+			logger.InitLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+		}
+
+		n.wg.Done()
+	}()
+
 	<-n.ctx.Done()
 	n.sbiServer.Stop(n.ctx, &n.wg)
 }
