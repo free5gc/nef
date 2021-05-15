@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	nefApp "bitbucket.org/free5gc-team/nef/app"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	nefApp "bitbucket.org/free5gc-team/nef/pkg/app"
 	"bitbucket.org/free5gc-team/version"
 )
 
