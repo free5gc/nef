@@ -3,11 +3,11 @@ module bitbucket.org/free5gc-team/nef
 go 1.14
 
 require (
-	bitbucket.org/free5gc-team/http2_util v0.0.0-20201212235925-bd3a307d110a
-	bitbucket.org/free5gc-team/http_wrapper v0.0.0-20201211040440-7c475efe43d4
-	bitbucket.org/free5gc-team/logger_util v0.0.0-20210414054242-2101cfc15ebb
-	bitbucket.org/free5gc-team/openapi v0.0.0-20210414074928-e9e853669ae4
-	bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c
+	bitbucket.org/free5gc-team/http2_util v0.0.0-20210727150618-67c7200d9f25
+	bitbucket.org/free5gc-team/http_wrapper v0.0.0-20210727145455-e63a06234d9e
+	bitbucket.org/free5gc-team/logger_util v0.0.0-20210727141908-0945a67fba5f
+	bitbucket.org/free5gc-team/openapi v0.0.0-20210727151710-5d7f919e407f
+	bitbucket.org/free5gc-team/version v0.0.0-20210727144812-f6138dc35864
 	github.com/antihax/optional v1.0.0
 	github.com/antonfisher/nested-logrus-formatter v1.3.0
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
