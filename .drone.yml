@@ -4,7 +4,7 @@ name: development
 steps:
   - name: Check coding style
     pull: never
-    image: golangci/golangci-lint:v1.35.0-alpine
+    image: drone/base:golangci-lint
     depends_on: [ clone ]
     commands:
       - golangci-lint run ./...

@@ -59,11 +59,18 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 	for {
 		_, rsp, err = c.clientNFMngmnt.NFInstanceIDDocumentApi.RegisterNFInstance(
 			ctx.Background(), c.nefCtx.GetNfInstID(), *c.buildNfProfile(list))
+		if rsp != nil && rsp.Body != nil {
+			if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
+				logger.ConsumerLog.Errorf("response body cannot close: %+v", bodyCloseErr)
+			}
+		}
+
 		if err != nil || rsp == nil {
 			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
 			time.Sleep(RetryRegisterNrfDuration)
 			continue
 		}
+
 		status := rsp.StatusCode
 		if status == http.StatusOK {
 			// NFUpdate
@@ -121,9 +128,13 @@ func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *mode
 
 func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName string,
 	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (string, error) {
-
 	result, rsp, err := c.clientNFDisc.NFInstancesStoreApi.SearchNFInstances(ctx.Background(),
 		models.NfType(targetNfType), models.NfType_NEF, param)
+	if rsp != nil && rsp.Body != nil {
+		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
+			logger.ConsumerLog.Errorf("response body cannot close: %+v", bodyCloseErr)
+		}
+	}
 	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
 		err = fmt.Errorf("SearchNFInstance Error: Temporary Redirect")
 	}
@@ -148,7 +159,6 @@ func (c *ConsumerNRFService) SearchNFServiceUri(targetNfType string, srvName str
 // searchUriFromNfProfile returns NF Uri derived from NfProfile with corresponding service
 func searchUriFromNfProfile(nfProfile models.NfProfile, serviceName models.ServiceName,
 	nfServiceStatus models.NfServiceStatus) string {
-
 	nfUri := ""
 	if nfProfile.NfServices != nil {
 		for _, service := range *nfProfile.NfServices {

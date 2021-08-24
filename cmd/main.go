@@ -11,7 +11,7 @@ import (
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	nefApp "bitbucket.org/free5gc-team/nef/pkg/app"
-	"bitbucket.org/free5gc-team/version"
+	"bitbucket.org/free5gc-team/util/version"
 )
 
 func main() {

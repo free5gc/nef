@@ -19,7 +19,6 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	tiSub *models.TrafficInfluSub) *HandlerResponse {
-
 	var rsp *HandlerResponse
 	logger.TrafInfluLog.Infof("PostTrafficInfluenceSubscription - afID[%s]", afID)
 
@@ -31,14 +30,14 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	afCtx := p.nefCtx.NewAfCtx(afID)
 	afSubsc := p.nefCtx.NewAfSubsc(afCtx)
 	if len(tiSub.Gpsi) > 0 || len(tiSub.Ipv4Addr) > 0 || len(tiSub.Ipv6Addr) > 0 {
-		//Single UE, sent to PCF
+		// Single UE, sent to PCF
 		rsp = p.pcfPostAppSessions(afSubsc, tiSub)
 	} else if len(tiSub.ExternalGroupId) > 0 || tiSub.AnyUeInd {
-		//Group or any UE, sent to UDR
+		// Group or any UE, sent to UDR
 		afSubsc.SetInfluenceID(uuid.New().String())
 		rsp = p.udrPutAppData(afSubsc, tiSub)
 	} else {
-		//Invalid case. Return Error
+		// Invalid case. Return Error
 		pd := util.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
 		rsp = &HandlerResponse{
 			Status: int(pd.Status),
@@ -50,7 +49,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		p.nefCtx.AddAfCtx(afCtx)
 		afCtx.AddSubsc(afSubsc)
 
-		//Create Location URI
+		// Create Location URI
 		locUri := p.cfg.GetSbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
 		rsp.Headers = map[string][]string{
@@ -95,7 +94,7 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 				AppReloc: tiSub.AppReloInd,
 				UpPathChgSub: &models.UpPathChgEvent{
 					DnaiChgType: tiSub.DnaiChgType,
-					//NotificationUri:
+					// NotificationUri:
 				},
 			},
 		},

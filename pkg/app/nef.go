@@ -16,7 +16,6 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
-	openApiLogger "bitbucket.org/free5gc-team/openapi/logger"
 )
 
 type NefApp struct {
@@ -107,10 +106,6 @@ func (n *NefApp) setLogLevel() {
 	if cLogger.NEF != nil {
 		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
 			logger.SetLogLevel, logger.SetReportCaller)
-	}
-	if cLogger.OpenApi != nil {
-		setLoggerLogLevel("OpenApi", cLogger.OpenApi.DebugLevel, cLogger.OpenApi.ReportCaller,
-			openApiLogger.SetLogLevel, openApiLogger.SetReportCaller)
 	}
 }
 
