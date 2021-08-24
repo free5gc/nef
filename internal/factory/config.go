@@ -11,9 +11,10 @@ import (
 	"strconv"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/davecgh/go-spew/spew"
 
-	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
 const (
@@ -115,29 +116,10 @@ type Service struct {
 }
 
 func (c *Config) Print() {
+	spew.Config.Indent = "\t"
+	str := spew.Sdump(c.Configuration)
 	logger.CfgLog.Infof("==================================================")
-	if c.Info != nil {
-		logger.CfgLog.Infof("Info -")
-		logger.CfgLog.Infof("  Version: %s", c.Info.Version)
-		logger.CfgLog.Infof("  Description: %s", c.Info.Description)
-	}
-	if c.Configuration != nil {
-		logger.CfgLog.Infof("Configuration -")
-		if c.Configuration.Sbi != nil {
-			logger.CfgLog.Infof("  Sbi -")
-			logger.CfgLog.Infof("    Scheme: %s", c.Configuration.Sbi.Scheme)
-			logger.CfgLog.Infof("    RegisterIPv4: %s", c.Configuration.Sbi.RegisterIPv4)
-			logger.CfgLog.Infof("    BindingIPv4: %s", c.Configuration.Sbi.BindingIPv4)
-			logger.CfgLog.Infof("    Port: %d", c.Configuration.Sbi.Port)
-		}
-		logger.CfgLog.Infof("  NrfUri: %s", c.Configuration.NrfUri)
-		if c.Configuration.ServiceList != nil {
-			logger.CfgLog.Infof("ServiceList -")
-			for _, s := range c.Configuration.ServiceList {
-				logger.CfgLog.Infof("ServiceName: %s, SuppFeat: %s", s.ServiceName, s.SuppFeat)
-			}
-		}
-	}
+	logger.CfgLog.Infof("%s", str)
 	logger.CfgLog.Infof("==================================================")
 }
 

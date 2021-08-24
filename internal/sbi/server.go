@@ -10,14 +10,13 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"bitbucket.org/free5gc-team/http2_util"
-	"bitbucket.org/free5gc-team/http_wrapper"
-	"bitbucket.org/free5gc-team/logger_util"
 	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
+	"bitbucket.org/free5gc-team/util/httpwrapper"
+	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
 const (
@@ -65,7 +64,7 @@ func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
 	bindAddr := s.cfg.GetSbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
-	if s.httpServer, err = http2_util.NewServer(bindAddr, factory.NefDefaultKeyLogPath, s.router); err != nil {
+	if s.httpServer, err = httpwrapper.NewHttp2Server(bindAddr, factory.NefDefaultKeyLogPath, s.router); err != nil {
 		logger.InitLog.Errorf("Initialize HTTP server failed: %+v", err)
 		return nil
 	}
@@ -166,7 +165,7 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 		return
 	}
 
-	rsp := http_wrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
+	rsp := httpwrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
 
 	buildHttpResponseHeader(ginCtx, rsp)
 
@@ -178,7 +177,7 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 	}
 }
 
-func buildHttpResponseHeader(ginCtx *gin.Context, rsp *http_wrapper.Response) {
+func buildHttpResponseHeader(ginCtx *gin.Context, rsp *httpwrapper.Response) {
 	for k, v := range rsp.Header {
 		// Concatenate all values of the Header with ','
 		allValues := ""
