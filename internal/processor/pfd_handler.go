@@ -138,7 +138,6 @@ func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID strin
 
 func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID string,
 	pfdMng *models.PfdManagement) *HandlerResponse {
-
 	logger.PFDManageLog.Infof("PutIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
 
 	// TODO: Authorize the AF
@@ -279,7 +278,6 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 
 func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appID string,
 	pfdData *models.PfdData) *HandlerResponse {
-
 	logger.PFDManageLog.Infof("PutIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
@@ -311,7 +309,6 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 
 func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, appID string,
 	pfdData *models.PfdData) *HandlerResponse {
-
 	logger.PFDManageLog.Infof("PatchIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
@@ -353,7 +350,6 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 
 func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTransaction) (*models.PfdManagement,
 	*HandlerResponse) {
-
 	transID := afPfdTrans.GetTransID()
 	appIDs := afPfdTrans.GetExtAppIDs()
 	pfdMng := &models.PfdManagement{
@@ -393,20 +389,20 @@ func (p *Processor) deletePfdDataFromUDR(appID string) *HandlerResponse {
 }
 
 // The behavior of PATCH update is based on TS 29.250 v1.15.1 clause 4.4.1
-func patchModifyPfdData(old, new *models.PfdData) *models.ProblemDetails {
-	for pfdID, newPfd := range new.Pfds {
-		_, exist := old.Pfds[pfdID]
+func patchModifyPfdData(oldPfdData, newPfdData *models.PfdData) *models.ProblemDetails {
+	for pfdID, newPfd := range newPfdData.Pfds {
+		_, exist := oldPfdData.Pfds[pfdID]
 		if len(newPfd.FlowDescriptions) == 0 && len(newPfd.Urls) == 0 && len(newPfd.DomainNames) == 0 {
 			if exist {
 				// New Pfd with existing PfdID and empty content implies deletion from old PfdData.
-				delete(old.Pfds, pfdID)
+				delete(oldPfdData.Pfds, pfdID)
 			} else {
 				// Otherwire, if the PfdID doesn't exist yet, the Pfd still needs valid content.
 				return util.ProblemDetailsDataNotFound(DetailNoPfdInfo)
 			}
 		} else {
 			// Either add or update the Pfd to the old PfdData.
-			old.Pfds[pfdID] = newPfd
+			oldPfdData.Pfds[pfdID] = newPfd
 		}
 	}
 	return nil
@@ -457,7 +453,6 @@ func genPfdDataURI(sbiURI, afID, transID, appID string) string {
 
 func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
 	nefCtx *context.NefContext) *models.ProblemDetails {
-
 	pfdMng.PfdReports = make(map[string]models.PfdReport)
 
 	if len(pfdMng.PfdDatas) == 0 {

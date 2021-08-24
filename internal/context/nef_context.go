@@ -10,7 +10,7 @@ import (
 )
 
 type NefContext struct {
-	nfInstID   string //NF Instance ID
+	nfInstID   string // NF Instance ID
 	numCorreID uint64
 	afCtxs     map[string]*AfContext
 	mtx        sync.RWMutex

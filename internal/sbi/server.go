@@ -53,8 +53,10 @@ func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
 
 	s.router.Use(cors.New(cors.Config{
 		AllowMethods: []string{"GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"},
-		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "User-Agent",
-			"Referrer", "Host", "Token", "X-Requested-With"},
+		AllowHeaders: []string{
+			"Origin", "Content-Length", "Content-Type", "User-Agent",
+			"Referrer", "Host", "Token", "X-Requested-With",
+		},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		AllowAllOrigins:  true,
@@ -147,7 +149,7 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 	if scheme == "http" {
 		err = s.httpServer.ListenAndServe()
 	} else if scheme == "https" {
-		//TODO: use config file to config path
+		// TODO: use config file to config path
 		err = s.httpServer.ListenAndServeTLS(factory.NefDefaultPemPath, factory.NefDefaultKeyPath)
 	} else {
 		err = fmt.Errorf("No support this scheme[%s]", scheme)

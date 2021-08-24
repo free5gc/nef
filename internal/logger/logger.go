@@ -10,19 +10,21 @@ import (
 	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
-var log *logrus.Logger
-var MainLog *logrus.Entry
-var InitLog *logrus.Entry
-var CfgLog *logrus.Entry
-var CtxLog *logrus.Entry
-var GinLog *logrus.Entry
-var SBILog *logrus.Entry
-var ConsumerLog *logrus.Entry
-var ProcessorLog *logrus.Entry
-var TrafInfluLog *logrus.Entry
-var PFDManageLog *logrus.Entry
-var PFDFLog *logrus.Entry
-var OamLog *logrus.Entry
+var (
+	log          *logrus.Logger
+	MainLog      *logrus.Entry
+	InitLog      *logrus.Entry
+	CfgLog       *logrus.Entry
+	CtxLog       *logrus.Entry
+	GinLog       *logrus.Entry
+	SBILog       *logrus.Entry
+	ConsumerLog  *logrus.Entry
+	ProcessorLog *logrus.Entry
+	TrafInfluLog *logrus.Entry
+	PFDManageLog *logrus.Entry
+	PFDFLog      *logrus.Entry
+	OamLog       *logrus.Entry
+)
 
 func init() {
 	log = logrus.New()

@@ -28,7 +28,6 @@ const ServiceNpcfPolicyAuth string = "npcf-policyauthorization"
 
 func NewConsumerPCFService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerPCFService {
-
 	c := &ConsumerPCFService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 	return c
 }
@@ -51,7 +50,7 @@ func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
 	}
 	logger.ConsumerLog.Infof("initPolicyAuthAPIClient: uri[%s]", uri)
 
-	//TODO: Subscribe NRF to notify service URI change
+	// TODO: Subscribe NRF to notify service URI change
 
 	paCfg := Npcf_PolicyAuthorization.NewConfiguration()
 	paCfg.SetBasePath(uri)
@@ -87,7 +86,7 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 

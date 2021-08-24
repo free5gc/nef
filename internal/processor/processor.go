@@ -22,7 +22,6 @@ type HandlerResponse struct {
 
 func NewProcessor(cfg *factory.Config, nefCtx *nefctx.NefContext, consumer *consumer.Consumer,
 	notifier *notifier.Notifier) *Processor {
-
 	handler := &Processor{cfg: cfg, nefCtx: nefCtx, consumer: consumer, notifier: notifier}
 
 	return handler

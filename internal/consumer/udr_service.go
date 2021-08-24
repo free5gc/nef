@@ -27,7 +27,6 @@ const ServiceNudrDr string = "nudr-dr"
 
 func NewConsumerUDRService(nefCfg *factory.Config, nefCtx *context.NefContext,
 	nrfSrv *ConsumerNRFService) *ConsumerUDRService {
-
 	c := &ConsumerUDRService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
 	return c
 }
@@ -49,7 +48,7 @@ func (c *ConsumerUDRService) initDataRepoAPIClient() error {
 	}
 	logger.ConsumerLog.Infof("initDataRepoAPIClient: uri[%s]", uri)
 
-	//TODO: Subscribe NRF to notify service URI change
+	// TODO: Subscribe NRF to notify service URI change
 
 	drCfg := Nudr_DataRepository.NewConfiguration()
 	drCfg.SetBasePath(uri)
@@ -78,13 +77,13 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
-		if rsp.StatusCode == http.StatusCreated { //TODO: check more status codes
+		if rsp.StatusCode == http.StatusCreated { // TODO: check more status codes
 			rspBody = &result
 		} else if err != nil {
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -121,7 +120,7 @@ func (c *ConsumerUDRService) AppDataPfdsGet(appID []string) (int, interface{}) {
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -154,7 +153,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *mo
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -184,7 +183,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interfac
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -217,7 +216,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 

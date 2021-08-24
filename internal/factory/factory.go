@@ -16,7 +16,7 @@ import (
 // TODO: Support configuration update from REST api
 func InitConfigFactory(f string, cfg *Config) error {
 	if f == "" {
-		//Use default config path
+		// Use default config path
 		f = NefDefaultConfigPath
 	}
 
@@ -24,7 +24,7 @@ func InitConfigFactory(f string, cfg *Config) error {
 		return fmt.Errorf("[Factory] %+v", err)
 	} else {
 		logger.CfgLog.Infof("Read config from [%s]", f)
-		if yamlErr := yaml.Unmarshal([]byte(content), cfg); yamlErr != nil {
+		if yamlErr := yaml.Unmarshal(content, cfg); yamlErr != nil {
 			return fmt.Errorf("[Factory] %+v", yamlErr)
 		}
 	}

@@ -1195,7 +1195,7 @@ func initUDRDrGetPfdDatasStub() {
 	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
 		Get("/application-data/pfds").
 		// To Matching the request for both app1 and app2.
-		// Should be clarified if there is a way to exact match multiple paramaters with the same key.
+		// Should be clarified if there is a way to exact match multiple parameters with the same key.
 		MatchParam("appId", "app1").
 		Persist().
 		Reply(http.StatusOK).
