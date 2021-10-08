@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -34,12 +34,12 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 
 	// TODO: Support SupportedFeatures
 	if len(pfdSubsc.NotifyUri) == 0 {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Absent of Notify URI")}
+		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound("Absent of Notify URI")}
 	}
 
 	subID := p.notifier.PfdChangeNotifier.AddPfdSub(pfdSubsc)
 	hdrs := make(map[string][]string)
-	util.AddLocationheader(hdrs, genPfdSubscriptionURI(p.cfg.GetSbiUri(), subID))
+	addLocationheader(hdrs, genPfdSubscriptionURI(p.cfg.SbiUri(), subID))
 
 	return &HandlerResponse{http.StatusCreated, hdrs, pfdSubsc}
 }
@@ -48,7 +48,7 @@ func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResp
 	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
 
 	if err := p.notifier.PfdChangeNotifier.DeletePfdSub(subscID); err != nil {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
 	return &HandlerResponse{http.StatusNoContent, nil, nil}

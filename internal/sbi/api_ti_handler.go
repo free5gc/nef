@@ -52,7 +52,7 @@ func (s *Server) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
 
 func (s *Server) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSub models.TrafficInfluSub
-	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
+	if err := s.deserializeData(ginCtx, &tiSub); err != nil {
 		return
 	}
 
@@ -71,7 +71,7 @@ func (s *Server) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Contex
 
 func (s *Server) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSub models.TrafficInfluSub
-	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSub); err != nil {
+	if err := s.deserializeData(ginCtx, &tiSub); err != nil {
 		return
 	}
 
@@ -83,7 +83,7 @@ func (s *Server) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Contex
 
 func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
 	var tiSubPatch models.TrafficInfluSubPatch
-	if err := s.getDataFromHttpRequestBody(ginCtx, &tiSubPatch); err != nil {
+	if err := s.deserializeData(ginCtx, &tiSubPatch); err != nil {
 		return
 	}
 

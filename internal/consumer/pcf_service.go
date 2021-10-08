@@ -9,8 +9,8 @@ import (
 	"github.com/antihax/optional"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -26,10 +26,10 @@ type ConsumerPCFService struct {
 
 const ServiceNpcfPolicyAuth string = "npcf-policyauthorization"
 
-func NewConsumerPCFService(nefCfg *factory.Config, nefCtx *context.NefContext,
-	nrfSrv *ConsumerNRFService) *ConsumerPCFService {
-	c := &ConsumerPCFService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
-	return c
+func NewConsumerPCFService(nefCtx *context.NefContext,
+	nrfSrv *ConsumerNRFService) (*ConsumerPCFService, error) {
+	c := &ConsumerPCFService{cfg: nefCtx.Config(), nefCtx: nefCtx, nrfSrv: nrfSrv}
+	return c, nil
 }
 
 func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {

@@ -4,10 +4,11 @@ type Notifier struct {
 	PfdChangeNotifier *PfdChangeNotifier
 }
 
-func NewNotifier() *Notifier {
+func NewNotifier() (*Notifier, error) {
+	var err error
 	n := &Notifier{}
-	if n.PfdChangeNotifier = NewPfdChangeNotifier(); n.PfdChangeNotifier == nil {
-		return nil
+	if n.PfdChangeNotifier, err = NewPfdChangeNotifier(); err != nil {
+		return nil, err
 	}
-	return n
+	return n, nil
 }

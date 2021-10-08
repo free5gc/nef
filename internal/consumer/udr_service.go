@@ -8,8 +8,8 @@ import (
 	"github.com/antihax/optional"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -25,10 +25,10 @@ type ConsumerUDRService struct {
 
 const ServiceNudrDr string = "nudr-dr"
 
-func NewConsumerUDRService(nefCfg *factory.Config, nefCtx *context.NefContext,
-	nrfSrv *ConsumerNRFService) *ConsumerUDRService {
-	c := &ConsumerUDRService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
-	return c
+func NewConsumerUDRService(nefCtx *context.NefContext,
+	nrfSrv *ConsumerNRFService) (*ConsumerUDRService, error) {
+	c := &ConsumerUDRService{cfg: nefCtx.Config(), nefCtx: nefCtx, nrfSrv: nrfSrv}
+	return c, nil
 }
 
 func (c *ConsumerUDRService) initDataRepoAPIClient() error {

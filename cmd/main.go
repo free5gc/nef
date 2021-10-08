@@ -1,16 +1,16 @@
 package main
 
 import (
-	"context"
+	"fmt"
 	"os"
-	"os/signal"
+	"path/filepath"
 	"runtime/debug"
-	"syscall"
 
 	"github.com/urfave/cli"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	nefApp "bitbucket.org/free5gc-team/nef/pkg/app"
+	nefapp "bitbucket.org/free5gc-team/nef/pkg/app"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/util/version"
 )
 
@@ -47,42 +47,46 @@ func main() {
 }
 
 func action(cliCtx *cli.Context) error {
-	if err := initLogFile(cliCtx.String("log"), cliCtx.String("log5gc")); err != nil {
-		logger.MainLog.Errorf("%+v", err)
+	tlsKeyLogPath, err := initLogFile(cliCtx.String("log"), cliCtx.String("log5gc"))
+	if err != nil {
 		return err
 	}
 
 	logger.MainLog.Infoln("NEF version: ", version.GetVersion())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	cfg, err := factory.ReadConfig(cliCtx.String("config"))
+	if err != nil {
+		return err
+	}
 
-	nef := nefApp.NewApp(ctx, cliCtx.String("config"))
-	if nef == nil {
-		logger.MainLog.Errorf("New NEF failed")
+	nef, err := nefapp.NewApp(cfg, tlsKeyLogPath)
+	if err != nil {
+		return fmt.Errorf("New NEF err: %+v", err)
 	}
 
 	if err := nef.Run(); err != nil {
-		logger.MainLog.Errorf("NEF Run err: %v", err)
+		return nil
 	}
 
-	// Wait for interrupt signal to gracefully shutdown UPF
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	<-sigCh
-
-	// Receive the interrupt signal
-	logger.MainLog.Infof("Shutdown NEF ...")
-	// Notify each goroutine and wait them stopped
-	cancel()
-	nef.WaitRoutineStopped()
-	logger.MainLog.Infof("NEF exited")
 	return nil
 }
 
-func initLogFile(logNfPath, log5gcPath string) error {
+func initLogFile(logNfPath, log5gcPath string) (string, error) {
 	if err := logger.LogFileHook(logNfPath, log5gcPath); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+
+	logTlsKeyPath := factory.NefDefaultTLSKeyLogPath
+	if logNfPath != "" {
+		nfDir, _ := filepath.Split(logNfPath)
+		tmpDir := filepath.Join(nfDir, "key")
+		if err := os.MkdirAll(tmpDir, 0775); err != nil {
+			logger.InitLog.Errorf("Make directory %s failed: %+v", tmpDir, err)
+			return "", err
+		}
+		_, name := filepath.Split(factory.NefDefaultTLSKeyLogPath)
+		logTlsKeyPath = filepath.Join(tmpDir, name)
+	}
+
+	return logTlsKeyPath, nil
 }

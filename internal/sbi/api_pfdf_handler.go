@@ -49,7 +49,7 @@ func (s *Server) apiGetIndividualApplicationPFD(ginCtx *gin.Context) {
 
 func (s *Server) apiPostPFDSubscriptions(ginCtx *gin.Context) {
 	var pfdSubsc models.PfdSubscription
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdSubsc); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdSubsc); err != nil {
 		return
 	}
 

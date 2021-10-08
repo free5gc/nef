@@ -4,9 +4,7 @@ import (
 	"net/http"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
@@ -17,20 +15,21 @@ type Consumer struct {
 	UdrSrv *ConsumerUDRService
 }
 
-func NewConsumer(nefCfg *factory.Config, nefCtx *context.NefContext) *Consumer {
+func NewConsumer(nefCtx *context.NefContext) (*Consumer, error) {
+	var err error
 	c := &Consumer{}
-	if c.NrfSrv = NewConsumerNRFService(nefCfg, nefCtx); c.NrfSrv == nil {
-		return nil
+	if c.NrfSrv, err = NewConsumerNRFService(nefCtx); err != nil {
+		return nil, err
 	}
-	if c.PcfSrv = NewConsumerPCFService(nefCfg, nefCtx, c.NrfSrv); c.PcfSrv == nil {
-		return nil
+	if c.PcfSrv, err = NewConsumerPCFService(nefCtx, c.NrfSrv); err != nil {
+		return nil, err
 	}
-	if c.UdrSrv = NewConsumerUDRService(nefCfg, nefCtx, c.NrfSrv); c.UdrSrv == nil {
-		return nil
+	if c.UdrSrv, err = NewConsumerUDRService(nefCtx, c.NrfSrv); err != nil {
+		return nil, err
 	}
 	c.NrfSrv.RegisterNFInstance()
 
-	return c
+	return c, nil
 }
 
 func handleAPIServiceResponseError(rsp *http.Response, err error) (int, interface{}) {
@@ -60,6 +59,6 @@ func handleAPIServiceNoResponse(err error) (int, interface{}) {
 		detail = err.Error()
 	}
 	logger.ConsumerLog.Errorf("APIService error: %s", detail)
-	pd := util.ProblemDetailsSystemFailure(detail)
+	pd := openapi.ProblemDetailsSystemFailure(detail)
 	return int(pd.Status), pd
 }

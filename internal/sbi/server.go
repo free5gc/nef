@@ -10,10 +10,10 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	"bitbucket.org/free5gc-team/nef/internal/factory"
+	nefcontext "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/util/httpwrapper"
 	logger_util "bitbucket.org/free5gc-team/util/logger"
@@ -23,15 +23,39 @@ const (
 	CorsConfigMaxAge = 86400
 )
 
+type Endpoint struct {
+	Method  string
+	Pattern string
+	APIFunc gin.HandlerFunc
+}
+
+func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
+	for _, endpoint := range endpoints {
+		switch endpoint.Method {
+		case "GET":
+			group.GET(endpoint.Pattern, endpoint.APIFunc)
+		case "POST":
+			group.POST(endpoint.Pattern, endpoint.APIFunc)
+		case "PUT":
+			group.PUT(endpoint.Pattern, endpoint.APIFunc)
+		case "PATCH":
+			group.PATCH(endpoint.Pattern, endpoint.APIFunc)
+		case "DELETE":
+			group.DELETE(endpoint.Pattern, endpoint.APIFunc)
+		}
+	}
+}
+
 type Server struct {
+	nefCtx     *nefcontext.NefContext
 	cfg        *factory.Config
 	httpServer *http.Server
 	router     *gin.Engine
 	processor  *processor.Processor
 }
 
-func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
-	s := &Server{cfg: nefCfg, processor: proc}
+func NewServer(nefCtx *nefcontext.NefContext, proc *processor.Processor, tlsKeyLogPath string) (*Server, error) {
+	s := &Server{cfg: nefCtx.Config(), nefCtx: nefCtx, processor: proc}
 
 	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
 
@@ -63,58 +87,15 @@ func NewServer(nefCfg *factory.Config, proc *processor.Processor) *Server {
 		MaxAge:           CorsConfigMaxAge,
 	}))
 
-	bindAddr := s.cfg.GetSbiBindingAddr()
+	bindAddr := s.cfg.SbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
-	if s.httpServer, err = httpwrapper.NewHttp2Server(bindAddr, factory.NefDefaultKeyLogPath, s.router); err != nil {
+	if s.httpServer, err = httpwrapper.NewHttp2Server(bindAddr, tlsKeyLogPath, s.router); err != nil {
 		logger.InitLog.Errorf("Initialize HTTP server failed: %+v", err)
-		return nil
+		return nil, err
 	}
 
-	return s
-}
-
-type Endpoint struct {
-	Method  string
-	Pattern string
-	APIFunc gin.HandlerFunc
-}
-
-func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
-	for _, endpoint := range endpoints {
-		switch endpoint.Method {
-		case "GET":
-			group.GET(endpoint.Pattern, endpoint.APIFunc)
-		case "POST":
-			group.POST(endpoint.Pattern, endpoint.APIFunc)
-		case "PUT":
-			group.PUT(endpoint.Pattern, endpoint.APIFunc)
-		case "PATCH":
-			group.PATCH(endpoint.Pattern, endpoint.APIFunc)
-		case "DELETE":
-			group.DELETE(endpoint.Pattern, endpoint.APIFunc)
-		}
-	}
-}
-
-func (s *Server) getDataFromHttpRequestBody(ginCtx *gin.Context, data interface{}) error {
-	reqBody, err := ginCtx.GetRawData()
-	if err != nil {
-		logger.SBILog.Errorf("Get Request Body error: %+v", err)
-		ginCtx.JSON(http.StatusInternalServerError,
-			util.ProblemDetailsSystemFailure(err.Error()))
-		return err
-	}
-
-	err = openapi.Deserialize(data, reqBody, "application/json")
-	if err != nil {
-		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
-		ginCtx.JSON(http.StatusBadRequest,
-			util.ProblemDetailsMalformedReqSyntax(err.Error()))
-		return err
-	}
-
-	return nil
+	return s, nil
 }
 
 func (s *Server) Run(ctx context.Context, wg *sync.WaitGroup) error {
@@ -145,12 +126,12 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 	logger.SBILog.Infof("Start SBI server (listen on %s)", s.httpServer.Addr)
 
 	var err error
-	scheme := s.cfg.GetSbiScheme()
+	scheme := s.cfg.SbiScheme()
 	if scheme == "http" {
 		err = s.httpServer.ListenAndServe()
 	} else if scheme == "https" {
 		// TODO: use config file to config path
-		err = s.httpServer.ListenAndServeTLS(factory.NefDefaultPemPath, factory.NefDefaultKeyPath)
+		err = s.httpServer.ListenAndServeTLS(s.cfg.TLSPemPath(), s.cfg.TLSKeyPath())
 	} else {
 		err = fmt.Errorf("No support this scheme[%s]", scheme)
 	}
@@ -159,6 +140,26 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 		logger.SBILog.Errorf("SBI server error: %+v", err)
 	}
 	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
+}
+
+func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}) error {
+	reqBody, err := ginCtx.GetRawData()
+	if err != nil {
+		logger.SBILog.Errorf("Get Request Body error: %+v", err)
+		ginCtx.JSON(http.StatusInternalServerError,
+			openapi.ProblemDetailsSystemFailure(err.Error()))
+		return err
+	}
+
+	err = openapi.Deserialize(data, reqBody, "application/json")
+	if err != nil {
+		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
+		ginCtx.JSON(http.StatusBadRequest,
+			openapi.ProblemDetailsMalformedReqSyntax(err.Error()))
+		return err
+	}
+
+	return nil
 }
 
 func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
@@ -173,7 +174,7 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 
 	if rspBody, err := openapi.Serialize(rsp.Body, "application/json"); err != nil {
 		logger.SBILog.Errorln(err)
-		ginCtx.JSON(http.StatusInternalServerError, util.ProblemDetailsSystemFailure(err.Error()))
+		ginCtx.JSON(http.StatusInternalServerError, openapi.ProblemDetailsSystemFailure(err.Error()))
 	} else {
 		ginCtx.Data(rsp.Status, "application/json", rspBody)
 	}

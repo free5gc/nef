@@ -10,9 +10,8 @@ import (
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
@@ -73,11 +72,15 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	var err error
 	openapi.InterceptH2CClient()
 	initNRFNfmStub()
 	initNRFDiscStub()
 
 	nefConfig := &factory.Config{
+		Info: &factory.Info{
+			Version: "1.0.0",
+		},
 		Configuration: &factory.Configuration{
 			Sbi: &factory.Sbi{
 				Scheme:       "http",
@@ -93,10 +96,22 @@ func TestMain(m *testing.M) {
 			},
 		},
 	}
-	nefContext = context.NewNefContext()
-	nefConsumer := consumer.NewConsumer(nefConfig, nefContext)
-	nefNotifier := notifier.NewNotifier()
-	nefProcessor = NewProcessor(nefConfig, nefContext, nefConsumer, nefNotifier)
+	nefContext, err = context.NewNefContext(nefConfig)
+	if err != nil {
+		panic(err)
+	}
+	nefConsumer, err := consumer.NewConsumer(nefContext)
+	if err != nil {
+		panic(err)
+	}
+	nefNotifier, err := notifier.NewNotifier()
+	if err != nil {
+		panic(err)
+	}
+	nefProcessor, err = NewProcessor(nefContext, nefConsumer, nefNotifier)
+	if err != nil {
+		panic(err)
+	}
 
 	exitVal := m.Run()
 	openapi.RestoreH2CClient()
@@ -119,11 +134,11 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &[]models.PfdManagement{
 					{
-						Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+						Self: genPfdManagementURI(nefProcessor.cfg.SbiUri(), "af1", "1"),
 						PfdDatas: map[string]models.PfdData{
 							"app1": {
 								ExternalAppId: "app1",
-								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+								Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 								Pfds: map[string]models.Pfd{
 									"pfd1": pfd1,
 									"pfd2": pfd2,
@@ -131,7 +146,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 							},
 							"app2": {
 								ExternalAppId: "app2",
-								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+								Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app2"),
 								Pfds: map[string]models.Pfd{
 									"pfd3": pfd3,
 								},
@@ -146,7 +161,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -190,7 +205,7 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -244,11 +259,11 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusCreated,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefProcessor.cfg.SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -256,7 +271,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -288,7 +303,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoAF),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 		{
@@ -299,7 +314,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdData),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -335,11 +350,11 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefProcessor.cfg.SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -347,7 +362,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -362,7 +377,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			transID:     "-1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
 			},
 		},
 	}
@@ -409,7 +424,7 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 			transID:     "1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("AF not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("AF not found"),
 			},
 		},
 	}
@@ -465,11 +480,11 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefProcessor.cfg.SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -477,7 +492,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -510,7 +525,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
 			},
 		},
 		{
@@ -522,7 +537,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdData),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -563,7 +578,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -578,7 +593,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 			appID:       "app2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 	}
@@ -627,7 +642,7 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 			appID:       "app2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 	}
@@ -677,7 +692,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -699,7 +714,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 		{
@@ -717,7 +732,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -769,7 +784,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefProcessor.cfg.SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd2": pfd2,
 					},
@@ -791,7 +806,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 		{
@@ -809,7 +824,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -865,7 +880,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(DetailNoPfdData),
+			expectedProblem: openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			expectedReports: map[string]models.PfdReport{},
 		},
 		{
@@ -906,7 +921,7 @@ func TestValidatePfdManagement(t *testing.T) {
 					},
 				},
 			},
-			expectedProblem: util.ProblemDetailsSystemFailure("None of the PFDs were created"),
+			expectedProblem: openapi.ProblemDetailsSystemFailure("None of the PFDs were created"),
 			expectedReports: map[string]models.PfdReport{
 				string(models.FailureCode_APP_ID_DUPLICATED): {
 					ExternalAppIds: []string{"app100"},
@@ -957,14 +972,14 @@ func TestValidatePfdData(t *testing.T) {
 					"pfd1": pfd1,
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(DetailNoExtAppID),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoExtAppID),
 		},
 		{
 			description: "Empty Pfds, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfd),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfd),
 		},
 		{
 			description: "Without PfdID, should return ProblemDetails",
@@ -979,7 +994,7 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfdID),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfdID),
 		},
 		{
 			description: "FlowDescriptions, Urls and DomainNames are all empty, should return ProblemDetails",
@@ -991,7 +1006,7 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 		},
 	}
 
@@ -1109,7 +1124,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(DetailNoPfdInfo),
+			expectedProblem: openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			expectedResult: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{

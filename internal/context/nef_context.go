@@ -7,20 +7,25 @@ import (
 	"github.com/google/uuid"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
 type NefContext struct {
+	cfg        *factory.Config
 	nfInstID   string // NF Instance ID
 	numCorreID uint64
 	afCtxs     map[string]*AfContext
 	mtx        sync.RWMutex
 }
 
-func NewNefContext() *NefContext {
-	n := &NefContext{nfInstID: uuid.New().String()}
+func NewNefContext(cfg *factory.Config) (*NefContext, error) {
+	n := &NefContext{
+		cfg:      cfg,
+		nfInstID: uuid.New().String(),
+	}
 	n.afCtxs = make(map[string]*AfContext)
 	logger.CtxLog.Infof("New nfInstID: [%s]", n.nfInstID)
-	return n
+	return n, nil
 }
 
 func (n *NefContext) GetNfInstID() string {
@@ -34,6 +39,12 @@ func (n *NefContext) SetNfInstID(id string) {
 	defer n.mtx.Unlock()
 	n.nfInstID = id
 	logger.CtxLog.Infof("Set nfInstID: [%s]", n.nfInstID)
+}
+
+func (n *NefContext) Config() *factory.Config {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	return n.cfg
 }
 
 func (n *NefContext) NewAfCtx(afID string) *AfContext {

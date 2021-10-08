@@ -2,20 +2,21 @@ package app
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"os/signal"
 	"runtime/debug"
 	"sync"
+	"syscall"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/sirupsen/logrus"
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
 type NefApp struct {
@@ -29,54 +30,27 @@ type NefApp struct {
 	notifier  *notifier.Notifier
 }
 
-func NewApp(ctx context.Context, cfgPath string) *NefApp {
-	nef := &NefApp{ctx: ctx, cfg: &factory.Config{}}
+func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
+	var err error
+	nef := &NefApp{cfg: cfg}
 
-	if err := nef.initConfig(cfgPath); err != nil {
-		switch errType := err.(type) {
-		case govalidator.Errors:
-			validErrs := err.(govalidator.Errors).Errors()
-			for _, validErr := range validErrs {
-				logger.InitLog.Errorf("%+v", validErr)
-			}
-		default:
-			logger.InitLog.Errorf("%+v", errType)
-		}
-		logger.InitLog.Errorf("[-- PLEASE REFER TO SAMPLE CONFIG FILE COMMENTS --]")
-		return nil
+	nef.setLogLevel()
+	if nef.nefCtx, err = nefctx.NewNefContext(nef.cfg); err != nil {
+		return nil, err
 	}
-	if nef.nefCtx = nefctx.NewNefContext(); nef.nefCtx == nil {
-		return nil
+	if nef.consumer, err = consumer.NewConsumer(nef.nefCtx); err != nil {
+		return nil, err
 	}
-	if nef.consumer = consumer.NewConsumer(nef.cfg, nef.nefCtx); nef.consumer == nil {
-		return nil
+	if nef.notifier, err = notifier.NewNotifier(); err != nil {
+		return nil, err
 	}
-	if nef.notifier = notifier.NewNotifier(); nef.notifier == nil {
-		return nil
+	if nef.proc, err = processor.NewProcessor(nef.nefCtx, nef.consumer, nef.notifier); err != nil {
+		return nil, err
 	}
-	if nef.proc = processor.NewProcessor(nef.cfg, nef.nefCtx, nef.consumer, nef.notifier); nef.proc == nil {
-		return nil
+	if nef.sbiServer, err = sbi.NewServer(nef.nefCtx, nef.proc, tlsKeyLogPath); err != nil {
+		return nil, err
 	}
-	if nef.sbiServer = sbi.NewServer(nef.cfg, nef.proc); nef.sbiServer == nil {
-		return nil
-	}
-	return nef
-}
-
-func (n *NefApp) initConfig(cfgPath string) error {
-	if err := factory.InitConfigFactory(cfgPath, n.cfg); err != nil {
-		return fmt.Errorf("initConfig [%s] Error: %+v", cfgPath, err)
-	}
-	if err := factory.CheckConfigVersion(n.cfg); err != nil {
-		return err
-	}
-	if _, err := n.cfg.Validate(); err != nil {
-		return err
-	}
-
-	n.cfg.Print()
-	n.setLogLevel()
-	return nil
+	return nef, nil
 }
 
 func setLoggerLogLevel(loggerName, DebugLevel string, reportCaller bool,
@@ -110,6 +84,10 @@ func (n *NefApp) setLogLevel() {
 }
 
 func (n *NefApp) Run() error {
+	var cancel context.CancelFunc
+	n.ctx, cancel = context.WithCancel(context.Background())
+	defer cancel()
+
 	n.wg.Add(1)
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */
@@ -118,6 +96,18 @@ func (n *NefApp) Run() error {
 	if err := n.sbiServer.Run(n.ctx, &n.wg); err != nil {
 		return err
 	}
+
+	// Wait for interrupt signal to gracefully shutdown UPF
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+
+	// Receive the interrupt signal
+	logger.MainLog.Infof("Shutdown NEF ...")
+	// Notify each goroutine and wait them stopped
+	cancel()
+	n.WaitRoutineStopped()
+	logger.MainLog.Infof("NEF exited")
 	return nil
 }
 
@@ -137,4 +127,15 @@ func (n *NefApp) listenShutdownEvent() {
 
 func (n *NefApp) WaitRoutineStopped() {
 	n.wg.Wait()
+}
+
+func (n *NefApp) Start() {
+	if err := n.Run(); err != nil {
+		logger.MainLog.Errorf("NEF Run err: %v", err)
+	}
+}
+
+func (n *NefApp) Terminate() {
+	logger.MainLog.Infof("Terminating NEF...")
+	logger.MainLog.Infof("NEF terminated")
 }

@@ -72,7 +72,7 @@ func (s *Server) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
 
 func (s *Server) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdMng); err != nil {
 		return
 	}
 
@@ -98,7 +98,7 @@ func (s *Server) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 
 func (s *Server) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdMng); err != nil {
 		return
 	}
 
@@ -131,7 +131,7 @@ func (s *Server) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context
 
 func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdData); err != nil {
 		return
 	}
 
@@ -143,7 +143,7 @@ func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 
 func (s *Server) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdData); err != nil {
 		return
 	}
 

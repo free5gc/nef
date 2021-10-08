@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/davecgh/go-spew/spew"
@@ -18,9 +19,9 @@ import (
 )
 
 const (
-	NefDefaultKeyLogPath     = "./log/nefsslkey.log"
-	NefDefaultPemPath        = "./config/TLS/nef.pem"
-	NefDefaultKeyPath        = "./config/TLS/nef.key"
+	NefDefaultTLSKeyLogPath  = "./log/nefsslkey.log"
+	NefDefaultTLSPemPath     = "./config/TLS/nef.pem"
+	NefDefaultTLSKeyPath     = "./config/TLS/nef.key"
 	NefDefaultConfigPath     = "./config/nefcfg.yaml"
 	NefExpectedConfigVersion = "1.0.0"
 	NefSbiDefaultIPv4        = "127.0.0.5"
@@ -37,6 +38,7 @@ type Config struct {
 	Info          *Info               `yaml:"info" valid:"required"`
 	Configuration *Configuration      `yaml:"configuration" valid:"required"`
 	Logger        *logger_util.Logger `yaml:"logger" valid:"optional"`
+	mtx           sync.RWMutex
 }
 
 func (c *Config) Validate() (bool, error) {
@@ -96,16 +98,24 @@ func (c *Configuration) validate() (bool, error) {
 
 type Sbi struct {
 	Scheme       string `yaml:"scheme" valid:"scheme,required"`
-	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"ipv4,required"` // IP that is registered at NRF.
+	RegisterIPv4 string `yaml:"registerIPv4,omitempty" valid:"host,required"` // IP that is registered at NRF.
 	// IPv6Addr  string `yaml:"ipv6Addr,omitempty"`
-	BindingIPv4 string `yaml:"bindingIPv4,omitempty" valid:"ipv4,required"` // IP used to run the server in the node.
+	BindingIPv4 string `yaml:"bindingIPv4,omitempty" valid:"host,required"` // IP used to run the server in the node.
 	Port        int    `yaml:"port,omitempty" valid:"port,optional"`
+	Tls         *Tls   `yaml:"tls,omitempty" valid:"optional"`
 }
 
 func (s *Sbi) validate() (bool, error) {
 	govalidator.TagMap["scheme"] = govalidator.Validator(func(str string) bool {
 		return str == "https" || str == "http"
 	})
+
+	if tls := s.Tls; tls != nil {
+		if result, err := tls.validate(); err != nil {
+			return result, err
+		}
+	}
+
 	result, err := govalidator.ValidateStruct(s)
 	return result, appendInvalid(err)
 }
@@ -115,81 +125,14 @@ type Service struct {
 	SuppFeat    string `yaml:"suppFeat,omitempty"`
 }
 
-func (c *Config) Print() {
-	spew.Config.Indent = "\t"
-	str := spew.Sdump(c.Configuration)
-	logger.CfgLog.Infof("==================================================")
-	logger.CfgLog.Infof("%s", str)
-	logger.CfgLog.Infof("==================================================")
+type Tls struct {
+	Pem string `yaml:"pem,omitempty" valid:"type(string),minstringlength(1),required"`
+	Key string `yaml:"key,omitempty" valid:"type(string),minstringlength(1),required"`
 }
 
-func (c *Config) GetVersion() string {
-	if c.Info != nil && c.Info.Version != "" {
-		return c.Info.Version
-	}
-	return ""
-}
-
-func (c *Config) GetSbiScheme() string {
-	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Scheme != "" {
-		return c.Configuration.Sbi.Scheme
-	}
-	return NefSbiDefaultScheme
-}
-
-func (c *Config) GetSbiPort() int {
-	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.Port != 0 {
-		return c.Configuration.Sbi.Port
-	}
-	return NefSbiDefaultPort
-}
-
-func (c *Config) GetSbiBindingIP() string {
-	bindIP := "0.0.0.0"
-	if c.Configuration == nil || c.Configuration.Sbi == nil {
-		return bindIP
-	}
-	if c.Configuration.Sbi.BindingIPv4 != "" {
-		if bindIP = os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIP != "" {
-			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIP)
-		} else {
-			bindIP = c.Configuration.Sbi.BindingIPv4
-		}
-	}
-	return bindIP
-}
-
-func (c *Config) GetSbiBindingAddr() string {
-	return c.GetSbiBindingIP() + ":" + strconv.Itoa(c.GetSbiPort())
-}
-
-func (c *Config) GetSbiRegisterIP() string {
-	if c.Configuration != nil && c.Configuration.Sbi != nil && c.Configuration.Sbi.RegisterIPv4 != "" {
-		return c.Configuration.Sbi.RegisterIPv4
-	}
-	return NefSbiDefaultIPv4
-}
-
-func (c *Config) GetSbiRegisterAddr() string {
-	return c.GetSbiRegisterIP() + ":" + strconv.Itoa(c.GetSbiPort())
-}
-
-func (c *Config) GetSbiUri() string {
-	return c.GetSbiScheme() + "://" + c.GetSbiRegisterAddr()
-}
-
-func (c *Config) GetNrfUri() string {
-	if c.Configuration != nil && c.Configuration.NrfUri != "" {
-		return c.Configuration.NrfUri
-	}
-	return NefDefaultNrfUri
-}
-
-func (c *Config) GetServiceList() []Service {
-	if c.Configuration != nil && c.Configuration.ServiceList != nil && len(c.Configuration.ServiceList) > 0 {
-		return c.Configuration.ServiceList
-	}
-	return nil
+func (t *Tls) validate() (bool, error) {
+	result, err := govalidator.ValidateStruct(t)
+	return result, err
 }
 
 func appendInvalid(err error) error {
@@ -202,4 +145,122 @@ func appendInvalid(err error) error {
 		errs = append(errs, fmt.Errorf("Invalid %w", e))
 	}
 	return error(errs)
+}
+
+func (c *Config) Print() {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	spew.Config.Indent = "\t"
+	str := spew.Sdump(c.Configuration)
+	logger.CfgLog.Infof("==================================================")
+	logger.CfgLog.Infof("%s", str)
+	logger.CfgLog.Infof("==================================================")
+}
+
+func (c *Config) Version() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Info.Version != "" {
+		return c.Info.Version
+	}
+	return ""
+}
+
+func (c *Config) SbiScheme() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.Sbi.Scheme != "" {
+		return c.Configuration.Sbi.Scheme
+	}
+	return NefSbiDefaultScheme
+}
+
+func (c *Config) SbiPort() int {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.Sbi.Port != 0 {
+		return c.Configuration.Sbi.Port
+	}
+	return NefSbiDefaultPort
+}
+
+func (c *Config) SbiBindingIP() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	bindIP := "0.0.0.0"
+	if c.Configuration.Sbi.BindingIPv4 != "" {
+		if bindIP = os.Getenv(c.Configuration.Sbi.BindingIPv4); bindIP != "" {
+			logger.CfgLog.Infof("Parsing ServerIPv4 [%s] from ENV Variable", bindIP)
+		} else {
+			bindIP = c.Configuration.Sbi.BindingIPv4
+		}
+	}
+	return bindIP
+}
+
+func (c *Config) SbiBindingAddr() string {
+	return c.SbiBindingIP() + ":" + strconv.Itoa(c.SbiPort())
+}
+
+func (c *Config) SbiRegisterIP() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.Sbi.RegisterIPv4 != "" {
+		return c.Configuration.Sbi.RegisterIPv4
+	}
+	return NefSbiDefaultIPv4
+}
+
+func (c *Config) SbiRegisterAddr() string {
+	return c.SbiRegisterIP() + ":" + strconv.Itoa(c.SbiPort())
+}
+
+func (c *Config) SbiUri() string {
+	return c.SbiScheme() + "://" + c.SbiRegisterAddr()
+}
+
+func (c *Config) NrfUri() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.NrfUri != "" {
+		return c.Configuration.NrfUri
+	}
+	return NefDefaultNrfUri
+}
+
+func (c *Config) ServiceList() []Service {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.ServiceList != nil && len(c.Configuration.ServiceList) > 0 {
+		return c.Configuration.ServiceList
+	}
+	return nil
+}
+
+func (c *Config) TLSPemPath() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.Sbi.Tls != nil {
+		return c.Configuration.Sbi.Tls.Pem
+	}
+	return NefDefaultTLSPemPath
+}
+
+func (c *Config) TLSKeyPath() string {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
+
+	if c.Configuration.Sbi.Tls != nil {
+		return c.Configuration.Sbi.Tls.Key
+	}
+	return NefDefaultTLSKeyPath
 }

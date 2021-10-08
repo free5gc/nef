@@ -6,9 +6,9 @@ import (
 	"github.com/google/uuid"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -38,7 +38,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		rsp = p.udrPutAppData(afSubsc, tiSub)
 	} else {
 		// Invalid case. Return Error
-		pd := util.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
+		pd := openapi.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
 		rsp = &HandlerResponse{
 			Status: int(pd.Status),
 			Body:   pd,
@@ -50,7 +50,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		afCtx.AddSubsc(afSubsc)
 
 		// Create Location URI
-		locUri := p.cfg.GetSbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
+		locUri := p.cfg.SbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
 		rsp.Headers = map[string][]string{
 			"Location": {locUri},

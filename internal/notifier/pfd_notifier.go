@@ -27,11 +27,11 @@ type PfdNotifyContext struct {
 	subIdToChangedAppIDs map[string][]string
 }
 
-func NewPfdChangeNotifier() *PfdChangeNotifier {
+func NewPfdChangeNotifier() (*PfdChangeNotifier, error) {
 	return &PfdChangeNotifier{
 		appIdToSubIDs: make(map[string]map[string]bool),
 		subIdToURI:    make(map[string]string),
-	}
+	}, nil
 }
 
 func (n *PfdChangeNotifier) initPfdManagementApiClient() {

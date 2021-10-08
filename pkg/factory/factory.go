@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/asaskevich/govalidator"
 	"gopkg.in/yaml.v2"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
@@ -33,7 +34,7 @@ func InitConfigFactory(f string, cfg *Config) error {
 }
 
 func CheckConfigVersion(cfg *Config) error {
-	currentVersion := cfg.GetVersion()
+	currentVersion := cfg.Version()
 	if currentVersion != NefExpectedConfigVersion {
 		return fmt.Errorf("config version is [%s], but expected is [%s].",
 			currentVersion, NefExpectedConfigVersion)
@@ -41,4 +42,25 @@ func CheckConfigVersion(cfg *Config) error {
 	logger.CfgLog.Infof("config version [%s]", currentVersion)
 
 	return nil
+}
+
+func ReadConfig(cfgPath string) (*Config, error) {
+	cfg := &Config{}
+	if err := InitConfigFactory(cfgPath, cfg); err != nil {
+		return nil, fmt.Errorf("ReadConfig [%s] Error: %+v", cfgPath, err)
+	}
+	if err := CheckConfigVersion(cfg); err != nil {
+		return nil, err
+	}
+	if _, err := cfg.Validate(); err != nil {
+		validErrs := err.(govalidator.Errors).Errors()
+		for _, validErr := range validErrs {
+			logger.CfgLog.Errorf("%+v", validErr)
+		}
+		logger.CfgLog.Errorf("[-- PLEASE REFER TO SAMPLE CONFIG FILE COMMENTS --]")
+		return nil, fmt.Errorf("Config validate Error")
+	}
+
+	cfg.Print()
+	return cfg, nil
 }

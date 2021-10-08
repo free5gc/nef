@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -28,17 +28,17 @@ type ConsumerNRFService struct {
 	resouceURI     string
 }
 
-func NewConsumerNRFService(nefCfg *factory.Config, nefCtx *context.NefContext) *ConsumerNRFService {
-	c := &ConsumerNRFService{cfg: nefCfg, nefCtx: nefCtx}
+func NewConsumerNRFService(nefCtx *context.NefContext) (*ConsumerNRFService, error) {
+	c := &ConsumerNRFService{cfg: nefCtx.Config(), nefCtx: nefCtx}
 
 	nfMngmntConfig := Nnrf_NFManagement.NewConfiguration()
-	nfMngmntConfig.SetBasePath(c.cfg.GetNrfUri())
+	nfMngmntConfig.SetBasePath(c.cfg.NrfUri())
 	c.clientNFMngmnt = Nnrf_NFManagement.NewAPIClient(nfMngmntConfig)
 
 	nfDiscConfig := Nnrf_NFDiscovery.NewConfiguration()
-	nfDiscConfig.SetBasePath(c.cfg.GetNrfUri())
+	nfDiscConfig.SetBasePath(c.cfg.NrfUri())
 	c.clientNFDisc = Nnrf_NFDiscovery.NewAPIClient(nfDiscConfig)
-	return c
+	return c, nil
 }
 
 func (c *ConsumerNRFService) SetResourceURI(uri string) {
@@ -50,7 +50,7 @@ func (c *ConsumerNRFService) RegisterNFInstance() {
 	var rsp *http.Response
 	var err error
 
-	list := c.cfg.GetServiceList()
+	list := c.cfg.ServiceList()
 	if list == nil {
 		logger.ConsumerLog.Warnf("No service to register to NRF")
 		return
@@ -93,9 +93,9 @@ func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *mode
 		NfType:       models.NfType_NEF,
 		NfStatus:     models.NfStatus_REGISTERED,
 	}
-	profile.Ipv4Addresses = append(profile.Ipv4Addresses, c.cfg.GetSbiRegisterIP())
+	profile.Ipv4Addresses = append(profile.Ipv4Addresses, c.cfg.SbiRegisterIP())
 
-	versions := strings.Split(c.cfg.GetVersion(), ".")
+	versions := strings.Split(c.cfg.Version(), ".")
 	majorVersionUri := "v" + versions[0]
 	nfServices := []models.NfService{}
 	for i, service := range serviceList {
@@ -104,18 +104,18 @@ func (c *ConsumerNRFService) buildNfProfile(serviceList []factory.Service) *mode
 			ServiceName:       models.ServiceName(service.ServiceName),
 			Versions: &[]models.NfServiceVersion{
 				{
-					ApiFullVersion:  c.cfg.GetVersion(),
+					ApiFullVersion:  c.cfg.Version(),
 					ApiVersionInUri: majorVersionUri,
 				},
 			},
-			Scheme:          models.UriScheme(c.cfg.GetSbiScheme()),
+			Scheme:          models.UriScheme(c.cfg.SbiScheme()),
 			NfServiceStatus: models.NfServiceStatus_REGISTERED,
-			ApiPrefix:       c.cfg.GetSbiUri(),
+			ApiPrefix:       c.cfg.SbiUri(),
 			IpEndPoints: &[]models.IpEndPoint{
 				{
-					Ipv4Address: c.cfg.GetSbiRegisterIP(),
+					Ipv4Address: c.cfg.SbiRegisterIP(),
 					Transport:   models.TransportProtocol_TCP,
-					Port:        int32(c.cfg.GetSbiPort()),
+					Port:        int32(c.cfg.SbiPort()),
 				},
 			},
 			SupportedFeatures: service.SuppFeat,

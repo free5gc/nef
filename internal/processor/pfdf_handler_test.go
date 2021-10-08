@@ -102,7 +102,7 @@ func TestPostPFDSubscriptions(t *testing.T) {
 			subscription: pfdSubsc,
 			expectedResponse: &HandlerResponse{
 				Status:  http.StatusCreated,
-				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefProcessor.cfg.GetSbiUri(), "1")}},
+				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefProcessor.cfg.SbiUri(), "1")}},
 				Body:    pfdSubsc,
 			},
 		},
