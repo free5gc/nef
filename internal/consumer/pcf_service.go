@@ -6,59 +6,49 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/antihax/optional"
-
-	"bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-type ConsumerPCFService struct {
-	cfg              *factory.Config
-	nefCtx           *context.NefContext
-	nrfSrv           *ConsumerNRFService
-	clientPolicyAuth *Npcf_PolicyAuthorization.APIClient
-	clientMtx        sync.RWMutex
+type npcfService struct {
+	consumer *Consumer
+
+	mu      sync.RWMutex
+	clients map[string]*Npcf_PolicyAuthorization.APIClient
 }
 
-const ServiceNpcfPolicyAuth string = "npcf-policyauthorization"
+func (s *npcfService) getClient(uri string) *Npcf_PolicyAuthorization.APIClient {
+	s.mu.RLock()
+	if client, ok := s.clients[uri]; ok {
+		defer s.mu.RUnlock()
+		return client
+	} else {
+		configuration := Npcf_PolicyAuthorization.NewConfiguration()
+		configuration.SetBasePath(uri)
+		cli := Npcf_PolicyAuthorization.NewAPIClient(configuration)
 
-func NewConsumerPCFService(nefCtx *context.NefContext,
-	nrfSrv *ConsumerNRFService) (*ConsumerPCFService, error) {
-	c := &ConsumerPCFService{cfg: nefCtx.Config(), nefCtx: nefCtx, nrfSrv: nrfSrv}
-	return c, nil
+		s.mu.RUnlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.clients[uri] = cli
+		return cli
+	}
 }
 
-func (c *ConsumerPCFService) initPolicyAuthAPIClient() error {
-	c.clientMtx.Lock()
-	defer c.clientMtx.Unlock()
-
-	if c.clientPolicyAuth != nil {
-		return nil
+func (s *npcfService) getPcfPolicyAuthUri() (string, error) {
+	uri := s.consumer.Context().PcfPaUri()
+	if uri == "" {
+		sUri, err := s.consumer.nnrfService.SearchPcfPolicyAuthUri()
+		if err == nil {
+			s.consumer.Context().SetPcfPaUri(sUri)
+		}
+		return sUri, err
 	}
-
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{ServiceNpcfPolicyAuth}),
-	}
-	uri, err := c.nrfSrv.SearchNFServiceUri("PCF", ServiceNpcfPolicyAuth, &param)
-	if err != nil {
-		logger.ConsumerLog.Errorf(err.Error())
-		return err
-	}
-	logger.ConsumerLog.Infof("initPolicyAuthAPIClient: uri[%s]", uri)
-
-	// TODO: Subscribe NRF to notify service URI change
-
-	paCfg := Npcf_PolicyAuthorization.NewConfiguration()
-	paCfg.SetBasePath(uri)
-	c.clientPolicyAuth = Npcf_PolicyAuthorization.NewAPIClient(paCfg)
-	return nil
+	return uri, nil
 }
 
-func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int, interface{}, string) {
+func (s *npcfService) PostAppSessions(asc *models.AppSessionContext) (int, interface{}, string) {
 	var (
 		err       error
 		rspCode   int
@@ -68,14 +58,13 @@ func (c *ConsumerPCFService) PostAppSessions(asc *models.AppSessionContext) (int
 		rsp       *http.Response
 	)
 
-	if err = c.initPolicyAuthAPIClient(); err != nil {
+	uri, err := s.getPcfPolicyAuthUri()
+	if err != nil {
 		return rspCode, rspBody, appSessID
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientPolicyAuth.ApplicationSessionsCollectionApi.PostAppSessions(ctx.Background(), *asc)
-	c.clientMtx.RUnlock()
-
+	result, rsp, err = client.ApplicationSessionsCollectionApi.PostAppSessions(ctx.TODO(), *asc)
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusCreated {

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	nefcontext "bitbucket.org/free5gc-team/nef/internal/context"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
@@ -46,16 +46,23 @@ func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
 	}
 }
 
-type Server struct {
-	nefCtx     *nefcontext.NefContext
-	cfg        *factory.Config
-	httpServer *http.Server
-	router     *gin.Engine
-	processor  *processor.Processor
+type nef interface {
+	Context() *nefctx.NefContext
+	Config() *factory.Config
+	Processor() *processor.Processor
 }
 
-func NewServer(nefCtx *nefcontext.NefContext, proc *processor.Processor, tlsKeyLogPath string) (*Server, error) {
-	s := &Server{cfg: nefCtx.Config(), nefCtx: nefCtx, processor: proc}
+type Server struct {
+	nef
+
+	httpServer *http.Server
+	router     *gin.Engine
+}
+
+func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
+	s := &Server{
+		nef: nef,
+	}
 
 	s.router = logger_util.NewGinWithLogrus(logger.GinLog)
 
@@ -87,7 +94,7 @@ func NewServer(nefCtx *nefcontext.NefContext, proc *processor.Processor, tlsKeyL
 		MaxAge:           CorsConfigMaxAge,
 	}))
 
-	bindAddr := s.cfg.SbiBindingAddr()
+	bindAddr := s.Config().SbiBindingAddr()
 	logger.SBILog.Infof("Binding addr: [%s]", bindAddr)
 	var err error
 	if s.httpServer, err = httpwrapper.NewHttp2Server(bindAddr, tlsKeyLogPath, s.router); err != nil {
@@ -126,12 +133,12 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 	logger.SBILog.Infof("Start SBI server (listen on %s)", s.httpServer.Addr)
 
 	var err error
-	scheme := s.cfg.SbiScheme()
+	scheme := s.Config().SbiScheme()
 	if scheme == "http" {
 		err = s.httpServer.ListenAndServe()
 	} else if scheme == "https" {
 		// TODO: use config file to config path
-		err = s.httpServer.ListenAndServeTLS(s.cfg.TLSPemPath(), s.cfg.TLSKeyPath())
+		err = s.httpServer.ListenAndServeTLS(s.Config().TLSPemPath(), s.Config().TLSKeyPath())
 	} else {
 		err = fmt.Errorf("No support this scheme[%s]", scheme)
 	}

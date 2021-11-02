@@ -3,32 +3,51 @@ package consumer
 import (
 	"net/http"
 
-	"bitbucket.org/free5gc-team/nef/internal/context"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
+	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
+	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
+	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
+	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-type Consumer struct {
-	NrfSrv *ConsumerNRFService
-	PcfSrv *ConsumerPCFService
-	UdrSrv *ConsumerUDRService
+type nef interface {
+	Context() *nefctx.NefContext
+	Config() *factory.Config
 }
 
-func NewConsumer(nefCtx *context.NefContext) (*Consumer, error) {
-	var err error
-	c := &Consumer{}
-	if c.NrfSrv, err = NewConsumerNRFService(nefCtx); err != nil {
-		return nil, err
-	}
-	if c.PcfSrv, err = NewConsumerPCFService(nefCtx, c.NrfSrv); err != nil {
-		return nil, err
-	}
-	if c.UdrSrv, err = NewConsumerUDRService(nefCtx, c.NrfSrv); err != nil {
-		return nil, err
-	}
-	c.NrfSrv.RegisterNFInstance()
+type Consumer struct {
+	nef
 
+	// consumer services
+	*nnrfService
+	*npcfService
+	*nudrService
+}
+
+func NewConsumer(nef nef) (*Consumer, error) {
+	c := &Consumer{
+		nef: nef,
+	}
+
+	c.nnrfService = &nnrfService{
+		consumer:        c,
+		nfDiscClients:   make(map[string]*Nnrf_NFDiscovery.APIClient),
+		nfMngmntClients: make(map[string]*Nnrf_NFManagement.APIClient),
+	}
+
+	c.npcfService = &npcfService{
+		consumer: c,
+		clients:  make(map[string]*Npcf_PolicyAuthorization.APIClient),
+	}
+
+	c.nudrService = &nudrService{
+		consumer: c,
+		clients:  make(map[string]*Nudr_DataRepository.APIClient),
+	}
 	return c, nil
 }
 

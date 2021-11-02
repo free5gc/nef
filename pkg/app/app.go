@@ -24,10 +24,10 @@ type NefApp struct {
 	wg        sync.WaitGroup
 	cfg       *factory.Config
 	nefCtx    *nefctx.NefContext
-	proc      *processor.Processor
-	sbiServer *sbi.Server
 	consumer  *consumer.Consumer
 	notifier  *notifier.Notifier
+	proc      *processor.Processor
+	sbiServer *sbi.Server
 }
 
 func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
@@ -35,22 +35,58 @@ func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
 	nef := &NefApp{cfg: cfg}
 
 	nef.setLogLevel()
-	if nef.nefCtx, err = nefctx.NewNefContext(nef.cfg); err != nil {
+	if nef.nefCtx, err = nefctx.NewNefContext(nef); err != nil {
 		return nil, err
 	}
-	if nef.consumer, err = consumer.NewConsumer(nef.nefCtx); err != nil {
+	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
 		return nil, err
 	}
 	if nef.notifier, err = notifier.NewNotifier(); err != nil {
 		return nil, err
 	}
-	if nef.proc, err = processor.NewProcessor(nef.nefCtx, nef.consumer, nef.notifier); err != nil {
+	if nef.proc, err = processor.NewProcessor(nef); err != nil {
 		return nil, err
 	}
-	if nef.sbiServer, err = sbi.NewServer(nef.nefCtx, nef.proc, tlsKeyLogPath); err != nil {
+	if nef.sbiServer, err = sbi.NewServer(nef, tlsKeyLogPath); err != nil {
 		return nil, err
 	}
 	return nef, nil
+}
+
+func (a *NefApp) Config() *factory.Config {
+	return a.cfg
+}
+
+func (a *NefApp) Context() *nefctx.NefContext {
+	return a.nefCtx
+}
+
+func (a *NefApp) Consumer() *consumer.Consumer {
+	return a.consumer
+}
+
+func (a *NefApp) Notifier() *notifier.Notifier {
+	return a.notifier
+}
+
+func (a *NefApp) Processor() *processor.Processor {
+	return a.proc
+}
+
+func (a *NefApp) SbiServer() *sbi.Server {
+	return a.sbiServer
+}
+
+func (a *NefApp) setLogLevel() {
+	cLogger := a.cfg.Logger
+	if cLogger == nil {
+		logger.InitLog.Warnln("NEF config without log level setting!!!")
+		return
+	}
+	if cLogger.NEF != nil {
+		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
+			logger.SetLogLevel, logger.SetReportCaller)
+	}
 }
 
 func setLoggerLogLevel(loggerName, DebugLevel string, reportCaller bool,
@@ -71,29 +107,21 @@ func setLoggerLogLevel(loggerName, DebugLevel string, reportCaller bool,
 	reportCallerFn(reportCaller)
 }
 
-func (n *NefApp) setLogLevel() {
-	cLogger := n.cfg.Logger
-	if cLogger == nil {
-		logger.InitLog.Warnln("NEF config without log level setting!!!")
-		return
-	}
-	if cLogger.NEF != nil {
-		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
-			logger.SetLogLevel, logger.SetReportCaller)
-	}
-}
-
-func (n *NefApp) Run() error {
+func (a *NefApp) Run() error {
 	var cancel context.CancelFunc
-	n.ctx, cancel = context.WithCancel(context.Background())
+	a.ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
 
-	n.wg.Add(1)
+	a.wg.Add(1)
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */
-	go n.listenShutdownEvent()
+	go a.listenShutdownEvent()
 
-	if err := n.sbiServer.Run(n.ctx, &n.wg); err != nil {
+	if err := a.sbiServer.Run(a.ctx, &a.wg); err != nil {
+		return err
+	}
+
+	if err := a.consumer.RegisterNFInstance(); err != nil {
 		return err
 	}
 
@@ -106,36 +134,36 @@ func (n *NefApp) Run() error {
 	logger.MainLog.Infof("Shutdown NEF ...")
 	// Notify each goroutine and wait them stopped
 	cancel()
-	n.WaitRoutineStopped()
+	a.WaitRoutineStopped()
 	logger.MainLog.Infof("NEF exited")
 	return nil
 }
 
-func (n *NefApp) listenShutdownEvent() {
+func (a *NefApp) listenShutdownEvent() {
 	defer func() {
 		if p := recover(); p != nil {
 			// Print stack for panic to log. Fatalf() will let program exit.
 			logger.InitLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
 		}
 
-		n.wg.Done()
+		a.wg.Done()
 	}()
 
-	<-n.ctx.Done()
-	n.sbiServer.Stop(n.ctx, &n.wg)
+	<-a.ctx.Done()
+	a.sbiServer.Stop(a.ctx, &a.wg)
 }
 
-func (n *NefApp) WaitRoutineStopped() {
-	n.wg.Wait()
+func (a *NefApp) WaitRoutineStopped() {
+	a.wg.Wait()
 }
 
-func (n *NefApp) Start() {
-	if err := n.Run(); err != nil {
+func (a *NefApp) Start() {
+	if err := a.Run(); err != nil {
 		logger.MainLog.Errorf("NEF Run err: %v", err)
 	}
 }
 
-func (n *NefApp) Terminate() {
+func (a *NefApp) Terminate() {
 	logger.MainLog.Infof("Terminating NEF...")
 	logger.MainLog.Infof("NEF terminated")
 }

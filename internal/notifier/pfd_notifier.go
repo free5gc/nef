@@ -128,7 +128,7 @@ func (nc *PfdNotifyContext) FlushNotifications() {
 			}()
 
 			_, _, err := nc.notifier.clientPfdManagement.NotificationApi.NotificationPost(
-				context.Background(), nc.notifier.getSubURI(id), pfdChangeNotifications)
+				context.TODO(), nc.notifier.getSubURI(id), pfdChangeNotifications)
 			if err != nil {
 				logger.PFDManageLog.Fatal(err)
 			}

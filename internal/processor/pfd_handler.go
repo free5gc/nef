@@ -23,7 +23,7 @@ const (
 func (p *Processor) GetPFDManagementTransactions(scsAsID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("GetPFDManagementTransactions - scsAsID[%s]", scsAsID)
 
-	afCtx := p.nefCtx.GetAfCtx(scsAsID)
+	afCtx := p.Context().GetAfCtx(scsAsID)
 	if afCtx == nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
@@ -45,7 +45,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 
 	// TODO: Authorize the AF
 
-	if problemDetails := validatePfdManagement(scsAsID, "-1", pfdMng, p.nefCtx); problemDetails != nil {
+	if problemDetails := validatePfdManagement(scsAsID, "-1", pfdMng, p.Context()); problemDetails != nil {
 		if problemDetails.Status == http.StatusInternalServerError {
 			return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
 		} else {
@@ -53,13 +53,13 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 		}
 	}
 
-	afCtx := p.nefCtx.GetAfCtx(scsAsID)
+	afCtx := p.Context().GetAfCtx(scsAsID)
 	if afCtx == nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
-	afTrans := p.nefCtx.NewAfPfdTrans(afCtx)
+	afTrans := p.Context().NewAfPfdTrans(afCtx)
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	for appID, pfdData := range pfdMng.PfdDatas {
@@ -69,7 +69,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, pfdReport)
 		} else {
-			pfdData.Self = genPfdDataURI(p.cfg.SbiUri(), scsAsID, afTrans.GetTransID(), appID)
+			pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, afTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
 			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
@@ -84,9 +84,9 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 	}
 
 	afCtx.AddPfdTrans(afTrans)
-	p.nefCtx.AddAfCtx(afCtx)
+	p.Context().AddAfCtx(afCtx)
 
-	pfdMng.Self = genPfdManagementURI(p.cfg.SbiUri(), scsAsID, afTrans.GetTransID())
+	pfdMng.Self = genPfdManagementURI(p.Config().SbiUri(), scsAsID, afTrans.GetTransID())
 
 	return &HandlerResponse{http.StatusCreated, nil, pfdMng}
 }
@@ -94,12 +94,12 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("DeletePFDManagementTransactions - scsAsID[%s]", scsAsID)
 
-	afCtx := p.nefCtx.GetAfCtx(scsAsID)
+	afCtx := p.Context().GetAfCtx(scsAsID)
 	if afCtx == nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(DetailNoAF)}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	for _, afPfdTrans := range afCtx.GetAllPfdTrans() {
@@ -123,7 +123,7 @@ func (p *Processor) DeletePFDManagementTransactions(scsAsID string) *HandlerResp
 func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("GetIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
 
-	_, afPfdTrans, err := p.nefCtx.GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
+	_, afPfdTrans, err := p.Context().GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
 	if err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
@@ -142,7 +142,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 
 	// TODO: Authorize the AF
 
-	if problemDetails := validatePfdManagement(scsAsID, transID, pfdMng, p.nefCtx); problemDetails != nil {
+	if problemDetails := validatePfdManagement(scsAsID, transID, pfdMng, p.Context()); problemDetails != nil {
 		if problemDetails.Status == http.StatusInternalServerError {
 			return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
 		} else {
@@ -150,12 +150,12 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		}
 	}
 
-	_, afPfdTrans, err := p.nefCtx.GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
+	_, afPfdTrans, err := p.Context().GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
 	if err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	// Delete PfdDataForApps in UDR with appID absent in new PfdManagement
@@ -183,7 +183,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, pfdReport)
 		} else {
-			pfdData.Self = genPfdDataURI(p.cfg.SbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
+			pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
 			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
@@ -197,7 +197,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
 	}
 
-	pfdMng.Self = genPfdManagementURI(p.cfg.SbiUri(), scsAsID, afPfdTrans.GetTransID())
+	pfdMng.Self = genPfdManagementURI(p.Config().SbiUri(), scsAsID, afPfdTrans.GetTransID())
 
 	return &HandlerResponse{http.StatusOK, nil, pfdMng}
 }
@@ -205,12 +205,12 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 func (p *Processor) DeleteIndividualPFDManagementTransaction(scsAsID, transID string) *HandlerResponse {
 	logger.PFDManageLog.Infof("DeleteIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
 
-	afCtx, afPfdTrans, err := p.nefCtx.GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
+	afCtx, afPfdTrans, err := p.Context().GetAfCtxAndPfdTransWithTransID(scsAsID, transID)
 	if err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	for _, extAppID := range afPfdTrans.GetExtAppIDs() {
@@ -233,17 +233,17 @@ func (p *Processor) GetIndividualApplicationPFDManagement(scsAsID, transID, appI
 	logger.PFDManageLog.Infof("GetIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
-	_, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID)
+	_, err := p.Context().GetPfdTransWithAppID(scsAsID, transID, appID)
 	if err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
+	rspCode, rspBody := p.Consumer().AppDataPfdsAppIdGet(appID)
 	if rspCode != http.StatusOK {
 		return &HandlerResponse{rspCode, nil, rspBody}
 	}
 	pfdData := convertPfdDataForAppToPfdData(rspBody.(*models.PfdDataForApp))
-	pfdData.Self = genPfdDataURI(p.cfg.SbiUri(), scsAsID, transID, appID)
+	pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
 
 	return &HandlerResponse{http.StatusOK, nil, pfdData}
 }
@@ -252,12 +252,12 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 	logger.PFDManageLog.Infof("DeleteIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
-	afPfdTrans, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID)
+	afPfdTrans, err := p.Context().GetPfdTransWithAppID(scsAsID, transID, appID)
 	if err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	if rsp := p.deletePfdDataFromUDR(appID); rsp != nil {
@@ -283,22 +283,22 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 
 	// TODO: Authorize the AF
 
-	if _, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID); err != nil {
+	if _, err := p.Context().GetPfdTransWithAppID(scsAsID, transID, appID); err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	if problemDetails := validatePfdData(pfdData, p.nefCtx, false); problemDetails != nil {
+	if problemDetails := validatePfdData(pfdData, p.Context(), false); problemDetails != nil {
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
 	pfdDataForApp := convertPfdDataToPfdDataForApp(pfdData)
 	if pfdReport := p.storePfdDataToUDR(appID, pfdDataForApp); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
-	pfdData.Self = genPfdDataURI(p.cfg.SbiUri(), scsAsID, transID, appID)
+	pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
 	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
@@ -314,18 +314,18 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 
 	// TODO: Authorize the AF
 
-	if _, err := p.nefCtx.GetPfdTransWithAppID(scsAsID, transID, appID); err != nil {
+	if _, err := p.Context().GetPfdTransWithAppID(scsAsID, transID, appID); err != nil {
 		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
-	if problemDetails := validatePfdData(pfdData, p.nefCtx, true); problemDetails != nil {
+	if problemDetails := validatePfdData(pfdData, p.Context(), true); problemDetails != nil {
 		return &HandlerResponse{int(problemDetails.Status), nil, problemDetails}
 	}
 
-	pfdNotifyContext := p.notifier.PfdChangeNotifier.NewPfdNotifyContext()
+	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
+	rspCode, rspBody := p.Consumer().AppDataPfdsAppIdGet(appID)
 	if rspCode != http.StatusOK {
 		return &HandlerResponse{rspCode, nil, rspBody}
 	}
@@ -339,7 +339,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 	if pfdReport := p.storePfdDataToUDR(appID, pfdDataForApp); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
-	oldPfdData.Self = genPfdDataURI(p.cfg.SbiUri(), scsAsID, transID, appID)
+	oldPfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
 	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
@@ -353,24 +353,24 @@ func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTra
 	transID := afPfdTrans.GetTransID()
 	appIDs := afPfdTrans.GetExtAppIDs()
 	pfdMng := &models.PfdManagement{
-		Self:     genPfdManagementURI(p.cfg.SbiUri(), afID, transID),
+		Self:     genPfdManagementURI(p.Config().SbiUri(), afID, transID),
 		PfdDatas: make(map[string]models.PfdData, len(appIDs)),
 	}
 
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(appIDs)
+	rspCode, rspBody := p.Consumer().AppDataPfdsGet(appIDs)
 	if rspCode != http.StatusOK {
 		return nil, &HandlerResponse{rspCode, nil, rspBody}
 	}
 	for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
 		pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
-		pfdData.Self = genPfdDataURI(p.cfg.SbiUri(), afID, transID, pfdData.ExternalAppId)
+		pfdData.Self = genPfdDataURI(p.Config().SbiUri(), afID, transID, pfdData.ExternalAppId)
 		pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
 	}
 	return pfdMng, nil
 }
 
 func (p *Processor) storePfdDataToUDR(appID string, pfdDataForApp *models.PfdDataForApp) *models.PfdReport {
-	rspCode, _ := p.consumer.UdrSrv.AppDataPfdsAppIdPut(appID, pfdDataForApp)
+	rspCode, _ := p.Consumer().AppDataPfdsAppIdPut(appID, pfdDataForApp)
 	if rspCode != http.StatusCreated && rspCode != http.StatusOK {
 		return &models.PfdReport{
 			ExternalAppIds: []string{appID},
@@ -381,7 +381,7 @@ func (p *Processor) storePfdDataToUDR(appID string, pfdDataForApp *models.PfdDat
 }
 
 func (p *Processor) deletePfdDataFromUDR(appID string) *HandlerResponse {
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdDelete(appID)
+	rspCode, rspBody := p.Consumer().AppDataPfdsAppIdDelete(appID)
 	if rspCode != http.StatusNoContent {
 		return &HandlerResponse{rspCode, nil, rspBody}
 	}

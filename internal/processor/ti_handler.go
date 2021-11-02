@@ -27,8 +27,8 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		return rsp
 	}
 
-	afCtx := p.nefCtx.NewAfCtx(afID)
-	afSubsc := p.nefCtx.NewAfSubsc(afCtx)
+	afCtx := p.Context().NewAfCtx(afID)
+	afSubsc := p.Context().NewAfSubsc(afCtx)
 	if len(tiSub.Gpsi) > 0 || len(tiSub.Ipv4Addr) > 0 || len(tiSub.Ipv6Addr) > 0 {
 		// Single UE, sent to PCF
 		rsp = p.pcfPostAppSessions(afSubsc, tiSub)
@@ -46,11 +46,11 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	}
 
 	if rsp.Status >= http.StatusOK && rsp.Status <= http.StatusAlreadyReported {
-		p.nefCtx.AddAfCtx(afCtx)
+		p.Context().AddAfCtx(afCtx)
 		afCtx.AddSubsc(afSubsc)
 
 		// Create Location URI
-		locUri := p.cfg.SbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
+		locUri := p.Config().SbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
 		rsp.Headers = map[string][]string{
 			"Location": {locUri},
@@ -100,7 +100,7 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 		},
 	}
 
-	rspCode, rspBody, appSessID := p.consumer.PcfSrv.PostAppSessions(&asc)
+	rspCode, rspBody, appSessID := p.Consumer().PostAppSessions(&asc)
 	if rspCode == http.StatusCreated {
 		afSubsc.SetAppSessID(appSessID)
 		return &HandlerResponse{rspCode, nil, nil}

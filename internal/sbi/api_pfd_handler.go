@@ -1,7 +1,7 @@
 package sbi
 
 import (
-	"strings"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -11,52 +11,52 @@ import (
 func (s *Server) getPFDManagementEndpoints() []Endpoint {
 	return []Endpoint{
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiGetPFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Post"),
+			Method:  http.MethodPost,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiPostPFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiDeletePFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiGetIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Put"),
+			Method:  http.MethodPut,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiPutIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiDeleteIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiGetIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiDeleteIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Put"),
+			Method:  http.MethodPut,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiPutIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Patch"),
+			Method:  http.MethodPatch,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiPatchIndividualApplicationPFDManagement,
 		},
@@ -64,7 +64,7 @@ func (s *Server) getPFDManagementEndpoints() []Endpoint {
 }
 
 func (s *Server) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetPFDManagementTransactions(
+	hdlRsp := s.Processor().GetPFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -76,21 +76,21 @@ func (s *Server) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 		return
 	}
 
-	hdlRsp := s.processor.PostPFDManagementTransactions(
+	hdlRsp := s.Processor().PostPFDManagementTransactions(
 		ginCtx.Param("scsAsID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeletePFDManagementTransactions(
+	hdlRsp := s.Processor().DeletePFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetIndividualPFDManagementTransaction(
+	hdlRsp := s.Processor().GetIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -102,28 +102,28 @@ func (s *Server) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 		return
 	}
 
-	hdlRsp := s.processor.PutIndividualPFDManagementTransaction(
+	hdlRsp := s.Processor().PutIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeleteIndividualPFDManagementTransaction(
+	hdlRsp := s.Processor().DeleteIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().GetIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeleteIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().DeleteIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -135,7 +135,7 @@ func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 		return
 	}
 
-	hdlRsp := s.processor.PutIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().PutIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -147,7 +147,7 @@ func (s *Server) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context)
 		return
 	}
 
-	hdlRsp := s.processor.PatchIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().PatchIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)

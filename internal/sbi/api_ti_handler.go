@@ -1,7 +1,7 @@
 package sbi
 
 import (
-	"strings"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -11,32 +11,32 @@ import (
 func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
 	return []Endpoint{
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:afID/subscriptions",
 			APIFunc: s.apiGetTrafficInfluenceSubscription,
 		},
 		{
-			Method:  strings.ToUpper("Post"),
+			Method:  http.MethodPost,
 			Pattern: "/:afID/subscriptions",
 			APIFunc: s.apiPostTrafficInfluenceSubscription,
 		},
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:afID/subscriptions/:subscID",
 			APIFunc: s.apiGetIndividualTrafficInfluenceSubscription,
 		},
 		{
-			Method:  strings.ToUpper("Put"),
+			Method:  http.MethodPut,
 			Pattern: "/:afID/subscriptions/:subscID",
 			APIFunc: s.apiPutIndividualTrafficInfluenceSubscription,
 		},
 		{
-			Method:  strings.ToUpper("Patch"),
+			Method:  http.MethodPatch,
 			Pattern: "/:afID/subscriptions/:subscID",
 			APIFunc: s.apiPatchIndividualTrafficInfluenceSubscription,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:afID/subscriptions/:subscID",
 			APIFunc: s.apiDeleteIndividualTrafficInfluenceSubscription,
 		},
@@ -44,7 +44,7 @@ func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
 }
 
 func (s *Server) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().GetTrafficInfluenceSubscription(
 		ginCtx.Param("afID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -56,14 +56,14 @@ func (s *Server) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
 		return
 	}
 
-	hdlRsp := s.processor.PostTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().PostTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), &tiSub)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetIndividualTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().GetIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -75,7 +75,7 @@ func (s *Server) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Contex
 		return
 	}
 
-	hdlRsp := s.processor.PutIndividualTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().PutIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSub)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
@@ -87,14 +87,14 @@ func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Cont
 		return
 	}
 
-	hdlRsp := s.processor.PatchIndividualTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().PatchIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSubPatch)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
 func (s *Server) apiDeleteIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeleteIndividualTrafficInfluenceSubscription(
+	hdlRsp := s.Processor().DeleteIndividualTrafficInfluenceSubscription(
 		ginCtx.Param("afID"), ginCtx.Param("subscID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)

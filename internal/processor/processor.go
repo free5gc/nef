@@ -7,11 +7,15 @@ import (
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
+type nef interface {
+	Context() *nefctx.NefContext
+	Config() *factory.Config
+	Consumer() *consumer.Consumer
+	Notifier() *notifier.Notifier
+}
+
 type Processor struct {
-	cfg      *factory.Config
-	nefCtx   *nefctx.NefContext
-	consumer *consumer.Consumer
-	notifier *notifier.Notifier
+	nef
 }
 
 type HandlerResponse struct {
@@ -20,9 +24,10 @@ type HandlerResponse struct {
 	Body    interface{}
 }
 
-func NewProcessor(nefCtx *nefctx.NefContext, consumer *consumer.Consumer,
-	notifier *notifier.Notifier) (*Processor, error) {
-	handler := &Processor{cfg: nefCtx.Config(), nefCtx: nefCtx, consumer: consumer, notifier: notifier}
+func NewProcessor(nef nef) (*Processor, error) {
+	handler := &Processor{
+		nef: nef,
+	}
 
 	return handler, nil
 }
