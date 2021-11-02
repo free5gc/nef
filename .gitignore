@@ -5,6 +5,8 @@
 .vscode/
 # Build
 build/
+vendor/
+log/
 # emacs/vim
 GPATH
 GRTAGS

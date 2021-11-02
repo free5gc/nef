@@ -7,58 +7,48 @@ import (
 
 	"github.com/antihax/optional"
 
-	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-type ConsumerUDRService struct {
-	cfg            *factory.Config
-	nefCtx         *context.NefContext
-	nrfSrv         *ConsumerNRFService
-	clientDataRepo *Nudr_DataRepository.APIClient
-	clientMtx      sync.RWMutex
+type nudrService struct {
+	consumer *Consumer
+
+	mu      sync.RWMutex
+	clients map[string]*Nudr_DataRepository.APIClient
 }
 
-const ServiceName_NUDR_DR string = "nudr-dr"
+func (s *nudrService) getClient(uri string) *Nudr_DataRepository.APIClient {
+	s.mu.RLock()
+	if client, ok := s.clients[uri]; ok {
+		defer s.mu.RUnlock()
+		return client
+	} else {
+		configuration := Nudr_DataRepository.NewConfiguration()
+		configuration.SetBasePath(uri)
+		cli := Nudr_DataRepository.NewAPIClient(configuration)
 
-func NewConsumerUDRService(nefCfg *factory.Config, nefCtx *context.NefContext,
-	nrfSrv *ConsumerNRFService) *ConsumerUDRService {
-
-	c := &ConsumerUDRService{cfg: nefCfg, nefCtx: nefCtx, nrfSrv: nrfSrv}
-	return c
+		s.mu.RUnlock()
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.clients[uri] = cli
+		return cli
+	}
 }
 
-func (c *ConsumerUDRService) initDataRepoAPIClient() error {
-	c.clientMtx.Lock()
-	defer c.clientMtx.Unlock()
-
-	if c.clientDataRepo != nil {
-		return nil
+func (s *nudrService) getUdrDrUri() (string, error) {
+	uri := s.consumer.Context().UdrDrUri()
+	if uri == "" {
+		sUri, err := s.consumer.nnrfService.SearchUdrDrUri()
+		if err == nil {
+			s.consumer.Context().SetUdrDrUri(sUri)
+		}
+		return sUri, err
 	}
-
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{ServiceName_NUDR_DR}),
-	}
-	uri, err := c.nrfSrv.SearchNFServiceUri("UDR", ServiceName_NUDR_DR, &param)
-	if err != nil {
-		return err
-	}
-	logger.ConsumerLog.Infof("initDataRepoAPIClient: uri[%s]", uri)
-
-	//TODO: Subscribe NRF to notify service URI change
-
-	drCfg := Nudr_DataRepository.NewConfiguration()
-	drCfg.SetBasePath(uri)
-	c.clientDataRepo = Nudr_DataRepository.NewAPIClient(drCfg)
-
-	return nil
+	return uri, nil
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataGet(influenceIDs []string) (int, interface{}) {
+func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -67,18 +57,18 @@ func (c *ConsumerUDRService) AppDataInfluenceDataGet(influenceIDs []string) (int
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
 	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
 		InfluenceIds: optional.NewInterface(influenceIDs),
 	}
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.
+	result, rsp, err = client.DefaultApi.
 		ApplicationDataInfluenceDataGet(ctx.Background(), param)
-	c.clientMtx.RUnlock()
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -88,14 +78,14 @@ func (c *ConsumerUDRService) AppDataInfluenceDataGet(influenceIDs []string) (int
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
 	return rspCode, rspBody
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataIdGet(influenceID string) (int, interface{}) {
+func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -104,18 +94,18 @@ func (c *ConsumerUDRService) AppDataInfluenceDataIdGet(influenceID string) (int,
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
 	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
 		InfluenceIds: optional.NewInterface(influenceID),
 	}
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.
+	result, rsp, err = client.DefaultApi.
 		ApplicationDataInfluenceDataGet(ctx.Background(), param)
-	c.clientMtx.RUnlock()
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -125,14 +115,14 @@ func (c *ConsumerUDRService) AppDataInfluenceDataIdGet(influenceID string) (int,
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
 	return rspCode, rspBody
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
+func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 	tiData *models.TrafficInfluData) (int, interface{}) {
 	var (
 		err     error
@@ -141,24 +131,25 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
 		result  models.TrafficInfluData
 		rsp     *http.Response
 	)
-	if err = c.initDataRepoAPIClient(); err != nil {
+
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.
-		ApplicationDataInfluenceDataInfluenceIdPut(ctx.Background(), influenceID, *tiData)
-	c.clientMtx.RUnlock()
+	result, rsp, err = client.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdPut(ctx.TODO(), influenceID, *tiData)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
-		if rsp.StatusCode == http.StatusCreated { //TODO: check more status codes
+		if rsp.StatusCode == http.StatusCreated { // TODO: check more status codes
 			rspBody = &result
 		} else if err != nil {
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -166,7 +157,7 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPut(influenceID string,
 }
 
 // TS 29.519 v15.3.0 6.2.3.3.1
-func (c *ConsumerUDRService) AppDataPfdsGet(appID []string) (int, interface{}) {
+func (s *nudrService) AppDataPfdsGet(appID []string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -175,17 +166,17 @@ func (c *ConsumerUDRService) AppDataPfdsGet(appID []string) (int, interface{}) {
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
 	param := &Nudr_DataRepository.ApplicationDataPfdsGetParamOpts{
 		AppId: optional.NewInterface(appID),
 	}
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsGet(ctx.Background(), param)
-	c.clientMtx.RUnlock()
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(ctx.TODO(), param)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -195,7 +186,7 @@ func (c *ConsumerUDRService) AppDataPfdsGet(appID []string) (int, interface{}) {
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -203,7 +194,7 @@ func (c *ConsumerUDRService) AppDataPfdsGet(appID []string) (int, interface{}) {
 }
 
 // TS 29.519 v15.3.0 6.2.4.3.3
-func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.PfdDataForApp) (int, interface{}) {
+func (s *nudrService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.PfdDataForApp) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -212,13 +203,13 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *mo
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsAppIdPut(ctx.Background(), appID, *pfdDataForApp)
-	c.clientMtx.RUnlock()
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(ctx.TODO(), appID, *pfdDataForApp)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -228,7 +219,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *mo
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -236,7 +227,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *mo
 }
 
 // TS 29.519 v15.3.0 6.2.4.3.2
-func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
+func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -244,13 +235,13 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interfac
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsAppIdDelete(ctx.Background(), appID)
-	c.clientMtx.RUnlock()
+	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(ctx.TODO(), appID)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -258,7 +249,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interfac
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
@@ -266,7 +257,7 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdDelete(appID string) (int, interfac
 }
 
 // TS 29.519 v15.3.0 6.2.4.3.1
-func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
+func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -275,13 +266,13 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.ApplicationDataPfdsAppIdGet(ctx.Background(), appID)
-	c.clientMtx.RUnlock()
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(ctx.TODO(), appID)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -291,14 +282,15 @@ func (c *ConsumerUDRService) AppDataPfdsAppIdGet(appID string) (int, interface{}
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
 	return rspCode, rspBody
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataPatch(influenceID string, tiSubPatch *models.TrafficInfluDataPatch) (int, interface{}) {
+func (s *nudrService) AppDataInfluenceDataPatch(
+	influenceID string, tiSubPatch *models.TrafficInfluDataPatch) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -307,14 +299,14 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPatch(influenceID string, tiSub
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	result, rsp, err = c.clientDataRepo.DefaultApi.
+	result, rsp, err = client.DefaultApi.
 		ApplicationDataInfluenceDataInfluenceIdPatch(ctx.Background(), influenceID, *tiSubPatch)
-	c.clientMtx.RUnlock()
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -324,14 +316,14 @@ func (c *ConsumerUDRService) AppDataInfluenceDataPatch(influenceID string, tiSub
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 
 	return rspCode, rspBody
 }
 
-func (c *ConsumerUDRService) AppDataInfluenceDataDelete(influenceID string) (int, interface{}) {
+func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -339,14 +331,14 @@ func (c *ConsumerUDRService) AppDataInfluenceDataDelete(influenceID string) (int
 		rsp     *http.Response
 	)
 
-	if err = c.initDataRepoAPIClient(); err != nil {
+	uri, err := s.getUdrDrUri()
+	if err != nil {
 		return rspCode, rspBody
 	}
+	client := s.getClient(uri)
 
-	c.clientMtx.RLock()
-	rsp, err = c.clientDataRepo.DefaultApi.
+	rsp, err = client.DefaultApi.
 		ApplicationDataInfluenceDataInfluenceIdDelete(ctx.Background(), influenceID)
-	c.clientMtx.RUnlock()
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -356,7 +348,7 @@ func (c *ConsumerUDRService) AppDataInfluenceDataDelete(influenceID string) (int
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
 	} else {
-		//API Service Internal Error or Server No Response
+		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
 	}
 

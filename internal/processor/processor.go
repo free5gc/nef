@@ -2,16 +2,20 @@ package processor
 
 import (
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
+type nef interface {
+	Context() *nefctx.NefContext
+	Config() *factory.Config
+	Consumer() *consumer.Consumer
+	Notifier() *notifier.Notifier
+}
+
 type Processor struct {
-	cfg      *factory.Config
-	nefCtx   *context.NefContext
-	consumer *consumer.Consumer
-	notifier *notifier.Notifier
+	nef
 }
 
 type HandlerResponse struct {
@@ -20,10 +24,19 @@ type HandlerResponse struct {
 	Body    interface{}
 }
 
-func NewProcessor(nefCfg *factory.Config, nefCtx *context.NefContext, consumer *consumer.Consumer,
-	notifier *notifier.Notifier) *Processor {
+func NewProcessor(nef nef) (*Processor, error) {
+	handler := &Processor{
+		nef: nef,
+	}
 
-	handler := &Processor{cfg: nefCfg, nefCtx: nefCtx, consumer: consumer, notifier: notifier}
+	return handler, nil
+}
 
-	return handler
+func addLocationheader(header map[string][]string, location string) {
+	locations := header["Location"]
+	if locations == nil {
+		header["Location"] = []string{location}
+	} else {
+		header["Location"] = append(locations, location)
+	}
 }

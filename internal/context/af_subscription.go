@@ -6,8 +6,8 @@ import (
 
 type AfSubscription struct {
 	subscID            string
-	appSessID          string //use in single UE case
-	influID            string //use in multiple UE case
+	appSessID          string // use in single UE case
+	influID            string // use in multiple UE case
 	notifCorreID       string
 	notificationURI    string
 	isIndividualUEAddr bool // false in UDR, true in PCF
@@ -56,7 +56,7 @@ func (s *AfSubscription) GetInfluenceID() string {
 	return s.influID
 }
 
-func (s *AfSubscription) GetIsIndividualUEAddr() bool {
+func (s *AfSubscription) IsIndividualUEAddr() bool {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
 	return s.isIndividualUEAddr

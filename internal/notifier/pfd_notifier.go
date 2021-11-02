@@ -3,6 +3,7 @@ package notifier
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -26,11 +27,11 @@ type PfdNotifyContext struct {
 	subIdToChangedAppIDs map[string][]string
 }
 
-func NewPfdChangeNotifier() *PfdChangeNotifier {
+func NewPfdChangeNotifier() (*PfdChangeNotifier, error) {
 	return &PfdChangeNotifier{
 		appIdToSubIDs: make(map[string]map[string]bool),
 		subIdToURI:    make(map[string]string),
-	}
+	}, nil
 }
 
 func (n *PfdChangeNotifier) initPfdManagementApiClient() {
@@ -119,8 +120,15 @@ func (nc *PfdNotifyContext) FlushNotifications() {
 		}
 
 		go func(id string) {
+			defer func() {
+				if p := recover(); p != nil {
+					// Print stack for panic to log. Fatalf() will let program exit.
+					logger.PFDManageLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
+				}
+			}()
+
 			_, _, err := nc.notifier.clientPfdManagement.NotificationApi.NotificationPost(
-				context.Background(), nc.notifier.getSubURI(id), pfdChangeNotifications)
+				context.TODO(), nc.notifier.getSubURI(id), pfdChangeNotifications)
 			if err != nil {
 				logger.PFDManageLog.Fatal(err)
 			}

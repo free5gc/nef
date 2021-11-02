@@ -7,9 +7,9 @@ import (
 	"github.com/google/uuid"
 
 	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -22,14 +22,14 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 		subInUDR  []string
 	)
 
-	afCtx := p.nefCtx.GetAfCtx(afID)
+	afCtx := p.Context().GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
 	for _, subsc := range afCtx.GetAllSubsc() {
-		if subsc.GetIsIndividualUEAddr() == true {
+		if subsc.IsIndividualUEAddr() {
 			subInPCF = append(subInPCF, subsc.GetAppSessID())
 		} else {
 			subInUDR = append(subInUDR, subsc.GetInfluenceID())
@@ -38,18 +38,18 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 
 	if len(subInPCF) > 0 {
 		for _, appSessID := range subInPCF {
-			rspCode, rspBody := p.consumer.PcfSrv.GetAppSession(appSessID)
+			rspCode, rspBody := p.Consumer().GetAppSession(appSessID)
 			if rspCode != http.StatusOK {
 				return &HandlerResponse{rspCode, nil, rspBody}
 			}
 			tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
 			// Not Complete: Need to advise the Self IE
-			tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, appSessID)
+			tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, appSessID)
 			tiSubList = append(tiSubList, *tiSub)
 		}
 	}
 	if len(subInUDR) > 0 {
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataGet(subInUDR)
+		rspCode, rspBody := p.Consumer().AppDataInfluenceDataGet(subInUDR)
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
@@ -57,7 +57,7 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 		for _, tiData := range *rspBody.(*[]models.TrafficInfluData) {
 			tiSub := convertTrafficInfluDataToTrafficInfluSub(&tiData)
 			// Not Complete: Need to advise the Self IE
-			tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, "0")
+			tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, "0")
 			tiSubList = append(tiSubList, *tiSub)
 		}
 	}
@@ -67,7 +67,6 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	tiSub *models.TrafficInfluSub) *HandlerResponse {
-
 	var rsp *HandlerResponse
 	logger.TrafInfluLog.Infof("PostTrafficInfluenceSubscription - afID[%s]", afID)
 
@@ -76,24 +75,24 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		return rsp
 	}
 
-	afCtx := p.nefCtx.NewAfCtx(afID)
-	afSubsc := p.nefCtx.NewAfSubsc(afCtx)
+	afCtx := p.Context().NewAfCtx(afID)
+	afSubsc := p.Context().NewAfSubsc(afCtx)
 	if len(tiSub.Gpsi) > 0 || len(tiSub.Ipv4Addr) > 0 || len(tiSub.Ipv6Addr) > 0 {
-		//Single UE, sent to PCF
+		// Single UE, sent to PCF
 		rsp = p.pcfPostAppSessions(afSubsc, tiSub)
 	} else if len(tiSub.ExternalGroupId) > 0 || tiSub.AnyUeInd {
-		//Group or any UE, sent to UDR
+		// Group or any UE, sent to UDR
 		influenceID := uuid.New().String()
 		afSubsc.SetInfluenceID(influenceID)
 		tiData := convertTrafficInfluSubToTrafficInfluData(tiSub)
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataPut(influenceID, tiData)
+		rspCode, rspBody := p.Consumer().AppDataInfluenceDataPut(influenceID, tiData)
 		rsp = &HandlerResponse{
 			Status: rspCode,
 			Body:   rspBody,
 		}
 	} else {
-		//Invalid case. Return Error
-		pd := util.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
+		// Invalid case. Return Error
+		pd := openapi.ProblemDetailsMalformedReqSyntax("Not individual UE case, nor group case")
 		rsp = &HandlerResponse{
 			Status: int(pd.Status),
 			Body:   pd,
@@ -101,11 +100,12 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 	}
 
 	if rsp.Status >= http.StatusOK && rsp.Status <= http.StatusAlreadyReported {
-		p.nefCtx.AddAfCtx(afCtx)
+		p.Context().AddAfCtx(afCtx)
 		afCtx.AddSubsc(afSubsc)
 
-		//Create Location URI
-		locUri := genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, afSubsc.GetSubscID())
+		// Create Location URI
+		locUri := p.Config().SbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
+			"/subscriptions/" + afSubsc.GetSubscID()
 		tiSub.Self = locUri
 		rsp.Headers = map[string][]string{
 			"Location": {locUri},
@@ -117,36 +117,35 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 
-	afCtx := p.nefCtx.GetAfCtx(afID)
+	afCtx := p.Context().GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
 	subsc := afCtx.GetSubsc(subscID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target subscription is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	if subsc.GetIsIndividualUEAddr() {
-		rspCode, rspBody := p.consumer.PcfSrv.GetAppSession(subsc.GetAppSessID())
+	if subsc.IsIndividualUEAddr() {
+		rspCode, rspBody := p.Consumer().GetAppSession(subsc.GetAppSessID())
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
-		tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, subscID)
+		tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, subscID)
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	} else {
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataIdGet(subsc.GetInfluenceID())
+		rspCode, rspBody := p.Consumer().AppDataInfluenceDataIdGet(subsc.GetInfluenceID())
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		tiSub := convertTrafficInfluDataToTrafficInfluSub(rspBody.(*models.TrafficInfluData))
-		tiSub.Self = genTrafficInfluSubURI(p.cfg.GetSbiUri(), afID, subscID)
+		tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, subscID)
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	}
-
 }
 
 func (p *Processor) PutIndividualTrafficInfluenceSubscription(afID, subscID string,
@@ -159,21 +158,21 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID st
 	tiSubPatch *models.TrafficInfluSubPatch) *HandlerResponse {
 	logger.TrafInfluLog.Infof("PatchIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 
-	afCtx := p.nefCtx.GetAfCtx(afID)
+	afCtx := p.Context().GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
 	subsc := afCtx.GetSubsc(subscID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target subscription is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	if subsc.GetIsIndividualUEAddr() {
+	if subsc.IsIndividualUEAddr() {
 		ascUpdateData := convertTrafficInfluSubPatchToAppSessionContextUpdateData(tiSubPatch)
-		rspCode, rspBody := p.consumer.PcfSrv.PatchAppSession(subsc.GetAppSessID(), ascUpdateData)
+		rspCode, rspBody := p.Consumer().PatchAppSession(subsc.GetAppSessID(), ascUpdateData)
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
@@ -181,40 +180,39 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID st
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	} else {
 		tiDataPatch := convertTrafficInfluSubPatchToTrafficInfluDataPatch(tiSubPatch)
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataPatch(subsc.GetInfluenceID(), tiDataPatch)
+		rspCode, rspBody := p.Consumer().AppDataInfluenceDataPatch(subsc.GetInfluenceID(), tiDataPatch)
 		if rspCode != http.StatusOK {
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		tiSub := convertTrafficInfluDataToTrafficInfluSub(rspBody.(*models.TrafficInfluData))
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	}
-
 }
 
 func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("DeleteIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 
-	afCtx := p.nefCtx.GetAfCtx(afID)
+	afCtx := p.Context().GetAfCtx(afID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target AF is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target AF is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
 	subsc := afCtx.GetSubsc(subscID)
 	if afCtx == nil {
-		problemDetails := util.ProblemDetailsDataNotFound("Target subscription is not existed")
+		problemDetails := openapi.ProblemDetailsDataNotFound("Target subscription is not existed")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 
-	if subsc.GetIsIndividualUEAddr() {
-		rspCode, rspBody := p.consumer.PcfSrv.DeleteAppSession(subsc.GetAppSessID())
+	if subsc.IsIndividualUEAddr() {
+		rspCode, rspBody := p.Consumer().DeleteAppSession(subsc.GetAppSessID())
 		if rspCode != http.StatusOK {
 			afCtx.DeleteSubsc(subscID)
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		return &HandlerResponse{http.StatusOK, nil, nil}
 	} else {
-		rspCode, rspBody := p.consumer.UdrSrv.AppDataInfluenceDataDelete(subsc.GetInfluenceID())
+		rspCode, rspBody := p.Consumer().AppDataInfluenceDataDelete(subsc.GetInfluenceID())
 		if rspCode != http.StatusOK {
 			afCtx.DeleteSubsc(subscID)
 			return &HandlerResponse{rspCode, nil, rspBody}
@@ -225,13 +223,13 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID s
 
 func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerResponse {
 	if tiSub.AfAppId == "" && len(tiSub.TrafficFilters) == 0 && len(tiSub.EthTrafficFilters) == 0 {
-		problemDetails := util.
+		problemDetails := openapi.
 			ProblemDetailsMalformedReqSyntax("One of afAppId, trafficFilters or ethTrafficFilters shall be included")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
 	}
 	if tiSub.Gpsi == "" && tiSub.Ipv4Addr == "" && tiSub.Ipv6Addr == "" && tiSub.ExternalGroupId == "" &&
-		tiSub.AnyUeInd == false {
-		problemDetails := util.
+		tiSub.AnyUeInd {
+		problemDetails := openapi.
 			ProblemDetailsMalformedReqSyntax("One of individual UE identifier, External Group Identifier" +
 				" or any UE indication anyUeInd shall be included")
 		return &HandlerResponse{http.StatusNotFound, nil, problemDetails}
@@ -248,13 +246,13 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 				AppReloc: tiSub.AppReloInd,
 				UpPathChgSub: &models.UpPathChgEvent{
 					DnaiChgType: tiSub.DnaiChgType,
-					//NotificationUri:
+					// NotificationUri:
 				},
 			},
 		},
 	}
 
-	rspCode, rspBody, appSessID := p.consumer.PcfSrv.PostAppSessions(&asc)
+	rspCode, rspBody, appSessID := p.Consumer().PostAppSessions(&asc)
 	if rspCode == http.StatusCreated {
 		afSubsc.SetAppSessID(appSessID)
 		return &HandlerResponse{rspCode, nil, nil}
@@ -265,7 +263,7 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 func genTrafficInfluSubURI(sbiURI, afID, subscriptionId string) string {
 	// E.g. https://localhost:29505/3gpp-traffic-Influence/v1/{afId}/subscriptions/{subscriptionId}
 	return fmt.Sprintf("%s%s/%s/subscriptions/%s",
-		sbiURI, factory.TRAFF_INFLU_RES_URI_PREFIX, afID, subscriptionId)
+		sbiURI, factory.TraffInfluResUriPrefix, afID, subscriptionId)
 }
 
 func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *models.TrafficInfluSub {
@@ -309,12 +307,14 @@ func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionC
 	return tiSub
 }
 
-func convertTrafficInfluSubPatchToTrafficInfluDataPatch(tiSubPatch *models.TrafficInfluSubPatch) *models.TrafficInfluDataPatch {
+func convertTrafficInfluSubPatchToTrafficInfluDataPatch(
+	tiSubPatch *models.TrafficInfluSubPatch) *models.TrafficInfluDataPatch {
 	tiDataPatch := &models.TrafficInfluDataPatch{}
 	return tiDataPatch
 }
 
-func convertTrafficInfluSubPatchToAppSessionContextUpdateData(tiSubPatch *models.TrafficInfluSubPatch) *models.AppSessionContextUpdateData {
+func convertTrafficInfluSubPatchToAppSessionContextUpdateData(
+	tiSubPatch *models.TrafficInfluSubPatch) *models.AppSessionContextUpdateData {
 	appSessionCtxUpdate := &models.AppSessionContextUpdateData{}
 	return appSessionCtxUpdate
 }

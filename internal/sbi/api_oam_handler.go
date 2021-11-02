@@ -1,8 +1,5 @@
 package sbi
 
-import (
-)
-
-func (s *SBIServer) getOamEndpoints() []Endpoint {
+func (s *Server) getOamEndpoints() []Endpoint {
 	return []Endpoint{}
 }

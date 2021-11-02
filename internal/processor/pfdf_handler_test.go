@@ -42,7 +42,7 @@ func TestGetApplicationsPFD(t *testing.T) {
 	Convey("Given App IDs, should get a list of PfdDataForApp", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				rsp := nefProcessor.GetApplicationsPFD(tc.appIDs)
+				rsp := nefApp.Processor().GetApplicationsPFD(tc.appIDs)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -79,7 +79,7 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 	Convey("Given App IDs, should get a list of PfdDataForApp", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				rsp := nefProcessor.GetIndividualApplicationPFD(tc.appID)
+				rsp := nefApp.Processor().GetIndividualApplicationPFD(tc.appID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -102,7 +102,7 @@ func TestPostPFDSubscriptions(t *testing.T) {
 			subscription: pfdSubsc,
 			expectedResponse: &HandlerResponse{
 				Status:  http.StatusCreated,
-				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefProcessor.cfg.GetSbiUri(), "1")}},
+				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefApp.Config().SbiUri(), "1")}},
 				Body:    pfdSubsc,
 			},
 		},
@@ -111,7 +111,7 @@ func TestPostPFDSubscriptions(t *testing.T) {
 	Convey("Given a subscription, should store it and return the resource URI", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				rsp := nefProcessor.PostPFDSubscriptions(tc.subscription)
+				rsp := nefApp.Processor().PostPFDSubscriptions(tc.subscription)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -136,7 +136,7 @@ func TestDeleteIndividualPFDSubscription(t *testing.T) {
 	Convey("Given a subscription ID, should delete the specified subscription", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				rsp := nefProcessor.DeleteIndividualPFDSubscription(tc.subscriptionID)
+				rsp := nefApp.Processor().DeleteIndividualPFDSubscription(tc.subscriptionID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -168,27 +168,27 @@ func TestPostPfdChangeReports(t *testing.T) {
 		}
 	})
 
-	afCtx := nefContext.NewAfCtx("af1")
-	nefContext.AddAfCtx(afCtx)
-	defer nefContext.DeleteAfCtx("af1")
-	afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+	afCtx := nefApp.Context().NewAfCtx("af1")
+	nefApp.Context().AddAfCtx(afCtx)
+	defer nefApp.Context().DeleteAfCtx("af1")
+	afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 	afCtx.AddPfdTrans(afPfdTans)
 	afPfdTans.AddExtAppID("app1")
 	afPfdTans.AddExtAppID("app2")
 
-	nefProcessor.notifier.PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
+	nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
 		ApplicationIds: []string{"app1"},
 		NotifyUri:      "http://pfdSub2URI",
 	})
-	nefProcessor.notifier.PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
+	nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
 		ApplicationIds: []string{"app1", "app2"},
 		NotifyUri:      "http://pfdSub3URI",
 	})
 	defer func() {
-		if err := nefProcessor.notifier.PfdChangeNotifier.DeletePfdSub("2"); err != nil {
+		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub("2"); err != nil {
 			t.Fatal(err)
 		}
-		if err := nefProcessor.notifier.PfdChangeNotifier.DeletePfdSub("3"); err != nil {
+		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub("3"); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -201,7 +201,7 @@ func TestPostPfdChangeReports(t *testing.T) {
 		{
 			description: "Update app1, should send notification for subscription 2 and 3",
 			triggerFunc: func() {
-				nefProcessor.PutIndividualApplicationPFDManagement("af1", "1", "app1", &models.PfdData{
+				nefApp.Processor().PutIndividualApplicationPFDManagement("af1", "1", "app1", &models.PfdData{
 					ExternalAppId: "app1",
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
@@ -230,7 +230,7 @@ func TestPostPfdChangeReports(t *testing.T) {
 		{
 			description: "Delete app2, should send notification for subscription 3",
 			triggerFunc: func() {
-				nefProcessor.DeleteIndividualApplicationPFDManagement("af1", "1", "app2")
+				nefApp.Processor().DeleteIndividualApplicationPFDManagement("af1", "1", "app2")
 			},
 			expectedNotifications: map[string][]models.PfdChangeNotification{
 				"http://pfdSub3URI/notify": {

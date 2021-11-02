@@ -3,20 +3,18 @@ module bitbucket.org/free5gc-team/nef
 go 1.14
 
 require (
-	bitbucket.org/free5gc-team/http2_util v0.0.0-20201212235925-bd3a307d110a
-	bitbucket.org/free5gc-team/http_wrapper v0.0.0-20200915033914-6b902db12ee5
-	bitbucket.org/free5gc-team/logger_util v0.0.0-20210309092142-45babfcdab5a
-	bitbucket.org/free5gc-team/openapi v0.0.0-20210310054439-5aa53778eb95
-	bitbucket.org/free5gc-team/path_util v0.0.0-20210310053142-9b06de73fd52
-	bitbucket.org/free5gc-team/version v0.0.0-20200915045942-9abe4c17a92c
+	bitbucket.org/free5gc-team/openapi v0.0.0-20211014134522-20e0d874611c
+	bitbucket.org/free5gc-team/util v0.0.0-20210819050407-27603454f4e4
 	github.com/antihax/optional v1.0.0
-	github.com/antonfisher/nested-logrus-formatter v1.3.0
+	github.com/antonfisher/nested-logrus-formatter v1.3.1
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
+	github.com/davecgh/go-spew v1.1.1
 	github.com/gin-contrib/cors v1.3.1
-	github.com/gin-gonic/gin v1.6.3
-	github.com/google/uuid v1.1.2
-	github.com/sirupsen/logrus v1.7.0
+	github.com/gin-gonic/gin v1.7.3
+	github.com/google/uuid v1.3.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/smartystreets/goconvey v1.6.4
-	github.com/urfave/cli v1.22.4
-	gopkg.in/h2non/gock.v1 v1.0.16
+	github.com/urfave/cli v1.22.5
+	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v2 v2.4.0
 )

@@ -1,153 +1,153 @@
 package sbi
 
 import (
-	"strings"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-func (s *SBIServer) getPFDManagementEndpoints() []Endpoint {
+func (s *Server) getPFDManagementEndpoints() []Endpoint {
 	return []Endpoint{
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiGetPFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Post"),
+			Method:  http.MethodPost,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiPostPFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions",
 			APIFunc: s.apiDeletePFDManagementTransactions,
 		},
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiGetIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Put"),
+			Method:  http.MethodPut,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiPutIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions/:transID",
 			APIFunc: s.apiDeleteIndividualPFDManagementTransaction,
 		},
 		{
-			Method:  strings.ToUpper("Get"),
+			Method:  http.MethodGet,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiGetIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Delete"),
+			Method:  http.MethodDelete,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiDeleteIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Put"),
+			Method:  http.MethodPut,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiPutIndividualApplicationPFDManagement,
 		},
 		{
-			Method:  strings.ToUpper("Patch"),
+			Method:  http.MethodPatch,
 			Pattern: "/:scsAsID/transactions/:transID/applications/:appID",
 			APIFunc: s.apiPatchIndividualApplicationPFDManagement,
 		},
 	}
 }
 
-func (s *SBIServer) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetPFDManagementTransactions(
+func (s *Server) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().GetPFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdMng); err != nil {
 		return
 	}
 
-	hdlRsp := s.processor.PostPFDManagementTransactions(
+	hdlRsp := s.Processor().PostPFDManagementTransactions(
 		ginCtx.Param("scsAsID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeletePFDManagementTransactions(
+func (s *Server) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().DeletePFDManagementTransactions(
 		ginCtx.Param("scsAsID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetIndividualPFDManagementTransaction(
+func (s *Server) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().GetIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
 	var pfdMng models.PfdManagement
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdMng); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdMng); err != nil {
 		return
 	}
 
-	hdlRsp := s.processor.PutIndividualPFDManagementTransaction(
+	hdlRsp := s.Processor().PutIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), &pfdMng)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeleteIndividualPFDManagementTransaction(
+func (s *Server) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().DeleteIndividualPFDManagementTransaction(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	hdlRsp := s.processor.GetIndividualApplicationPFDManagement(
+func (s *Server) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().GetIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	hdlRsp := s.processor.DeleteIndividualApplicationPFDManagement(
+func (s *Server) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+	hdlRsp := s.Processor().DeleteIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdData); err != nil {
 		return
 	}
 
-	hdlRsp := s.processor.PutIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().PutIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
 }
 
-func (s *SBIServer) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
 	var pfdData models.PfdData
-	if err := s.getDataFromHttpRequestBody(ginCtx, &pfdData); err != nil {
+	if err := s.deserializeData(ginCtx, &pfdData); err != nil {
 		return
 	}
 
-	hdlRsp := s.processor.PatchIndividualApplicationPFDManagement(
+	hdlRsp := s.Processor().PatchIndividualApplicationPFDManagement(
 		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
 
 	s.buildAndSendHttpResponse(ginCtx, hdlRsp)

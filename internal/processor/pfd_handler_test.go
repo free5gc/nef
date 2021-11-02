@@ -9,17 +9,62 @@ import (
 	"gopkg.in/h2non/gock.v1"
 
 	"bitbucket.org/free5gc-team/nef/internal/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/notifier"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
+type nefTestApp struct {
+	cfg      *factory.Config
+	nefCtx   *nefctx.NefContext
+	consumer *consumer.Consumer
+	notifier *notifier.Notifier
+	proc     *Processor
+}
+
+func newTestApp(cfg *factory.Config, tlsKeyLogPath string) (*nefTestApp, error) {
+	var err error
+	nef := &nefTestApp{cfg: cfg}
+
+	if nef.nefCtx, err = nefctx.NewNefContext(nef); err != nil {
+		return nil, err
+	}
+	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
+		return nil, err
+	}
+	if nef.notifier, err = notifier.NewNotifier(); err != nil {
+		return nil, err
+	}
+	if nef.proc, err = NewProcessor(nef); err != nil {
+		return nil, err
+	}
+	return nef, nil
+}
+
+func (a *nefTestApp) Config() *factory.Config {
+	return a.cfg
+}
+
+func (a *nefTestApp) Context() *nefctx.NefContext {
+	return a.nefCtx
+}
+
+func (a *nefTestApp) Consumer() *consumer.Consumer {
+	return a.consumer
+}
+
+func (a *nefTestApp) Notifier() *notifier.Notifier {
+	return a.notifier
+}
+
+func (a *nefTestApp) Processor() *Processor {
+	return a.proc
+}
+
 var (
-	nefContext   *context.NefContext
-	nefProcessor *Processor
+	nefApp *nefTestApp
 
 	pfd1 = models.Pfd{
 		PfdId: "pfd1",
@@ -73,11 +118,15 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	var err error
 	openapi.InterceptH2CClient()
 	initNRFNfmStub()
 	initNRFDiscStub()
 
-	nefConfig := &factory.Config{
+	cfg := &factory.Config{
+		Info: &factory.Info{
+			Version: "1.0.0",
+		},
 		Configuration: &factory.Configuration{
 			Sbi: &factory.Sbi{
 				Scheme:       "http",
@@ -93,10 +142,10 @@ func TestMain(m *testing.M) {
 			},
 		},
 	}
-	nefContext = context.NewNefContext()
-	nefConsumer := consumer.NewConsumer(nefConfig, nefContext)
-	nefNotifier := notifier.NewNotifier()
-	nefProcessor = NewProcessor(nefConfig, nefContext, nefConsumer, nefNotifier)
+	nefApp, err = newTestApp(cfg, "")
+	if err != nil {
+		panic(err)
+	}
 
 	exitVal := m.Run()
 	openapi.RestoreH2CClient()
@@ -119,11 +168,11 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &[]models.PfdManagement{
 					{
-						Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+						Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
 						PfdDatas: map[string]models.PfdData{
 							"app1": {
 								ExternalAppId: "app1",
-								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+								Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 								Pfds: map[string]models.Pfd{
 									"pfd1": pfd1,
 									"pfd2": pfd2,
@@ -131,7 +180,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 							},
 							"app2": {
 								ExternalAppId: "app2",
-								Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+								Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
 								Pfds: map[string]models.Pfd{
 									"pfd3": pfd3,
 								},
@@ -146,7 +195,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -154,15 +203,15 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should return PfdManagements belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 				afPfdTans.AddExtAppID("app2")
 
-				rsp := nefProcessor.GetPFDManagementTransactions(tc.afID)
+				rsp := nefApp.Processor().GetPFDManagementTransactions(tc.afID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -190,7 +239,7 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 	}
@@ -198,13 +247,13 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should delete PfdManagements belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 
-				rsp := nefProcessor.DeletePFDManagementTransactions(tc.afID)
+				rsp := nefApp.Processor().DeletePFDManagementTransactions(tc.afID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -244,11 +293,11 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusCreated,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -256,7 +305,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -288,7 +337,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Given AF is not existed"),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoAF),
 			},
 		},
 		{
@@ -299,7 +348,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -307,11 +356,11 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should add a PfdManagement belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
 
-				rsp := nefProcessor.PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
+				rsp := nefApp.Processor().PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -335,11 +384,11 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -347,7 +396,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -362,7 +411,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			transID:     "-1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
 			},
 		},
 	}
@@ -370,15 +419,15 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should return the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 				afPfdTans.AddExtAppID("app2")
 
-				rsp := nefProcessor.GetIndividualPFDManagementTransaction(tc.afID, tc.transID)
+				rsp := nefApp.Processor().GetIndividualPFDManagementTransaction(tc.afID, tc.transID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -409,7 +458,7 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 			transID:     "1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("AF not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("AF not found"),
 			},
 		},
 	}
@@ -417,13 +466,13 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should delete the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 
-				rsp := nefProcessor.DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
+				rsp := nefApp.Processor().DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -465,11 +514,11 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefProcessor.cfg.GetSbiUri(), "af1", "1"),
+					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -477,7 +526,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app2"),
+							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -510,7 +559,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
 			},
 		},
 		{
@@ -522,7 +571,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			},
 		},
 	}
@@ -530,13 +579,13 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should update the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 
-				rsp := nefProcessor.PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
+				rsp := nefApp.Processor().PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -563,7 +612,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -578,7 +627,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 			appID:       "app2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 	}
@@ -586,14 +635,14 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 
-				rsp := nefProcessor.GetIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
+				rsp := nefApp.Processor().GetIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -627,7 +676,7 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 			appID:       "app2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 	}
@@ -635,14 +684,14 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 
-				rsp := nefProcessor.DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
+				rsp := nefApp.Processor().DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -677,7 +726,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -699,7 +748,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 		{
@@ -717,7 +766,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -725,14 +774,14 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should update the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 
-				rsp := nefProcessor.PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
+				rsp := nefApp.Processor().PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -769,7 +818,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefProcessor.cfg.GetSbiUri(), "af1", "1", "app1"),
+					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd2": pfd2,
 					},
@@ -791,7 +840,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound("Application ID not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("Application ID not found"),
 			},
 		},
 		{
@@ -809,7 +858,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+				Body:   openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			},
 		},
 	}
@@ -817,14 +866,14 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should partially update the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app1")
 
-				rsp := nefProcessor.PatchIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
+				rsp := nefApp.Processor().PatchIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
 				So(rsp, ShouldResemble, tc.expectedResponse)
 			})
 		}
@@ -865,7 +914,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_DATA),
+			expectedProblem: openapi.ProblemDetailsDataNotFound(DetailNoPfdData),
 			expectedReports: map[string]models.PfdReport{},
 		},
 		{
@@ -906,7 +955,7 @@ func TestValidatePfdManagement(t *testing.T) {
 					},
 				},
 			},
-			expectedProblem: util.ProblemDetailsSystemFailure("None of the PFDs were created"),
+			expectedProblem: openapi.ProblemDetailsSystemFailure("None of the PFDs were created"),
 			expectedReports: map[string]models.PfdReport{
 				string(models.FailureCode_APP_ID_DUPLICATED): {
 					ExternalAppIds: []string{"app100"},
@@ -919,14 +968,14 @@ func TestValidatePfdManagement(t *testing.T) {
 	Convey("Given a PfdManagement along with its belonging AF and transaction ID, check its validity", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefContext.NewAfCtx("af1")
-				nefContext.AddAfCtx(afCtx)
-				defer nefContext.DeleteAfCtx("af1")
-				afPfdTans := nefContext.NewAfPfdTrans(afCtx)
+				afCtx := nefApp.Context().NewAfCtx("af1")
+				nefApp.Context().AddAfCtx(afCtx)
+				defer nefApp.Context().DeleteAfCtx("af1")
+				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
 				afCtx.AddPfdTrans(afPfdTans)
 				afPfdTans.AddExtAppID("app100")
 
-				rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefContext)
+				rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefApp.Context())
 				So(rst, ShouldResemble, tc.expectedProblem)
 				So(tc.pfdManagement.PfdReports, ShouldResemble, tc.expectedReports)
 			})
@@ -957,14 +1006,14 @@ func TestValidatePfdData(t *testing.T) {
 					"pfd1": pfd1,
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_EXTERNAL_APP_ID),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoExtAppID),
 		},
 		{
 			description: "Empty Pfds, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfd),
 		},
 		{
 			description: "Without PfdID, should return ProblemDetails",
@@ -979,7 +1028,7 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_PFD_ID),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfdID),
 		},
 		{
 			description: "FlowDescriptions, Urls and DomainNames are all empty, should return ProblemDetails",
@@ -991,14 +1040,14 @@ func TestValidatePfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 		},
 	}
 
 	Convey("Given a PfdData, check its validity", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				rst := validatePfdData(tc.pfdData, nefContext, false)
+				rst := validatePfdData(tc.pfdData, nefApp.Context(), false)
 				So(rst, ShouldResemble, tc.expectedResult)
 			})
 		}
@@ -1109,7 +1158,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 					},
 				},
 			},
-			expectedProblem: util.ProblemDetailsDataNotFound(PFD_ERR_NO_FLOW_IDENT),
+			expectedProblem: openapi.ProblemDetailsDataNotFound(DetailNoPfdInfo),
 			expectedResult: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1195,7 +1244,7 @@ func initUDRDrGetPfdDatasStub() {
 	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
 		Get("/application-data/pfds").
 		// To Matching the request for both app1 and app2.
-		// Should be clarified if there is a way to exact match multiple paramaters with the same key.
+		// Should be clarified if there is a way to exact match multiple parameters with the same key.
 		MatchParam("appId", "app1").
 		Persist().
 		Reply(http.StatusOK).

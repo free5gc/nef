@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"bitbucket.org/free5gc-team/nef/internal/factory"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
@@ -14,7 +14,7 @@ func (p *Processor) GetApplicationsPFD(appIDs []string) *HandlerResponse {
 	logger.PFDFLog.Infof("GetApplicationsPFD")
 
 	// TODO: Support SupportedFeatures
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsGet(appIDs)
+	rspCode, rspBody := p.Consumer().AppDataPfdsGet(appIDs)
 
 	// return &HandlerResponse{http.StatusOK, nil, pfdDataForApps}
 	return &HandlerResponse{rspCode, nil, rspBody}
@@ -24,7 +24,7 @@ func (p *Processor) GetIndividualApplicationPFD(appID string) *HandlerResponse {
 	logger.PFDFLog.Infof("GetIndividualApplicationPFD - appID[%s]", appID)
 
 	// TODO: Support SupportedFeatures
-	rspCode, rspBody := p.consumer.UdrSrv.AppDataPfdsAppIdGet(appID)
+	rspCode, rspBody := p.Consumer().AppDataPfdsAppIdGet(appID)
 
 	return &HandlerResponse{rspCode, nil, rspBody}
 }
@@ -34,12 +34,12 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 
 	// TODO: Support SupportedFeatures
 	if len(pfdSubsc.NotifyUri) == 0 {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound("Absent of Notify URI")}
+		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound("Absent of Notify URI")}
 	}
 
-	subID := p.notifier.PfdChangeNotifier.AddPfdSub(pfdSubsc)
+	subID := p.Notifier().PfdChangeNotifier.AddPfdSub(pfdSubsc)
 	hdrs := make(map[string][]string)
-	util.AddLocationheader(hdrs, genPfdSubscriptionURI(p.cfg.GetSbiUri(), subID))
+	addLocationheader(hdrs, genPfdSubscriptionURI(p.Config().SbiUri(), subID))
 
 	return &HandlerResponse{http.StatusCreated, hdrs, pfdSubsc}
 }
@@ -47,8 +47,8 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResponse {
 	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
 
-	if err := p.notifier.PfdChangeNotifier.DeletePfdSub(subscID); err != nil {
-		return &HandlerResponse{http.StatusNotFound, nil, util.ProblemDetailsDataNotFound(err.Error())}
+	if err := p.Notifier().PfdChangeNotifier.DeletePfdSub(subscID); err != nil {
+		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
 	}
 
 	return &HandlerResponse{http.StatusNoContent, nil, nil}
@@ -56,5 +56,5 @@ func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResp
 
 func genPfdSubscriptionURI(sbiURI, subID string) string {
 	// E.g. "https://localhost:29505/nnef-pfdmanagement/v1/subscriptions/{subscriptionId}
-	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NEF_PFD_MNG_RES_URI_PREFIX, subID)
+	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NefPfdMngResUriPrefix, subID)
 }

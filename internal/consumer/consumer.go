@@ -3,34 +3,52 @@ package consumer
 import (
 	"net/http"
 
-	"bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/factory"
+	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/util"
+	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
+	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
+	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
+	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
+	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
 	"bitbucket.org/free5gc-team/openapi/models"
 )
 
-type Consumer struct {
-	NrfSrv *ConsumerNRFService
-	PcfSrv *ConsumerPCFService
-	UdrSrv *ConsumerUDRService
+type nef interface {
+	Context() *nefctx.NefContext
+	Config() *factory.Config
 }
 
-func NewConsumer(nefCfg *factory.Config, nefCtx *context.NefContext) *Consumer {
-	c := &Consumer{}
-	if c.NrfSrv = NewConsumerNRFService(nefCfg, nefCtx); c.NrfSrv == nil {
-		return nil
-	}
-	if c.PcfSrv = NewConsumerPCFService(nefCfg, nefCtx, c.NrfSrv); c.PcfSrv == nil {
-		return nil
-	}
-	if c.UdrSrv = NewConsumerUDRService(nefCfg, nefCtx, c.NrfSrv); c.UdrSrv == nil {
-		return nil
-	}
-	c.NrfSrv.RegisterNFInstance()
+type Consumer struct {
+	nef
 
-	return c
+	// consumer services
+	*nnrfService
+	*npcfService
+	*nudrService
+}
+
+func NewConsumer(nef nef) (*Consumer, error) {
+	c := &Consumer{
+		nef: nef,
+	}
+
+	c.nnrfService = &nnrfService{
+		consumer:        c,
+		nfDiscClients:   make(map[string]*Nnrf_NFDiscovery.APIClient),
+		nfMngmntClients: make(map[string]*Nnrf_NFManagement.APIClient),
+	}
+
+	c.npcfService = &npcfService{
+		consumer: c,
+		clients:  make(map[string]*Npcf_PolicyAuthorization.APIClient),
+	}
+
+	c.nudrService = &nudrService{
+		consumer: c,
+		clients:  make(map[string]*Nudr_DataRepository.APIClient),
+	}
+	return c, nil
 }
 
 func handleAPIServiceResponseError(rsp *http.Response, err error) (int, interface{}) {
@@ -60,6 +78,6 @@ func handleAPIServiceNoResponse(err error) (int, interface{}) {
 		detail = err.Error()
 	}
 	logger.ConsumerLog.Errorf("APIService error: %s", detail)
-	pd := util.ProblemDetailsSystemFailure(detail)
+	pd := openapi.ProblemDetailsSystemFailure(detail)
 	return int(pd.Status), pd
 }

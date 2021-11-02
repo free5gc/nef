@@ -27,9 +27,9 @@ all: $(NF) config
 
 $(NF): $(BUILD_PATH)/$(BIN_PATH)/$(NF)
 
-$(BUILD_PATH)/$(BIN_PATH)/$(NF): main.go $(NF_GO_FILES)
+$(BUILD_PATH)/$(BIN_PATH)/$(NF): cmd/main.go $(NF_GO_FILES)
 	@echo "Start building $(NF)...."
-	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $@ main.go
+	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $@ cmd/main.go
 
 config: $(BUILD_PATH)/$(CFG_PATH)/$(NF_CFG_FILE)
 
