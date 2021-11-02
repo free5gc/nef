@@ -93,3 +93,21 @@ func (a *AfContext) IsAppIDExisted(appID string) (bool, string) {
 	}
 	return false, ""
 }
+
+func (a *AfContext) GetAllSubsc() map[string]*AfSubscription {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	return a.subsc
+}
+
+func (a *AfContext) GetSubsc(subscID string) *AfSubscription {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	return a.subsc[subscID]
+}
+
+func (a *AfContext) DeleteSubsc(subscID string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	delete(a.subsc, subscID)
+}

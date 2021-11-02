@@ -10,11 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/antihax/optional"
+
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
 	"bitbucket.org/free5gc-team/openapi/models"
-	"github.com/antihax/optional"
 )
 
 const (

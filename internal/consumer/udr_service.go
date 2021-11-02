@@ -48,6 +48,80 @@ func (s *nudrService) getUdrDrUri() (string, error) {
 	return uri, nil
 }
 
+func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  []models.TrafficInfluData
+		rsp     *http.Response
+	)
+
+	uri, err := s.getUdrDrUri()
+	if err != nil {
+		return rspCode, rspBody
+	}
+	client := s.getClient(uri)
+
+	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
+		InfluenceIds: optional.NewInterface(influenceIDs),
+	}
+
+	result, rsp, err = client.DefaultApi.
+		ApplicationDataInfluenceDataGet(ctx.Background(), param)
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		// API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
+func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  []models.TrafficInfluData
+		rsp     *http.Response
+	)
+
+	uri, err := s.getUdrDrUri()
+	if err != nil {
+		return rspCode, rspBody
+	}
+	client := s.getClient(uri)
+
+	param := &Nudr_DataRepository.ApplicationDataInfluenceDataGetParamOpts{
+		InfluenceIds: optional.NewInterface(influenceID),
+	}
+
+	result, rsp, err = client.DefaultApi.
+		ApplicationDataInfluenceDataGet(ctx.Background(), param)
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		// API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
 func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 	tiData *models.TrafficInfluData) (int, interface{}) {
 	var (
@@ -204,6 +278,72 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
 			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		// API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
+func (s *nudrService) AppDataInfluenceDataPatch(
+	influenceID string, tiSubPatch *models.TrafficInfluDataPatch) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		result  models.TrafficInfluData
+		rsp     *http.Response
+	)
+
+	uri, err := s.getUdrDrUri()
+	if err != nil {
+		return rspCode, rspBody
+	}
+	client := s.getClient(uri)
+
+	result, rsp, err = client.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdPatch(ctx.Background(), influenceID, *tiSubPatch)
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &result
+		} else if err != nil {
+			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
+		}
+	} else {
+		// API Service Internal Error or Server No Response
+		rspCode, rspBody = handleAPIServiceNoResponse(err)
+	}
+
+	return rspCode, rspBody
+}
+
+func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, interface{}) {
+	var (
+		err     error
+		rspCode int
+		rspBody interface{}
+		rsp     *http.Response
+	)
+
+	uri, err := s.getUdrDrUri()
+	if err != nil {
+		return rspCode, rspBody
+	}
+	client := s.getClient(uri)
+
+	rsp, err = client.DefaultApi.
+		ApplicationDataInfluenceDataInfluenceIdDelete(ctx.Background(), influenceID)
+
+	if rsp != nil {
+		rspCode = rsp.StatusCode
+		if rsp.StatusCode == http.StatusOK {
+			rspBody = &rsp.Body
 		} else if err != nil {
 			rspCode, rspBody = handleAPIServiceResponseError(rsp, err)
 		}
