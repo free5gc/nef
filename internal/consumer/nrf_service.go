@@ -88,7 +88,7 @@ func (s *nnrfService) RegisterNFInstance() error {
 		}
 
 		if err != nil || rsp == nil {
-			logger.ConsumerLog.Infof("AMF register to NRF Error[%v], sleep 2s and retry", err)
+			logger.ConsumerLog.Infof("NEF register to NRF Error[%v], sleep 2s and retry", err)
 			time.Sleep(RetryRegisterNrfDuration)
 			continue
 		}
