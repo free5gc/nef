@@ -85,13 +85,14 @@ func (c *Configuration) validate() (bool, error) {
 			return result, err
 		}
 	}
-	for index, serviceName := range c.ServiceList {
+	for i, s := range c.ServiceList {
 		switch {
-		case serviceName.ServiceName == "nnef-pfdmanagement":
+		case s.ServiceName == "nnef-pfdmanagement":
+		case s.ServiceName == "nnef-oam":
 		default:
-			err := errors.New("Invalid serviceList[" + strconv.Itoa(index) + "]: " +
-				serviceName.ServiceName + ", should be nnef-pfdmanagement.")
-			return false, err
+			err := errors.New("Invalid serviceList[" + strconv.Itoa(i) + "]: " +
+				s.ServiceName + ", should be nnef-pfdmanagement or nnef-oam")
+			return false, appendInvalid(err)
 		}
 	}
 	result, err := govalidator.ValidateStruct(c)
@@ -142,9 +143,13 @@ func appendInvalid(err error) error {
 	if err == nil {
 		return nil
 	}
-	es := err.(govalidator.Errors).Errors()
-	for _, e := range es {
-		errs = append(errs, fmt.Errorf("Invalid %w", e))
+	es, ok := err.(govalidator.Errors)
+	if ok {
+		for _, e := range es.Errors() {
+			errs = append(errs, fmt.Errorf("Invalid %w", e))
+		}
+	} else {
+		errs = append(errs, err)
 	}
 	return error(errs)
 }
@@ -271,10 +276,10 @@ func (c *Config) NFServices() []models.NfService {
 	versions := strings.Split(c.Version(), ".")
 	majorVersionUri := "v" + versions[0]
 	nfServices := []models.NfService{}
-	for i, service := range c.ServiceList() {
+	for i, s := range c.ServiceList() {
 		nfService := models.NfService{
 			ServiceInstanceId: strconv.Itoa(i),
-			ServiceName:       models.ServiceName(service.ServiceName),
+			ServiceName:       models.ServiceName(s.ServiceName),
 			Versions: &[]models.NfServiceVersion{
 				{
 					ApiFullVersion:  c.Version(),
@@ -291,7 +296,7 @@ func (c *Config) NFServices() []models.NfService {
 					Port:        int32(c.SbiPort()),
 				},
 			},
-			SupportedFeatures: service.SuppFeat,
+			SupportedFeatures: s.SuppFeat,
 		}
 		nfServices = append(nfServices, nfService)
 	}
