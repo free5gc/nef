@@ -28,7 +28,7 @@ func newTestApp(cfg *factory.Config, tlsKeyLogPath string) (*nefTestApp, error) 
 	var err error
 	nef := &nefTestApp{cfg: cfg}
 
-	if nef.nefCtx, err = nefctx.NewNefContext(nef); err != nil {
+	if nef.nefCtx, err = nefctx.NewContext(nef); err != nil {
 		return nil, err
 	}
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {

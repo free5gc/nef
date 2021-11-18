@@ -25,7 +25,7 @@ type NefContext struct {
 	mtx        sync.RWMutex
 }
 
-func NewNefContext(nef nef) (*NefContext, error) {
+func NewContext(nef nef) (*NefContext, error) {
 	c := &NefContext{
 		nef:      nef,
 		nfInstID: uuid.New().String(),

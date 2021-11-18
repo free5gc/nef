@@ -121,33 +121,9 @@ func (s *nnrfService) buildNfProfile() (*models.NfProfile, error) {
 
 	cfg := s.consumer.Config()
 	profile.Ipv4Addresses = append(profile.Ipv4Addresses, cfg.SbiRegisterIP())
-
-	versions := strings.Split(cfg.Version(), ".")
-	majorVersionUri := "v" + versions[0]
-	nfServices := []models.NfService{}
-	for i, service := range cfg.ServiceList() {
-		nfService := models.NfService{
-			ServiceInstanceId: strconv.Itoa(i),
-			ServiceName:       models.ServiceName(service.ServiceName),
-			Versions: &[]models.NfServiceVersion{
-				{
-					ApiFullVersion:  cfg.Version(),
-					ApiVersionInUri: majorVersionUri,
-				},
-			},
-			Scheme:          models.UriScheme(cfg.SbiScheme()),
-			NfServiceStatus: models.NfServiceStatus_REGISTERED,
-			ApiPrefix:       cfg.SbiUri(),
-			IpEndPoints: &[]models.IpEndPoint{
-				{
-					Ipv4Address: cfg.SbiRegisterIP(),
-					Transport:   models.TransportProtocol_TCP,
-					Port:        int32(cfg.SbiPort()),
-				},
-			},
-			SupportedFeatures: service.SuppFeat,
-		}
-		nfServices = append(nfServices, nfService)
+	nfServices := cfg.NFServices()
+	if len(nfServices) == 0 {
+		return nil, fmt.Errorf("buildNfProfile err: NFServices is Empty")
 	}
 	profile.NfServices = &nfServices
 	return profile, nil

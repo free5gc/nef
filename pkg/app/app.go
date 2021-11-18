@@ -35,7 +35,7 @@ func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
 	nef := &NefApp{cfg: cfg}
 
 	nef.setLogLevel()
-	if nef.nefCtx, err = nefctx.NewNefContext(nef); err != nil {
+	if nef.nefCtx, err = nefctx.NewContext(nef); err != nil {
 		return nil, err
 	}
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {

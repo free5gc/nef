@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/davecgh/go-spew/spew"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/openapi/models"
 	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
@@ -263,4 +265,35 @@ func (c *Config) TLSKeyPath() string {
 		return c.Configuration.Sbi.Tls.Key
 	}
 	return NefDefaultTLSKeyPath
+}
+
+func (c *Config) NFServices() []models.NfService {
+	versions := strings.Split(c.Version(), ".")
+	majorVersionUri := "v" + versions[0]
+	nfServices := []models.NfService{}
+	for i, service := range c.ServiceList() {
+		nfService := models.NfService{
+			ServiceInstanceId: strconv.Itoa(i),
+			ServiceName:       models.ServiceName(service.ServiceName),
+			Versions: &[]models.NfServiceVersion{
+				{
+					ApiFullVersion:  c.Version(),
+					ApiVersionInUri: majorVersionUri,
+				},
+			},
+			Scheme:          models.UriScheme(c.SbiScheme()),
+			NfServiceStatus: models.NfServiceStatus_REGISTERED,
+			ApiPrefix:       c.SbiUri(),
+			IpEndPoints: &[]models.IpEndPoint{
+				{
+					Ipv4Address: c.SbiRegisterIP(),
+					Transport:   models.TransportProtocol_TCP,
+					Port:        int32(c.SbiPort()),
+				},
+			},
+			SupportedFeatures: service.SuppFeat,
+		}
+		nfServices = append(nfServices, nfService)
+	}
+	return nfServices
 }
