@@ -12,7 +12,7 @@ import (
 
 	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/processor"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/processor"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/util/httpwrapper"

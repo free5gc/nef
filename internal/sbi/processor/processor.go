@@ -1,9 +1,9 @@
 package processor
 
 import (
-	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/notifier"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 

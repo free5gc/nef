@@ -8,9 +8,9 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/h2non/gock.v1"
 
-	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/notifier"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"

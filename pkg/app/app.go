@@ -10,12 +10,12 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"bitbucket.org/free5gc-team/nef/internal/consumer"
 	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/notifier"
-	"bitbucket.org/free5gc-team/nef/internal/processor"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
+	"bitbucket.org/free5gc-team/nef/internal/sbi/processor"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
