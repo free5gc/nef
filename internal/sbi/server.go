@@ -1,7 +1,6 @@
 package sbi
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -105,13 +104,13 @@ func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Run(ctx context.Context, wg *sync.WaitGroup) error {
+func (s *Server) Run(wg *sync.WaitGroup) error {
 	wg.Add(1)
 	go s.startServer(wg)
 	return nil
 }
 
-func (s *Server) Stop(ctx context.Context, wg *sync.WaitGroup) {
+func (s *Server) Stop() {
 	if s.httpServer != nil {
 		logger.SBILog.Infof("Stop SBI server (listen on %s)", s.httpServer.Addr)
 		if err := s.httpServer.Close(); err != nil {
@@ -149,7 +148,24 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
 }
 
-func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}) error {
+func checkContentTypeIsJSON(ginCtx *gin.Context) (string, error) {
+	var err error
+	contentType := ginCtx.GetHeader("Content-Type")
+	if openapi.KindOfMediaType(contentType) != openapi.MediaKindJSON {
+		err = fmt.Errorf("Wrong content type %q", contentType)
+	}
+
+	if err != nil {
+		logger.SBILog.Error(err)
+		ginCtx.JSON(http.StatusInternalServerError,
+			openapi.ProblemDetailsMalformedReqSyntax(err.Error()))
+		return "", err
+	}
+
+	return contentType, nil
+}
+
+func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}, contentType string) error {
 	reqBody, err := ginCtx.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
@@ -158,7 +174,7 @@ func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}) error {
 		return err
 	}
 
-	err = openapi.Deserialize(data, reqBody, "application/json")
+	err = openapi.Deserialize(data, reqBody, contentType)
 	if err != nil {
 		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
 		ginCtx.JSON(http.StatusBadRequest,
@@ -169,7 +185,7 @@ func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}) error {
 	return nil
 }
 
-func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse) {
+func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse, multipart bool) {
 	if hdlRsp.Status == 0 {
 		// No Response to send
 		return
@@ -179,11 +195,22 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 
 	buildHttpResponseHeader(ginCtx, rsp)
 
-	if rspBody, err := openapi.Serialize(rsp.Body, "application/json"); err != nil {
+	var rspBody []byte
+	var contentType string
+	var err error
+	if multipart {
+		rspBody, contentType, err = openapi.MultipartSerialize(rsp.Body)
+	} else {
+		// TODO: support other JSON content-type
+		rspBody, err = openapi.Serialize(rsp.Body, "application/json")
+		contentType = "application/json"
+	}
+
+	if err != nil {
 		logger.SBILog.Errorln(err)
 		ginCtx.JSON(http.StatusInternalServerError, openapi.ProblemDetailsSystemFailure(err.Error()))
 	} else {
-		ginCtx.Data(rsp.Status, "application/json", rspBody)
+		ginCtx.Data(rsp.Status, contentType, rspBody)
 	}
 }
 

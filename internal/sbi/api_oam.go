@@ -18,5 +18,5 @@ func (s *Server) getOamEndpoints() []Endpoint {
 
 func (s *Server) apiGetOamIndex(ginCtx *gin.Context) {
 	hdlRsp := s.Processor().GetOamIndex()
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp)
+	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
 }

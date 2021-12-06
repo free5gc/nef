@@ -117,7 +117,7 @@ func (a *NefApp) Run() error {
 	 * context */
 	go a.listenShutdownEvent()
 
-	if err := a.sbiServer.Run(a.ctx, &a.wg); err != nil {
+	if err := a.sbiServer.Run(&a.wg); err != nil {
 		return err
 	}
 
@@ -150,7 +150,7 @@ func (a *NefApp) listenShutdownEvent() {
 	}()
 
 	<-a.ctx.Done()
-	a.sbiServer.Stop(a.ctx, &a.wg)
+	a.sbiServer.Stop()
 }
 
 func (a *NefApp) WaitRoutineStopped() {
