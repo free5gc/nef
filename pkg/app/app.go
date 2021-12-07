@@ -155,6 +155,7 @@ func (a *NefApp) listenShutdownEvent() {
 
 func (a *NefApp) WaitRoutineStopped() {
 	a.wg.Wait()
+	a.Terminate()
 }
 
 func (a *NefApp) Start() {
@@ -165,5 +166,12 @@ func (a *NefApp) Start() {
 
 func (a *NefApp) Terminate() {
 	logger.MainLog.Infof("Terminating NEF...")
+
+	// deregister with NRF
+	if err := a.consumer.DeregisterNFInstance(); err != nil {
+		logger.MainLog.Error(err)
+	} else {
+		logger.MainLog.Infof("Deregister from NRF successfully")
+	}
 	logger.MainLog.Infof("NEF terminated")
 }

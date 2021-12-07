@@ -13,6 +13,7 @@ import (
 	"github.com/antihax/optional"
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
 	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -21,6 +22,46 @@ import (
 const (
 	RetryRegisterNrfDuration = 2 * time.Second
 )
+
+var serviceNfType map[models.ServiceName]models.NfType
+
+func init() {
+	serviceNfType = make(map[models.ServiceName]models.NfType)
+	serviceNfType[models.ServiceName_NNRF_NFM] = models.NfType_NRF
+	serviceNfType[models.ServiceName_NNRF_DISC] = models.NfType_NRF
+	serviceNfType[models.ServiceName_NUDM_SDM] = models.NfType_UDM
+	serviceNfType[models.ServiceName_NUDM_UECM] = models.NfType_UDM
+	serviceNfType[models.ServiceName_NUDM_UEAU] = models.NfType_UDM
+	serviceNfType[models.ServiceName_NUDM_EE] = models.NfType_UDM
+	serviceNfType[models.ServiceName_NUDM_PP] = models.NfType_UDM
+	serviceNfType[models.ServiceName_NAMF_COMM] = models.NfType_AMF
+	serviceNfType[models.ServiceName_NAMF_EVTS] = models.NfType_AMF
+	serviceNfType[models.ServiceName_NAMF_MT] = models.NfType_AMF
+	serviceNfType[models.ServiceName_NAMF_LOC] = models.NfType_AMF
+	serviceNfType[models.ServiceName_NSMF_PDUSESSION] = models.NfType_SMF
+	serviceNfType[models.ServiceName_NSMF_EVENT_EXPOSURE] = models.NfType_SMF
+	serviceNfType[models.ServiceName_NAUSF_AUTH] = models.NfType_AUSF
+	serviceNfType[models.ServiceName_NAUSF_SORPROTECTION] = models.NfType_AUSF
+	serviceNfType[models.ServiceName_NAUSF_UPUPROTECTION] = models.NfType_AUSF
+	serviceNfType[models.ServiceName_NNEF_PFDMANAGEMENT] = models.NfType_NEF
+	serviceNfType[models.ServiceName_NPCF_AM_POLICY_CONTROL] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NPCF_SMPOLICYCONTROL] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NPCF_POLICYAUTHORIZATION] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NPCF_BDTPOLICYCONTROL] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NPCF_EVENTEXPOSURE] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NPCF_UE_POLICY_CONTROL] = models.NfType_PCF
+	serviceNfType[models.ServiceName_NSMSF_SMS] = models.NfType_SMSF
+	serviceNfType[models.ServiceName_NNSSF_NSSELECTION] = models.NfType_NSSF
+	serviceNfType[models.ServiceName_NNSSF_NSSAIAVAILABILITY] = models.NfType_NSSF
+	serviceNfType[models.ServiceName_NUDR_DR] = models.NfType_UDR
+	serviceNfType[models.ServiceName_NLMF_LOC] = models.NfType_LMF
+	serviceNfType[models.ServiceName_N5G_EIR_EIC] = models.NfType__5_G_EIR
+	serviceNfType[models.ServiceName_NBSF_MANAGEMENT] = models.NfType_BSF
+	serviceNfType[models.ServiceName_NCHF_SPENDINGLIMITCONTROL] = models.NfType_CHF
+	serviceNfType[models.ServiceName_NCHF_CONVERGEDCHARGING] = models.NfType_CHF
+	serviceNfType[models.ServiceName_NNWDAF_EVENTSSUBSCRIPTION] = models.NfType_NWDAF
+	serviceNfType[models.ServiceName_NNWDAF_ANALYTICSINFO] = models.NfType_NWDAF
+}
 
 type nnrfService struct {
 	consumer *Consumer
@@ -129,12 +170,41 @@ func (s *nnrfService) buildNfProfile() (*models.NfProfile, error) {
 	return profile, nil
 }
 
-func (s *nnrfService) SearchNFInstances(nrfUri string, targetNfType models.NfType,
-	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (models.SearchResult, error) {
+func (s *nnrfService) DeregisterNFInstance() error {
+	logger.ConsumerLog.Infof("DeregisterNFInstance")
+
+	client := s.getNFManagementClient(s.consumer.Config().NrfUri())
+
+	rsp, err := client.NFInstanceIDDocumentApi.DeregisterNFInstance(
+		context.Background(), s.consumer.Context().NfInstID())
+	if rsp != nil && rsp.Body != nil {
+		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
+			logger.ConsumerLog.Errorf("response body cannot close: %+v", bodyCloseErr)
+		}
+	}
+	if err != nil {
+		if rsp == nil {
+			return fmt.Errorf("DeregisterNFInstance Error: server no response")
+		} else if rsp.Status != err.Error() {
+			return fmt.Errorf("DeregisterNFInstance Error[%+v]", err)
+		}
+		pd := err.(openapi.GenericOpenAPIError).Model().(models.ProblemDetails)
+		return fmt.Errorf("DeregisterNFInstance Failed: Problem[%+v]", pd)
+	}
+	return nil
+}
+
+func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.ServiceName,
+	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (*models.NfProfile, string, error) {
+	if param == nil {
+		param = &Nnrf_NFDiscovery.SearchNFInstancesParamOpts{}
+	}
+	param.ServiceNames = optional.NewInterface([]models.ServiceName{srvName})
+
 	client := s.getNFDiscoveryClient(nrfUri)
 
-	result, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(context.TODO(),
-		targetNfType, models.NfType_NEF, param)
+	res, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(context.Background(),
+		serviceNfType[srvName], models.NfType_NEF, param)
 	if rsp != nil && rsp.Body != nil {
 		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
 			logger.ConsumerLog.Errorf("SearchNFInstances err: response body cannot close: %+v", bodyCloseErr)
@@ -143,49 +213,16 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, targetNfType models.NfTyp
 	if rsp != nil && rsp.StatusCode == http.StatusTemporaryRedirect {
 		err = fmt.Errorf("SearchNFInstances err: Temporary Redirect")
 	}
-	return result, err
-}
-
-func (s *nnrfService) SearchPcfPolicyAuthUri() (string, error) {
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{string(models.ServiceName_NPCF_POLICYAUTHORIZATION)}),
-	}
-	res, err := s.SearchNFInstances(s.consumer.Config().NrfUri(), models.NfType_PCF, &param)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 
-	_, uri, err := getProfileAndUri(res.NfInstances, models.ServiceName_NPCF_POLICYAUTHORIZATION)
+	nfProf, uri, err := getProfileAndUri(res.NfInstances, srvName)
 	if err != nil {
 		logger.ConsumerLog.Errorf(err.Error())
-		return "", err
+		return nil, "", err
 	}
-	logger.ConsumerLog.Infof("searchPcfPolicyAuthUri: uri[%s]", uri)
-
-	// TODO: Subscribe NRF to notify service URI change
-
-	return uri, nil
-}
-
-func (s *nnrfService) SearchUdrDrUri() (string, error) {
-	param := Nnrf_NFDiscovery.SearchNFInstancesParamOpts{
-		ServiceNames: optional.NewInterface([]string{string(models.ServiceName_NUDR_DR)}),
-	}
-	res, err := s.SearchNFInstances(s.consumer.Config().NrfUri(), models.NfType_UDR, &param)
-	if err != nil {
-		return "", err
-	}
-
-	_, uri, err := getProfileAndUri(res.NfInstances, models.ServiceName_NUDR_DR)
-	if err != nil {
-		logger.ConsumerLog.Errorf(err.Error())
-		return "", err
-	}
-	logger.ConsumerLog.Infof("SearchUdrDrUri: uri[%s]", uri)
-
-	// TODO: Subscribe NRF to notify service URI change
-
-	return uri, nil
+	return nfProf, uri, nil
 }
 
 func getProfileAndUri(nfInstances []models.NfProfile, srvName models.ServiceName) (*models.NfProfile, string, error) {

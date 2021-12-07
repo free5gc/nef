@@ -39,7 +39,8 @@ func (s *nudrService) getClient(uri string) *Nudr_DataRepository.APIClient {
 func (s *nudrService) getUdrDrUri() (string, error) {
 	uri := s.consumer.Context().UdrDrUri()
 	if uri == "" {
-		sUri, err := s.consumer.nnrfService.SearchUdrDrUri()
+		_, sUri, err := s.consumer.SearchNFInstances(s.consumer.Config().NrfUri(),
+			models.ServiceName_NUDR_DR, nil)
 		if err == nil {
 			s.consumer.Context().SetUdrDrUri(sUri)
 		}

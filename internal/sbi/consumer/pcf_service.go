@@ -41,7 +41,8 @@ func (s *npcfService) getClient(uri string) *Npcf_PolicyAuthorization.APIClient 
 func (s *npcfService) getPcfPolicyAuthUri() (string, error) {
 	uri := s.consumer.Context().PcfPaUri()
 	if uri == "" {
-		sUri, err := s.consumer.nnrfService.SearchPcfPolicyAuthUri()
+		_, sUri, err := s.consumer.SearchNFInstances(s.consumer.Config().NrfUri(),
+			models.ServiceName_NPCF_POLICYAUTHORIZATION, nil)
 		if err == nil {
 			s.consumer.Context().SetPcfPaUri(sUri)
 		}
