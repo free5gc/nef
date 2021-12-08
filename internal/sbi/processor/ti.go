@@ -44,7 +44,7 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 			}
 			tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
 			// Not Complete: Need to advise the Self IE
-			tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, appSessID)
+			tiSub.Self = p.genTrafficInfluSubURI(afID, appSessID)
 			tiSubList = append(tiSubList, *tiSub)
 		}
 	}
@@ -57,7 +57,7 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 		for _, tiData := range *rspBody.(*[]models.TrafficInfluData) {
 			tiSub := convertTrafficInfluDataToTrafficInfluSub(&tiData)
 			// Not Complete: Need to advise the Self IE
-			tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, "0")
+			tiSub.Self = p.genTrafficInfluSubURI(afID, "0")
 			tiSubList = append(tiSubList, *tiSub)
 		}
 	}
@@ -104,7 +104,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(afID string,
 		afCtx.AddSubsc(afSubsc)
 
 		// Create Location URI
-		locUri := p.Config().SbiUri() + factory.TraffInfluResUriPrefix + "/" + afID +
+		locUri := p.Config().ServiceUri(factory.ServiceTraffInflu) + "/" + afID +
 			"/subscriptions/" + afSubsc.GetSubscID()
 		tiSub.Self = locUri
 		rsp.Headers = map[string][]string{
@@ -135,7 +135,7 @@ func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID stri
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		tiSub := convertAppSessionContextToTrafficInfluSub(rspBody.(*models.AppSessionContext))
-		tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, subscID)
+		tiSub.Self = p.genTrafficInfluSubURI(afID, subscID)
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	} else {
 		rspCode, rspBody := p.Consumer().AppDataInfluenceDataIdGet(subsc.GetInfluenceID())
@@ -143,7 +143,7 @@ func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID stri
 			return &HandlerResponse{rspCode, nil, rspBody}
 		}
 		tiSub := convertTrafficInfluDataToTrafficInfluSub(rspBody.(*models.TrafficInfluData))
-		tiSub.Self = genTrafficInfluSubURI(p.Config().SbiUri(), afID, subscID)
+		tiSub.Self = p.genTrafficInfluSubURI(afID, subscID)
 		return &HandlerResponse{http.StatusOK, nil, tiSub}
 	}
 }
@@ -260,10 +260,10 @@ func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
 	return &HandlerResponse{rspCode, nil, rspBody}
 }
 
-func genTrafficInfluSubURI(sbiURI, afID, subscriptionId string) string {
+func (p *Processor) genTrafficInfluSubURI(afID, subscriptionId string) string {
 	// E.g. https://localhost:29505/3gpp-traffic-Influence/v1/{afId}/subscriptions/{subscriptionId}
-	return fmt.Sprintf("%s%s/%s/subscriptions/%s",
-		sbiURI, factory.TraffInfluResUriPrefix, afID, subscriptionId)
+	return fmt.Sprintf("%s/%s/subscriptions/%s",
+		p.Config().ServiceUri(factory.ServiceTraffInflu), afID, subscriptionId)
 }
 
 func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *models.TrafficInfluSub {

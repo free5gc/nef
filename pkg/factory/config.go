@@ -36,6 +36,13 @@ const (
 	NefOamResUriPrefix       = "/nnef-oam/v1"
 )
 
+const (
+	ServiceTraffInflu string = "3gpp-traffic-influence"
+	ServicePfdMng     string = "3gpp-pfd-management"
+	ServiceNefPfd     string = string(models.ServiceName_NNEF_PFDMANAGEMENT)
+	ServiceNefOam     string = "nnef-oam"
+)
+
 type Config struct {
 	Info          *Info               `yaml:"info" valid:"required"`
 	Configuration *Configuration      `yaml:"configuration" valid:"required"`
@@ -87,8 +94,8 @@ func (c *Configuration) validate() (bool, error) {
 	}
 	for i, s := range c.ServiceList {
 		switch {
-		case s.ServiceName == "nnef-pfdmanagement":
-		case s.ServiceName == "nnef-oam":
+		case s.ServiceName == ServiceNefPfd:
+		case s.ServiceName == ServiceNefOam:
 		default:
 			err := errors.New("Invalid serviceList[" + strconv.Itoa(i) + "]: " +
 				s.ServiceName + ", should be nnef-pfdmanagement or nnef-oam")
@@ -301,4 +308,19 @@ func (c *Config) NFServices() []models.NfService {
 		nfServices = append(nfServices, nfService)
 	}
 	return nfServices
+}
+
+func (c *Config) ServiceUri(name string) string {
+	switch name {
+	case ServiceTraffInflu:
+		return c.SbiUri() + TraffInfluResUriPrefix
+	case ServicePfdMng:
+		return c.SbiUri() + PfdMngResUriPrefix
+	case ServiceNefPfd:
+		return c.SbiUri() + NefPfdMngResUriPrefix
+	case ServiceNefOam:
+		return c.SbiUri() + NefOamResUriPrefix
+	default:
+		return ""
+	}
 }

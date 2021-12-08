@@ -101,9 +101,11 @@ func TestPostPFDSubscriptions(t *testing.T) {
 			description:  "Successful subscription, should return PfdSubscription",
 			subscription: pfdSubsc,
 			expectedResponse: &HandlerResponse{
-				Status:  http.StatusCreated,
-				Headers: map[string][]string{"Location": {genPfdSubscriptionURI(nefApp.Config().SbiUri(), "1")}},
-				Body:    pfdSubsc,
+				Status: http.StatusCreated,
+				Headers: map[string][]string{
+					"Location": {nefApp.Processor().genPfdSubscriptionURI("1")},
+				},
+				Body: pfdSubsc,
 			},
 		},
 	}

@@ -168,11 +168,11 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &[]models.PfdManagement{
 					{
-						Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
+						Self: nefApp.Processor().genPfdManagementURI("af1", "1"),
 						PfdDatas: map[string]models.PfdData{
 							"app1": {
 								ExternalAppId: "app1",
-								Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+								Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 								Pfds: map[string]models.Pfd{
 									"pfd1": pfd1,
 									"pfd2": pfd2,
@@ -180,7 +180,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 							},
 							"app2": {
 								ExternalAppId: "app2",
-								Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
+								Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app2"),
 								Pfds: map[string]models.Pfd{
 									"pfd3": pfd3,
 								},
@@ -293,11 +293,11 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusCreated,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
+					Self: nefApp.Processor().genPfdManagementURI("af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -305,7 +305,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -384,11 +384,11 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
+					Self: nefApp.Processor().genPfdManagementURI("af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -396,7 +396,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -514,11 +514,11 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
 				Body: &models.PfdManagement{
-					Self: genPfdManagementURI(nefApp.Config().SbiUri(), "af1", "1"),
+					Self: nefApp.Processor().genPfdManagementURI("af1", "1"),
 					PfdDatas: map[string]models.PfdData{
 						"app1": {
 							ExternalAppId: "app1",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 							Pfds: map[string]models.Pfd{
 								"pfd1": pfd1,
 								"pfd2": pfd2,
@@ -526,7 +526,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 						},
 						"app2": {
 							ExternalAppId: "app2",
-							Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app2"),
+							Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app2"),
 							Pfds: map[string]models.Pfd{
 								"pfd3": pfd3,
 							},
@@ -612,7 +612,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+					Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -726,7 +726,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+					Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd1": pfd1,
 						"pfd2": pfd2,
@@ -818,7 +818,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 				Status: http.StatusOK,
 				Body: &models.PfdData{
 					ExternalAppId: "app1",
-					Self:          genPfdDataURI(nefApp.Config().SbiUri(), "af1", "1", "app1"),
+					Self:          nefApp.Processor().genPfdDataURI("af1", "1", "app1"),
 					Pfds: map[string]models.Pfd{
 						"pfd2": pfd2,
 					},

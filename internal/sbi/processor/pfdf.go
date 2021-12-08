@@ -39,7 +39,7 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 
 	subID := p.Notifier().PfdChangeNotifier.AddPfdSub(pfdSubsc)
 	hdrs := make(map[string][]string)
-	addLocationheader(hdrs, genPfdSubscriptionURI(p.Config().SbiUri(), subID))
+	addLocationheader(hdrs, p.genPfdSubscriptionURI(subID))
 
 	return &HandlerResponse{http.StatusCreated, hdrs, pfdSubsc}
 }
@@ -54,7 +54,7 @@ func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResp
 	return &HandlerResponse{http.StatusNoContent, nil, nil}
 }
 
-func genPfdSubscriptionURI(sbiURI, subID string) string {
+func (p *Processor) genPfdSubscriptionURI(subID string) string {
 	// E.g. "https://localhost:29505/nnef-pfdmanagement/v1/subscriptions/{subscriptionId}
-	return fmt.Sprintf("%s%s/subscriptions/%s", sbiURI, factory.NefPfdMngResUriPrefix, subID)
+	return fmt.Sprintf("%s/subscriptions/%s", p.Config().ServiceUri(factory.ServiceNefPfd), subID)
 }

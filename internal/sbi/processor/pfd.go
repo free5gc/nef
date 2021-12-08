@@ -69,7 +69,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, pfdReport)
 		} else {
-			pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, afTrans.GetTransID(), appID)
+			pfdData.Self = p.genPfdDataURI(scsAsID, afTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
 			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
@@ -86,7 +86,7 @@ func (p *Processor) PostPFDManagementTransactions(scsAsID string, pfdMng *models
 	afCtx.AddPfdTrans(afTrans)
 	p.Context().AddAfCtx(afCtx)
 
-	pfdMng.Self = genPfdManagementURI(p.Config().SbiUri(), scsAsID, afTrans.GetTransID())
+	pfdMng.Self = p.genPfdManagementURI(scsAsID, afTrans.GetTransID())
 
 	return &HandlerResponse{http.StatusCreated, nil, pfdMng}
 }
@@ -183,7 +183,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 			delete(pfdMng.PfdDatas, appID)
 			addPfdReport(pfdMng, pfdReport)
 		} else {
-			pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, afPfdTrans.GetTransID(), appID)
+			pfdData.Self = p.genPfdDataURI(scsAsID, afPfdTrans.GetTransID(), appID)
 			pfdMng.PfdDatas[appID] = pfdData
 			pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 				ApplicationId: appID,
@@ -197,7 +197,7 @@ func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID strin
 		return &HandlerResponse{http.StatusInternalServerError, nil, &pfdMng.PfdReports}
 	}
 
-	pfdMng.Self = genPfdManagementURI(p.Config().SbiUri(), scsAsID, afPfdTrans.GetTransID())
+	pfdMng.Self = p.genPfdManagementURI(scsAsID, afPfdTrans.GetTransID())
 
 	return &HandlerResponse{http.StatusOK, nil, pfdMng}
 }
@@ -243,7 +243,7 @@ func (p *Processor) GetIndividualApplicationPFDManagement(scsAsID, transID, appI
 		return &HandlerResponse{rspCode, nil, rspBody}
 	}
 	pfdData := convertPfdDataForAppToPfdData(rspBody.(*models.PfdDataForApp))
-	pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
+	pfdData.Self = p.genPfdDataURI(scsAsID, transID, appID)
 
 	return &HandlerResponse{http.StatusOK, nil, pfdData}
 }
@@ -298,7 +298,7 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 	if pfdReport := p.storePfdDataToUDR(appID, pfdDataForApp); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
-	pfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
+	pfdData.Self = p.genPfdDataURI(scsAsID, transID, appID)
 	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
@@ -339,7 +339,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 	if pfdReport := p.storePfdDataToUDR(appID, pfdDataForApp); pfdReport != nil {
 		return &HandlerResponse{http.StatusInternalServerError, nil, pfdReport}
 	}
-	oldPfdData.Self = genPfdDataURI(p.Config().SbiUri(), scsAsID, transID, appID)
+	oldPfdData.Self = p.genPfdDataURI(scsAsID, transID, appID)
 	pfdNotifyContext.AddNotification(appID, &models.PfdChangeNotification{
 		ApplicationId: appID,
 		Pfds:          pfdDataForApp.Pfds,
@@ -353,7 +353,7 @@ func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTra
 	transID := afPfdTrans.GetTransID()
 	appIDs := afPfdTrans.GetExtAppIDs()
 	pfdMng := &models.PfdManagement{
-		Self:     genPfdManagementURI(p.Config().SbiUri(), afID, transID),
+		Self:     p.genPfdManagementURI(afID, transID),
 		PfdDatas: make(map[string]models.PfdData, len(appIDs)),
 	}
 
@@ -363,7 +363,7 @@ func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTra
 	}
 	for _, pfdDataForApp := range *(rspBody.(*[]models.PfdDataForApp)) {
 		pfdData := convertPfdDataForAppToPfdData(&pfdDataForApp)
-		pfdData.Self = genPfdDataURI(p.Config().SbiUri(), afID, transID, pfdData.ExternalAppId)
+		pfdData.Self = p.genPfdDataURI(afID, transID, pfdData.ExternalAppId)
 		pfdMng.PfdDatas[pfdData.ExternalAppId] = *pfdData
 	}
 	return pfdMng, nil
@@ -439,16 +439,16 @@ func convertPfdDataToPfdDataForApp(pfdData *models.PfdData) *models.PfdDataForAp
 	return pfdDataForApp
 }
 
-func genPfdManagementURI(sbiURI, afID, transID string) string {
+func (p *Processor) genPfdManagementURI(afID, transID string) string {
 	// E.g. https://localhost:29505/3gpp-pfd-management/v1/{afID}/transactions/{transID}
-	return fmt.Sprintf("%s%s/%s/transactions/%s",
-		sbiURI, factory.PfdMngResUriPrefix, afID, transID)
+	return fmt.Sprintf("%s/%s/transactions/%s",
+		p.Config().ServiceUri(factory.ServicePfdMng), afID, transID)
 }
 
-func genPfdDataURI(sbiURI, afID, transID, appID string) string {
+func (p *Processor) genPfdDataURI(afID, transID, appID string) string {
 	// E.g. https://localhost:29505/3gpp-pfd-management/v1/{afID}/transactions/{transID}/applications/{appID}
-	return fmt.Sprintf("%s%s/%s/transactions/%s/applications/%s",
-		sbiURI, factory.PfdMngResUriPrefix, afID, transID, appID)
+	return fmt.Sprintf("%s/%s/transactions/%s/applications/%s",
+		p.Config().ServiceUri(factory.ServicePfdMng), afID, transID, appID)
 }
 
 func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
