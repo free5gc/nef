@@ -63,112 +63,112 @@ func (s *Server) getPFDManagementEndpoints() []Endpoint {
 	}
 }
 
-func (s *Server) apiGetPFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiGetPFDManagementTransactions(gc *gin.Context) {
 	hdlRsp := s.Processor().GetPFDManagementTransactions(
-		ginCtx.Param("scsAsID"))
+		gc.Param("scsAsID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPostPFDManagementTransactions(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPostPFDManagementTransactions(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var pfdMng models.PfdManagement
-	if err := s.deserializeData(ginCtx, &pfdMng, contentType); err != nil {
+	if err := s.deserializeData(gc, &pfdMng, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PostPFDManagementTransactions(
-		ginCtx.Param("scsAsID"), &pfdMng)
+		gc.Param("scsAsID"), &pfdMng)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiDeletePFDManagementTransactions(ginCtx *gin.Context) {
+func (s *Server) apiDeletePFDManagementTransactions(gc *gin.Context) {
 	hdlRsp := s.Processor().DeletePFDManagementTransactions(
-		ginCtx.Param("scsAsID"))
+		gc.Param("scsAsID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiGetIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualPFDManagementTransaction(gc *gin.Context) {
 	hdlRsp := s.Processor().GetIndividualPFDManagementTransaction(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
+		gc.Param("scsAsID"), gc.Param("transID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPutIndividualPFDManagementTransaction(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPutIndividualPFDManagementTransaction(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var pfdMng models.PfdManagement
-	if err := s.deserializeData(ginCtx, &pfdMng, contentType); err != nil {
+	if err := s.deserializeData(gc, &pfdMng, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PutIndividualPFDManagementTransaction(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), &pfdMng)
+		gc.Param("scsAsID"), gc.Param("transID"), &pfdMng)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiDeleteIndividualPFDManagementTransaction(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualPFDManagementTransaction(gc *gin.Context) {
 	hdlRsp := s.Processor().DeleteIndividualPFDManagementTransaction(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"))
+		gc.Param("scsAsID"), gc.Param("transID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiGetIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualApplicationPFDManagement(gc *gin.Context) {
 	hdlRsp := s.Processor().GetIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
+		gc.Param("scsAsID"), gc.Param("transID"), gc.Param("appID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiDeleteIndividualApplicationPFDManagement(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualApplicationPFDManagement(gc *gin.Context) {
 	hdlRsp := s.Processor().DeleteIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"))
+		gc.Param("scsAsID"), gc.Param("transID"), gc.Param("appID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPutIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPutIndividualApplicationPFDManagement(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var pfdData models.PfdData
-	if err := s.deserializeData(ginCtx, &pfdData, contentType); err != nil {
+	if err := s.deserializeData(gc, &pfdData, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PutIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
+		gc.Param("scsAsID"), gc.Param("transID"), gc.Param("appID"), &pfdData)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPatchIndividualApplicationPFDManagement(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPatchIndividualApplicationPFDManagement(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var pfdData models.PfdData
-	if err := s.deserializeData(ginCtx, &pfdData, contentType); err != nil {
+	if err := s.deserializeData(gc, &pfdData, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PatchIndividualApplicationPFDManagement(
-		ginCtx.Param("scsAsID"), ginCtx.Param("transID"), ginCtx.Param("appID"), &pfdData)
+		gc.Param("scsAsID"), gc.Param("transID"), gc.Param("appID"), &pfdData)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }

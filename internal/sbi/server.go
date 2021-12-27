@@ -148,16 +148,16 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
 }
 
-func checkContentTypeIsJSON(ginCtx *gin.Context) (string, error) {
+func checkContentTypeIsJSON(gc *gin.Context) (string, error) {
 	var err error
-	contentType := ginCtx.GetHeader("Content-Type")
+	contentType := gc.GetHeader("Content-Type")
 	if openapi.KindOfMediaType(contentType) != openapi.MediaKindJSON {
 		err = fmt.Errorf("Wrong content type %q", contentType)
 	}
 
 	if err != nil {
 		logger.SBILog.Error(err)
-		ginCtx.JSON(http.StatusInternalServerError,
+		gc.JSON(http.StatusInternalServerError,
 			openapi.ProblemDetailsMalformedReqSyntax(err.Error()))
 		return "", err
 	}
@@ -165,11 +165,11 @@ func checkContentTypeIsJSON(ginCtx *gin.Context) (string, error) {
 	return contentType, nil
 }
 
-func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}, contentType string) error {
-	reqBody, err := ginCtx.GetRawData()
+func (s *Server) deserializeData(gc *gin.Context, data interface{}, contentType string) error {
+	reqBody, err := gc.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
-		ginCtx.JSON(http.StatusInternalServerError,
+		gc.JSON(http.StatusInternalServerError,
 			openapi.ProblemDetailsSystemFailure(err.Error()))
 		return err
 	}
@@ -177,7 +177,7 @@ func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}, contentT
 	err = openapi.Deserialize(data, reqBody, contentType)
 	if err != nil {
 		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
-		ginCtx.JSON(http.StatusBadRequest,
+		gc.JSON(http.StatusBadRequest,
 			openapi.ProblemDetailsMalformedReqSyntax(err.Error()))
 		return err
 	}
@@ -185,7 +185,7 @@ func (s *Server) deserializeData(ginCtx *gin.Context, data interface{}, contentT
 	return nil
 }
 
-func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor.HandlerResponse, multipart bool) {
+func (s *Server) buildAndSendHttpResponse(gc *gin.Context, hdlRsp *processor.HandlerResponse, multipart bool) {
 	if hdlRsp.Status == 0 {
 		// No Response to send
 		return
@@ -193,7 +193,7 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 
 	rsp := httpwrapper.NewResponse(hdlRsp.Status, hdlRsp.Headers, hdlRsp.Body)
 
-	buildHttpResponseHeader(ginCtx, rsp)
+	buildHttpResponseHeader(gc, rsp)
 
 	var rspBody []byte
 	var contentType string
@@ -208,13 +208,13 @@ func (s *Server) buildAndSendHttpResponse(ginCtx *gin.Context, hdlRsp *processor
 
 	if err != nil {
 		logger.SBILog.Errorln(err)
-		ginCtx.JSON(http.StatusInternalServerError, openapi.ProblemDetailsSystemFailure(err.Error()))
+		gc.JSON(http.StatusInternalServerError, openapi.ProblemDetailsSystemFailure(err.Error()))
 	} else {
-		ginCtx.Data(rsp.Status, contentType, rspBody)
+		gc.Data(rsp.Status, contentType, rspBody)
 	}
 }
 
-func buildHttpResponseHeader(ginCtx *gin.Context, rsp *httpwrapper.Response) {
+func buildHttpResponseHeader(gc *gin.Context, rsp *httpwrapper.Response) {
 	for k, v := range rsp.Header {
 		// Concatenate all values of the Header with ','
 		allValues := ""
@@ -225,6 +225,6 @@ func buildHttpResponseHeader(ginCtx *gin.Context, rsp *httpwrapper.Response) {
 				allValues += "," + vv
 			}
 		}
-		ginCtx.Header(k, allValues)
+		gc.Header(k, allValues)
 	}
 }

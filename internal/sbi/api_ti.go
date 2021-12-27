@@ -43,74 +43,74 @@ func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
 	}
 }
 
-func (s *Server) apiGetTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiGetTrafficInfluenceSubscription(gc *gin.Context) {
 	hdlRsp := s.Processor().GetTrafficInfluenceSubscription(
-		ginCtx.Param("afID"))
+		gc.Param("afID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPostTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPostTrafficInfluenceSubscription(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var tiSub models.TrafficInfluSub
-	if err := s.deserializeData(ginCtx, &tiSub, contentType); err != nil {
+	if err := s.deserializeData(gc, &tiSub, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PostTrafficInfluenceSubscription(
-		ginCtx.Param("afID"), &tiSub)
+		gc.Param("afID"), &tiSub)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiGetIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiGetIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 	hdlRsp := s.Processor().GetIndividualTrafficInfluenceSubscription(
-		ginCtx.Param("afID"), ginCtx.Param("subscID"))
+		gc.Param("afID"), gc.Param("subscID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPutIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPutIndividualTrafficInfluenceSubscription(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var tiSub models.TrafficInfluSub
-	if err := s.deserializeData(ginCtx, &tiSub, contentType); err != nil {
+	if err := s.deserializeData(gc, &tiSub, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PutIndividualTrafficInfluenceSubscription(
-		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSub)
+		gc.Param("afID"), gc.Param("subscID"), &tiSub)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
-	contentType, err := checkContentTypeIsJSON(ginCtx)
+func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(gc *gin.Context) {
+	contentType, err := checkContentTypeIsJSON(gc)
 	if err != nil {
 		return
 	}
 
 	var tiSubPatch models.TrafficInfluSubPatch
-	if err := s.deserializeData(ginCtx, &tiSubPatch, contentType); err != nil {
+	if err := s.deserializeData(gc, &tiSubPatch, contentType); err != nil {
 		return
 	}
 
 	hdlRsp := s.Processor().PatchIndividualTrafficInfluenceSubscription(
-		ginCtx.Param("afID"), ginCtx.Param("subscID"), &tiSubPatch)
+		gc.Param("afID"), gc.Param("subscID"), &tiSubPatch)
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
-func (s *Server) apiDeleteIndividualTrafficInfluenceSubscription(ginCtx *gin.Context) {
+func (s *Server) apiDeleteIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 	hdlRsp := s.Processor().DeleteIndividualTrafficInfluenceSubscription(
-		ginCtx.Param("afID"), ginCtx.Param("subscID"))
+		gc.Param("afID"), gc.Param("subscID"))
 
-	s.buildAndSendHttpResponse(ginCtx, hdlRsp, false)
+	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
