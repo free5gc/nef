@@ -142,10 +142,10 @@ func (s *Server) startServer(wg *sync.WaitGroup) {
 		err = fmt.Errorf("No support this scheme[%s]", scheme)
 	}
 
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		logger.SBILog.Errorf("SBI server error: %+v", err)
 	}
-	logger.SBILog.Infof("SBI server (listen on %s) stopped", s.httpServer.Addr)
+	logger.SBILog.Warnf("SBI server (listen on %s) stopped", s.httpServer.Addr)
 }
 
 func checkContentTypeIsJSON(gc *gin.Context) (string, error) {
