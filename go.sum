@@ -1,7 +1,7 @@
 bitbucket.org/free5gc-team/openapi v0.0.0-20211014134522-20e0d874611c h1:0FRd08VBA/ZuN2zKdxlPZ/hYTTdHYtNV1tdX2l/kne4=
 bitbucket.org/free5gc-team/openapi v0.0.0-20211014134522-20e0d874611c/go.mod h1:ccgobwwP00dqzm0MkNFuS+37jIwtOExeBpaL5hja9Ik=
-bitbucket.org/free5gc-team/util v0.0.0-20210819050407-27603454f4e4 h1:eQD4VbREeRJk2uIPTH70iE+S7bY58mHx8k0ZWouTUX4=
-bitbucket.org/free5gc-team/util v0.0.0-20210819050407-27603454f4e4/go.mod h1:8PMWdb3qZtQzh6vCmq+UQNVcYNgKZ6iruu1//z1X8iY=
+bitbucket.org/free5gc-team/util v0.0.0-20211230010137-49b9c41ab2ea h1:86xJSiMVIvHHzZ49mZ8XS/fskh1WE7adl4w2y0cZLjY=
+bitbucket.org/free5gc-team/util v0.0.0-20211230010137-49b9c41ab2ea/go.mod h1:8PMWdb3qZtQzh6vCmq+UQNVcYNgKZ6iruu1//z1X8iY=
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
