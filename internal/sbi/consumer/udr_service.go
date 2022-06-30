@@ -68,7 +68,7 @@ func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, inter
 		InfluenceIds: optional.NewInterface(influenceIDs),
 	}
 
-	result, rsp, err = client.DefaultApi.
+	result, rsp, err = client.InfluenceDataApi.
 		ApplicationDataInfluenceDataGet(ctx.Background(), param)
 
 	if rsp != nil {
@@ -105,7 +105,7 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 		InfluenceIds: optional.NewInterface(influenceID),
 	}
 
-	result, rsp, err = client.DefaultApi.
+	result, rsp, err = client.InfluenceDataApi.
 		ApplicationDataInfluenceDataGet(ctx.Background(), param)
 
 	if rsp != nil {
@@ -124,7 +124,8 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 }
 
 func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
-	tiData *models.TrafficInfluData) (int, interface{}) {
+	tiData *models.TrafficInfluData,
+) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -139,7 +140,7 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.
+	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdPut(ctx.TODO(), influenceID, *tiData)
 
 	if rsp != nil {
@@ -291,7 +292,8 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 }
 
 func (s *nudrService) AppDataInfluenceDataPatch(
-	influenceID string, tiSubPatch *models.TrafficInfluDataPatch) (int, interface{}) {
+	influenceID string, tiSubPatch *models.TrafficInfluDataPatch,
+) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -306,7 +308,7 @@ func (s *nudrService) AppDataInfluenceDataPatch(
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.
+	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdPatch(ctx.Background(), influenceID, *tiSubPatch)
 
 	if rsp != nil {
@@ -338,7 +340,7 @@ func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, inter
 	}
 	client := s.getClient(uri)
 
-	rsp, err = client.DefaultApi.
+	rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdDelete(ctx.Background(), influenceID)
 
 	if rsp != nil {

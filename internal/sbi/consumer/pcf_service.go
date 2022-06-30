@@ -118,9 +118,11 @@ func (s *npcfService) PostAppSessions(asc *models.AppSessionContext) (int, inter
 	return rspCode, rspBody, appSessID
 }
 
-func (s *npcfService) PutAppSession(appSessionId string,
+func (s *npcfService) PutAppSession(
+	appSessionId string,
 	ascUpdateData *models.AppSessionContextUpdateData,
-	asc *models.AppSessionContext) (int, interface{}, string) {
+	asc *models.AppSessionContext,
+) (int, interface{}, string) {
 	var (
 		err       error
 		rspCode   int
@@ -182,7 +184,8 @@ func (s *npcfService) PutAppSession(appSessionId string,
 }
 
 func (s *npcfService) PatchAppSession(appSessionId string,
-	ascUpdateData *models.AppSessionContextUpdateData) (int, interface{}) {
+	ascUpdateData *models.AppSessionContextUpdateData,
+) (int, interface{}) {
 	var (
 		err     error
 		rspCode int

@@ -137,7 +137,8 @@ func (p *Processor) GetIndividualPFDManagementTransaction(scsAsID, transID strin
 }
 
 func (p *Processor) PutIndividualPFDManagementTransaction(scsAsID, transID string,
-	pfdMng *models.PfdManagement) *HandlerResponse {
+	pfdMng *models.PfdManagement,
+) *HandlerResponse {
 	logger.PFDManageLog.Infof("PutIndividualPFDManagementTransaction - scsAsID[%s], transID[%s]", scsAsID, transID)
 
 	// TODO: Authorize the AF
@@ -277,7 +278,8 @@ func (p *Processor) DeleteIndividualApplicationPFDManagement(scsAsID, transID, a
 }
 
 func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appID string,
-	pfdData *models.PfdData) *HandlerResponse {
+	pfdData *models.PfdData,
+) *HandlerResponse {
 	logger.PFDManageLog.Infof("PutIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
@@ -308,7 +310,8 @@ func (p *Processor) PutIndividualApplicationPFDManagement(scsAsID, transID, appI
 }
 
 func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, appID string,
-	pfdData *models.PfdData) *HandlerResponse {
+	pfdData *models.PfdData,
+) *HandlerResponse {
 	logger.PFDManageLog.Infof("PatchIndividualApplicationPFDManagement - scsAsID[%s], transID[%s], appID[%s]",
 		scsAsID, transID, appID)
 
@@ -349,7 +352,8 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(scsAsID, transID, ap
 }
 
 func (p *Processor) buildPfdManagement(afID string, afPfdTrans *context.AfPfdTransaction) (*models.PfdManagement,
-	*HandlerResponse) {
+	*HandlerResponse,
+) {
 	transID := afPfdTrans.GetTransID()
 	appIDs := afPfdTrans.GetExtAppIDs()
 	pfdMng := &models.PfdManagement{
@@ -452,7 +456,8 @@ func (p *Processor) genPfdDataURI(afID, transID, appID string) string {
 }
 
 func validatePfdManagement(afID, transID string, pfdMng *models.PfdManagement,
-	nefCtx *context.NefContext) *models.ProblemDetails {
+	nefCtx *context.NefContext,
+) *models.ProblemDetails {
 	pfdMng.PfdReports = make(map[string]models.PfdReport)
 
 	if len(pfdMng.PfdDatas) == 0 {

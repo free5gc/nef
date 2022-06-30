@@ -194,8 +194,11 @@ func (s *nnrfService) DeregisterNFInstance() error {
 	return nil
 }
 
-func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.ServiceName,
-	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts) (*models.NfProfile, string, error) {
+func (s *nnrfService) SearchNFInstances(
+	nrfUri string,
+	srvName models.ServiceName,
+	param *Nnrf_NFDiscovery.SearchNFInstancesParamOpts,
+) (*models.NfProfile, string, error) {
 	if param == nil {
 		param = &Nnrf_NFDiscovery.SearchNFInstancesParamOpts{}
 	}
@@ -245,7 +248,8 @@ func getProfileAndUri(nfInstances []models.NfProfile, srvName models.ServiceName
 
 // searchNFServiceUri returns NF Uri derived from NfProfile with corresponding service
 func searchNFServiceUri(nfProfile models.NfProfile, serviceName models.ServiceName,
-	nfServiceStatus models.NfServiceStatus) string {
+	nfServiceStatus models.NfServiceStatus,
+) string {
 	if nfProfile.NfServices == nil {
 		return ""
 	}

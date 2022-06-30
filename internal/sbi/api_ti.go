@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"bitbucket.org/free5gc-team/openapi/models"
+	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
@@ -56,7 +56,7 @@ func (s *Server) apiPostTrafficInfluenceSubscription(gc *gin.Context) {
 		return
 	}
 
-	var tiSub models.TrafficInfluSub
+	var tiSub models_nef.TrafficInfluSub
 	if err := s.deserializeData(gc, &tiSub, contentType); err != nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (s *Server) apiPutIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 		return
 	}
 
-	var tiSub models.TrafficInfluSub
+	var tiSub models_nef.TrafficInfluSub
 	if err := s.deserializeData(gc, &tiSub, contentType); err != nil {
 		return
 	}
@@ -97,7 +97,7 @@ func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(gc *gin.Context)
 		return
 	}
 
-	var tiSubPatch models.TrafficInfluSubPatch
+	var tiSubPatch models_nef.TrafficInfluSubPatch
 	if err := s.deserializeData(gc, &tiSubPatch, contentType); err != nil {
 		return
 	}

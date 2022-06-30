@@ -11,13 +11,14 @@ import (
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
 	"bitbucket.org/free5gc-team/openapi/models"
+	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerResponse {
 	logger.TrafInfluLog.Infof("GetTrafficInfluenceSubscription - afID[%s]", afID)
 
 	var (
-		tiSubList []models.TrafficInfluSub
+		tiSubList []models_nef.TrafficInfluSub
 		subInPCF  []string
 		subInUDR  []string
 	)
@@ -66,7 +67,8 @@ func (p *Processor) GetTrafficInfluenceSubscription(afID string) *HandlerRespons
 }
 
 func (p *Processor) PostTrafficInfluenceSubscription(afID string,
-	tiSub *models.TrafficInfluSub) *HandlerResponse {
+	tiSub *models_nef.TrafficInfluSub,
+) *HandlerResponse {
 	var rsp *HandlerResponse
 	logger.TrafInfluLog.Infof("PostTrafficInfluenceSubscription - afID[%s]", afID)
 
@@ -149,13 +151,15 @@ func (p *Processor) GetIndividualTrafficInfluenceSubscription(afID, subscID stri
 }
 
 func (p *Processor) PutIndividualTrafficInfluenceSubscription(afID, subscID string,
-	tiSub *models.TrafficInfluSub) *HandlerResponse {
+	tiSub *models_nef.TrafficInfluSub,
+) *HandlerResponse {
 	logger.TrafInfluLog.Infof("PutIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 	return &HandlerResponse{http.StatusOK, nil, nil}
 }
 
 func (p *Processor) PatchIndividualTrafficInfluenceSubscription(afID, subscID string,
-	tiSubPatch *models.TrafficInfluSubPatch) *HandlerResponse {
+	tiSubPatch *models_nef.TrafficInfluSubPatch,
+) *HandlerResponse {
 	logger.TrafInfluLog.Infof("PatchIndividualTrafficInfluenceSubscription - afID[%s], subscID[%s]", afID, subscID)
 
 	afCtx := p.Context().GetAfCtx(afID)
@@ -221,7 +225,7 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(afID, subscID s
 	}
 }
 
-func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerResponse {
+func validateTrafficInfluenceData(tiSub *models_nef.TrafficInfluSub) *HandlerResponse {
 	if tiSub.AfAppId == "" && len(tiSub.TrafficFilters) == 0 && len(tiSub.EthTrafficFilters) == 0 {
 		problemDetails := openapi.
 			ProblemDetailsMalformedReqSyntax("One of afAppId, trafficFilters or ethTrafficFilters shall be included")
@@ -238,7 +242,8 @@ func validateTrafficInfluenceData(tiSub *models.TrafficInfluSub) *HandlerRespons
 }
 
 func (p *Processor) pcfPostAppSessions(afSubsc *context.AfSubscription,
-	tiSub *models.TrafficInfluSub) *HandlerResponse {
+	tiSub *models_nef.TrafficInfluSub,
+) *HandlerResponse {
 	asc := models.AppSessionContext{
 		AscReqData: &models.AppSessionContextReqData{
 			AfAppId: tiSub.AfAppId,
@@ -266,8 +271,8 @@ func (p *Processor) genTrafficInfluSubURI(afID, subscriptionId string) string {
 		p.Config().ServiceUri(factory.ServiceTraffInflu), afID, subscriptionId)
 }
 
-func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *models.TrafficInfluSub {
-	tiSub := &models.TrafficInfluSub{
+func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *models_nef.TrafficInfluSub {
+	tiSub := &models_nef.TrafficInfluSub{
 		AppReloInd:        tiData.AppReloInd,
 		AfAppId:           tiData.AfAppId,
 		Dnn:               tiData.Dnn,
@@ -280,7 +285,7 @@ func convertTrafficInfluDataToTrafficInfluSub(tiData *models.TrafficInfluData) *
 	return tiSub
 }
 
-func convertTrafficInfluSubToTrafficInfluData(tiSub *models.TrafficInfluSub) *models.TrafficInfluData {
+func convertTrafficInfluSubToTrafficInfluData(tiSub *models_nef.TrafficInfluSub) *models.TrafficInfluData {
 	tiData := &models.TrafficInfluData{
 		AppReloInd:        tiSub.AppReloInd,
 		AfAppId:           tiSub.AfAppId,
@@ -294,8 +299,8 @@ func convertTrafficInfluSubToTrafficInfluData(tiSub *models.TrafficInfluSub) *mo
 	return tiData
 }
 
-func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionContext) *models.TrafficInfluSub {
-	tiSub := &models.TrafficInfluSub{
+func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionContext) *models_nef.TrafficInfluSub {
+	tiSub := &models_nef.TrafficInfluSub{
 		AfAppId:     appSessionCtx.AscReqData.AfAppId,
 		AppReloInd:  appSessionCtx.AscReqData.AfRoutReq.AppReloc,
 		DnaiChgType: appSessionCtx.AscReqData.AfRoutReq.UpPathChgSub.DnaiChgType,
@@ -308,13 +313,15 @@ func convertAppSessionContextToTrafficInfluSub(appSessionCtx *models.AppSessionC
 }
 
 func convertTrafficInfluSubPatchToTrafficInfluDataPatch(
-	tiSubPatch *models.TrafficInfluSubPatch) *models.TrafficInfluDataPatch {
+	tiSubPatch *models_nef.TrafficInfluSubPatch,
+) *models.TrafficInfluDataPatch {
 	tiDataPatch := &models.TrafficInfluDataPatch{}
 	return tiDataPatch
 }
 
 func convertTrafficInfluSubPatchToAppSessionContextUpdateData(
-	tiSubPatch *models.TrafficInfluSubPatch) *models.AppSessionContextUpdateData {
+	tiSubPatch *models_nef.TrafficInfluSubPatch,
+) *models.AppSessionContextUpdateData {
 	appSessionCtxUpdate := &models.AppSessionContextUpdateData{}
 	return appSessionCtxUpdate
 }
