@@ -34,14 +34,14 @@ func (s *Server) getPFDFEndpoints() []Endpoint {
 }
 
 func (s *Server) apiGetApplicationsPFD(gc *gin.Context) {
-	//TODO: support URI query parameters: supported-features
+	// TODO: support URI query parameters: supported-features
 	hdlRsp := s.Processor().GetApplicationsPFD(gc.QueryArray("application-ids"))
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
 func (s *Server) apiGetIndividualApplicationPFD(gc *gin.Context) {
-	//TODO: support URI query parameters: supported-features
+	// TODO: support URI query parameters: supported-features
 	hdlRsp := s.Processor().GetIndividualApplicationPFD(gc.Param("appID"))
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)

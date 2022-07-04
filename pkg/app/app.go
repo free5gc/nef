@@ -90,7 +90,8 @@ func (a *NefApp) setLogLevel() {
 }
 
 func setLoggerLogLevel(loggerName, DebugLevel string, reportCaller bool,
-	logLevelFn func(l logrus.Level), reportCallerFn func(b bool)) {
+	logLevelFn func(l logrus.Level), reportCallerFn func(b bool),
+) {
 	if DebugLevel != "" {
 		if level, err := logrus.ParseLevel(DebugLevel); err != nil {
 			logger.InitLog.Warnf("%s Log level [%s] is invalid, set to [info] level",
