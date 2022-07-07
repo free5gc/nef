@@ -11,12 +11,11 @@ import (
 )
 
 func (p *Processor) GetApplicationsPFD(appIDs []string) *HandlerResponse {
-	logger.PFDFLog.Infof("GetApplicationsPFD")
+	logger.PFDFLog.Infof("GetApplicationsPFD - appIDs: %v", appIDs)
 
 	// TODO: Support SupportedFeatures
 	rspCode, rspBody := p.Consumer().AppDataPfdsGet(appIDs)
 
-	// return &HandlerResponse{http.StatusOK, nil, pfdDataForApps}
 	return &HandlerResponse{rspCode, nil, rspBody}
 }
 
@@ -30,11 +29,12 @@ func (p *Processor) GetIndividualApplicationPFD(appID string) *HandlerResponse {
 }
 
 func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *HandlerResponse {
-	logger.PFDFLog.Infof("PostPFDSubscriptions")
+	logger.PFDFLog.Infof("PostPFDSubscriptions - appIDs: %v", pfdSubsc.ApplicationIds)
 
 	// TODO: Support SupportedFeatures
 	if len(pfdSubsc.NotifyUri) == 0 {
-		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound("Absent of Notify URI")}
+		pd := openapi.ProblemDetailsDataNotFound("Absent of Notify URI")
+		return &HandlerResponse{int(pd.Status), nil, pd}
 	}
 
 	subID := p.Notifier().PfdChangeNotifier.AddPfdSub(pfdSubsc)
@@ -44,11 +44,12 @@ func (p *Processor) PostPFDSubscriptions(pfdSubsc *models.PfdSubscription) *Hand
 	return &HandlerResponse{http.StatusCreated, hdrs, pfdSubsc}
 }
 
-func (p *Processor) DeleteIndividualPFDSubscription(subscID string) *HandlerResponse {
-	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subscID[%s]", subscID)
+func (p *Processor) DeleteIndividualPFDSubscription(subID string) *HandlerResponse {
+	logger.PFDFLog.Infof("DeleteIndividualPFDSubscription - subID[%s]", subID)
 
-	if err := p.Notifier().PfdChangeNotifier.DeletePfdSub(subscID); err != nil {
-		return &HandlerResponse{http.StatusNotFound, nil, openapi.ProblemDetailsDataNotFound(err.Error())}
+	if err := p.Notifier().PfdChangeNotifier.DeletePfdSub(subID); err != nil {
+		pd := openapi.ProblemDetailsDataNotFound(err.Error())
+		return &HandlerResponse{int(pd.Status), nil, pd}
 	}
 
 	return &HandlerResponse{http.StatusNoContent, nil, nil}

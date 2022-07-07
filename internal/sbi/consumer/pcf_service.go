@@ -1,7 +1,7 @@
 package consumer
 
 import (
-	ctx "context"
+	"context"
 	"net/http"
 	"strings"
 	"sync"
@@ -67,7 +67,7 @@ func (s *npcfService) GetAppSession(appSessionId string) (int, interface{}) {
 	client := s.getClient(uri)
 
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.
-		GetAppSession(ctx.Background(), appSessionId)
+		GetAppSession(context.Background(), appSessionId)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -100,7 +100,7 @@ func (s *npcfService) PostAppSessions(asc *models.AppSessionContext) (int, inter
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.ApplicationSessionsCollectionApi.PostAppSessions(ctx.TODO(), *asc)
+	result, rsp, err = client.ApplicationSessionsCollectionApi.PostAppSessions(context.TODO(), *asc)
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusCreated {
@@ -140,7 +140,7 @@ func (s *npcfService) PutAppSession(
 
 	appSessID = appSessionId
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.
-		GetAppSession(ctx.Background(), appSessionId)
+		GetAppSession(context.Background(), appSessionId)
 
 	if rsp != nil {
 		if rsp.Body != nil {
@@ -153,7 +153,7 @@ func (s *npcfService) PutAppSession(
 		if rsp.StatusCode == http.StatusOK {
 			// Patch
 			result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.ModAppSession(
-				ctx.Background(), appSessionId, *ascUpdateData)
+				context.Background(), appSessionId, *ascUpdateData)
 
 			if rsp != nil {
 				rspCode = rsp.StatusCode
@@ -201,7 +201,7 @@ func (s *npcfService) PatchAppSession(appSessionId string,
 	client := s.getClient(uri)
 
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.ModAppSession(
-		ctx.Background(), appSessionId, *ascUpdateData)
+		context.Background(), appSessionId, *ascUpdateData)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -239,7 +239,7 @@ func (s *npcfService) DeleteAppSession(appSessionId string) (int, interface{}) {
 	}
 
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.DeleteAppSession(
-		ctx.Background(), appSessionId, param)
+		context.Background(), appSessionId, param)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode

@@ -47,7 +47,7 @@ type Config struct {
 	Info          *Info               `yaml:"info" valid:"required"`
 	Configuration *Configuration      `yaml:"configuration" valid:"required"`
 	Logger        *logger_util.Logger `yaml:"logger" valid:"optional"`
-	mtx           sync.RWMutex
+	mu            sync.RWMutex
 }
 
 func (c *Config) Validate() (bool, error) {
@@ -162,8 +162,8 @@ func appendInvalid(err error) error {
 }
 
 func (c *Config) Print() {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	spew.Config.Indent = "\t"
 	str := spew.Sdump(c.Configuration)
@@ -173,8 +173,8 @@ func (c *Config) Print() {
 }
 
 func (c *Config) Version() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Info.Version != "" {
 		return c.Info.Version
@@ -183,8 +183,8 @@ func (c *Config) Version() string {
 }
 
 func (c *Config) SbiScheme() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.Sbi.Scheme != "" {
 		return c.Configuration.Sbi.Scheme
@@ -193,8 +193,8 @@ func (c *Config) SbiScheme() string {
 }
 
 func (c *Config) SbiPort() int {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
@@ -203,8 +203,8 @@ func (c *Config) SbiPort() int {
 }
 
 func (c *Config) SbiBindingIP() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	bindIP := "0.0.0.0"
 	if c.Configuration.Sbi.BindingIPv4 != "" {
@@ -222,8 +222,8 @@ func (c *Config) SbiBindingAddr() string {
 }
 
 func (c *Config) SbiRegisterIP() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.Sbi.RegisterIPv4 != "" {
 		return c.Configuration.Sbi.RegisterIPv4
@@ -240,8 +240,8 @@ func (c *Config) SbiUri() string {
 }
 
 func (c *Config) NrfUri() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.NrfUri != "" {
 		return c.Configuration.NrfUri
@@ -250,8 +250,8 @@ func (c *Config) NrfUri() string {
 }
 
 func (c *Config) ServiceList() []Service {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.ServiceList != nil && len(c.Configuration.ServiceList) > 0 {
 		return c.Configuration.ServiceList
@@ -260,8 +260,8 @@ func (c *Config) ServiceList() []Service {
 }
 
 func (c *Config) TLSPemPath() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Pem
@@ -270,8 +270,8 @@ func (c *Config) TLSPemPath() string {
 }
 
 func (c *Config) TLSKeyPath() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Key

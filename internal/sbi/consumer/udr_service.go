@@ -1,7 +1,7 @@
 package consumer
 
 import (
-	ctx "context"
+	"context"
 	"net/http"
 	"sync"
 
@@ -69,7 +69,7 @@ func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, inter
 	}
 
 	result, rsp, err = client.InfluenceDataApi.
-		ApplicationDataInfluenceDataGet(ctx.Background(), param)
+		ApplicationDataInfluenceDataGet(context.Background(), param)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -106,7 +106,7 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 	}
 
 	result, rsp, err = client.InfluenceDataApi.
-		ApplicationDataInfluenceDataGet(ctx.Background(), param)
+		ApplicationDataInfluenceDataGet(context.Background(), param)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -141,7 +141,7 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 	client := s.getClient(uri)
 
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdPut(ctx.TODO(), influenceID, *tiData)
+		ApplicationDataInfluenceDataInfluenceIdPut(context.TODO(), influenceID, *tiData)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -159,7 +159,7 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 }
 
 // TS 29.519 v15.3.0 6.2.3.3.1
-func (s *nudrService) AppDataPfdsGet(appID []string) (int, interface{}) {
+func (s *nudrService) AppDataPfdsGet(appIDs []string) (int, interface{}) {
 	var (
 		err     error
 		rspCode int
@@ -175,10 +175,10 @@ func (s *nudrService) AppDataPfdsGet(appID []string) (int, interface{}) {
 	client := s.getClient(uri)
 
 	param := &Nudr_DataRepository.ApplicationDataPfdsGetParamOpts{
-		AppId: optional.NewInterface(appID),
+		AppId: optional.NewInterface(appIDs),
 	}
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(ctx.TODO(), param)
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(context.TODO(), param)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -211,7 +211,7 @@ func (s *nudrService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.Pf
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(ctx.TODO(), appID, *pfdDataForApp)
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(context.TODO(), appID, *pfdDataForApp)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -243,7 +243,7 @@ func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
 	}
 	client := s.getClient(uri)
 
-	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(ctx.TODO(), appID)
+	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(context.TODO(), appID)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -274,7 +274,7 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(ctx.TODO(), appID)
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(context.TODO(), appID)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -309,7 +309,7 @@ func (s *nudrService) AppDataInfluenceDataPatch(
 	client := s.getClient(uri)
 
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdPatch(ctx.Background(), influenceID, *tiSubPatch)
+		ApplicationDataInfluenceDataInfluenceIdPatch(context.Background(), influenceID, *tiSubPatch)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode
@@ -341,7 +341,7 @@ func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, inter
 	client := s.getClient(uri)
 
 	rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdDelete(ctx.Background(), influenceID)
+		ApplicationDataInfluenceDataInfluenceIdDelete(context.Background(), influenceID)
 
 	if rsp != nil {
 		rspCode = rsp.StatusCode

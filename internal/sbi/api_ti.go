@@ -22,22 +22,22 @@ func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {
 		},
 		{
 			Method:  http.MethodGet,
-			Pattern: "/:afID/subscriptions/:subscID",
+			Pattern: "/:afID/subscriptions/:subID",
 			APIFunc: s.apiGetIndividualTrafficInfluenceSubscription,
 		},
 		{
 			Method:  http.MethodPut,
-			Pattern: "/:afID/subscriptions/:subscID",
+			Pattern: "/:afID/subscriptions/:subID",
 			APIFunc: s.apiPutIndividualTrafficInfluenceSubscription,
 		},
 		{
 			Method:  http.MethodPatch,
-			Pattern: "/:afID/subscriptions/:subscID",
+			Pattern: "/:afID/subscriptions/:subID",
 			APIFunc: s.apiPatchIndividualTrafficInfluenceSubscription,
 		},
 		{
 			Method:  http.MethodDelete,
-			Pattern: "/:afID/subscriptions/:subscID",
+			Pattern: "/:afID/subscriptions/:subID",
 			APIFunc: s.apiDeleteIndividualTrafficInfluenceSubscription,
 		},
 	}
@@ -69,7 +69,7 @@ func (s *Server) apiPostTrafficInfluenceSubscription(gc *gin.Context) {
 
 func (s *Server) apiGetIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 	hdlRsp := s.Processor().GetIndividualTrafficInfluenceSubscription(
-		gc.Param("afID"), gc.Param("subscID"))
+		gc.Param("afID"), gc.Param("subID"))
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
@@ -86,7 +86,7 @@ func (s *Server) apiPutIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 	}
 
 	hdlRsp := s.Processor().PutIndividualTrafficInfluenceSubscription(
-		gc.Param("afID"), gc.Param("subscID"), &tiSub)
+		gc.Param("afID"), gc.Param("subID"), &tiSub)
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
@@ -103,14 +103,14 @@ func (s *Server) apiPatchIndividualTrafficInfluenceSubscription(gc *gin.Context)
 	}
 
 	hdlRsp := s.Processor().PatchIndividualTrafficInfluenceSubscription(
-		gc.Param("afID"), gc.Param("subscID"), &tiSubPatch)
+		gc.Param("afID"), gc.Param("subID"), &tiSubPatch)
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }
 
 func (s *Server) apiDeleteIndividualTrafficInfluenceSubscription(gc *gin.Context) {
 	hdlRsp := s.Processor().DeleteIndividualTrafficInfluenceSubscription(
-		gc.Param("afID"), gc.Param("subscID"))
+		gc.Param("afID"), gc.Param("subID"))
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }

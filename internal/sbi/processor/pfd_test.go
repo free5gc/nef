@@ -8,7 +8,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/h2non/gock.v1"
 
-	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
+	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
 	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
@@ -18,7 +18,7 @@ import (
 
 type nefTestApp struct {
 	cfg      *factory.Config
-	nefCtx   *nefctx.NefContext
+	nefCtx   *nef_context.NefContext
 	consumer *consumer.Consumer
 	notifier *notifier.Notifier
 	proc     *Processor
@@ -28,7 +28,7 @@ func newTestApp(cfg *factory.Config, tlsKeyLogPath string) (*nefTestApp, error) 
 	var err error
 	nef := &nefTestApp{cfg: cfg}
 
-	if nef.nefCtx, err = nefctx.NewContext(nef); err != nil {
+	if nef.nefCtx, err = nef_context.NewContext(nef); err != nil {
 		return nil, err
 	}
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
@@ -47,7 +47,7 @@ func (a *nefTestApp) Config() *factory.Config {
 	return a.cfg
 }
 
-func (a *nefTestApp) Context() *nefctx.NefContext {
+func (a *nefTestApp) Context() *nef_context.NefContext {
 	return a.nefCtx
 }
 
@@ -203,13 +203,16 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should return PfdManagements belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
-				afPfdTans.AddExtAppID("app2")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				afPfdTr.AddExtAppID("app2")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().GetPFDManagementTransactions(tc.afID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -247,11 +250,14 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should delete PfdManagements belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().DeletePFDManagementTransactions(tc.afID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -356,9 +362,9 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 	Convey("Given AF ID, should add a PfdManagement belonging to this AF", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
 
 				rsp := nefApp.Processor().PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -411,7 +417,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			transID:     "-1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("PFD transaction not found"),
 			},
 		},
 	}
@@ -419,13 +425,16 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should return the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
-				afPfdTans.AddExtAppID("app2")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				afPfdTr.AddExtAppID("app2")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().GetIndividualPFDManagementTransaction(tc.afID, tc.transID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -466,11 +475,14 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should delete the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -559,7 +571,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   openapi.ProblemDetailsDataNotFound("Transaction not found"),
+				Body:   openapi.ProblemDetailsDataNotFound("PFD transaction not found"),
 			},
 		},
 		{
@@ -579,11 +591,14 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 	Convey("Given AF and transaction ID, should update the PfdManagement", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -635,12 +650,15 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().GetIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -684,12 +702,15 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -774,12 +795,15 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should update the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -866,12 +890,15 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 	Convey("Given AF, transaction and App ID, should partially update the PfdData", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app1")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app1")
+				af.Mu.Unlock()
 
 				rsp := nefApp.Processor().PatchIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
 				So(rsp, ShouldResemble, tc.expectedResponse)
@@ -968,12 +995,15 @@ func TestValidatePfdManagement(t *testing.T) {
 	Convey("Given a PfdManagement along with its belonging AF and transaction ID, check its validity", t, func() {
 		for _, tc := range testCases {
 			Convey(tc.description, func() {
-				afCtx := nefApp.Context().NewAfCtx("af1")
-				nefApp.Context().AddAfCtx(afCtx)
-				defer nefApp.Context().DeleteAfCtx("af1")
-				afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-				afCtx.AddPfdTrans(afPfdTans)
-				afPfdTans.AddExtAppID("app100")
+				af := nefApp.Context().NewAf("af1")
+				nefApp.Context().AddAf(af)
+				defer nefApp.Context().DeleteAf("af1")
+
+				af.Mu.Lock()
+				afPfdTr := af.NewPfdTrans()
+				af.PfdTrans[afPfdTr.TransID] = afPfdTr
+				afPfdTr.AddExtAppID("app100")
+				af.Mu.Unlock()
 
 				rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefApp.Context())
 				So(rst, ShouldResemble, tc.expectedProblem)

@@ -14,7 +14,7 @@ import (
 
 type PfdChangeNotifier struct {
 	clientPfdManagement *Nnef_PFDmanagement.APIClient
-	mtx                 sync.RWMutex
+	mu                  sync.RWMutex
 
 	numPfdSubID   uint64
 	appIdToSubIDs map[string]map[string]bool
@@ -35,8 +35,8 @@ func NewPfdChangeNotifier() (*PfdChangeNotifier, error) {
 }
 
 func (n *PfdChangeNotifier) initPfdManagementApiClient() {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	if n.clientPfdManagement != nil {
 		return
@@ -49,8 +49,8 @@ func (n *PfdChangeNotifier) initPfdManagementApiClient() {
 func (n *PfdChangeNotifier) AddPfdSub(pfdSub *models.PfdSubscription) string {
 	n.initPfdManagementApiClient()
 
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	n.numPfdSubID++
 	subID := strconv.FormatUint(n.numPfdSubID, 10)
@@ -67,8 +67,8 @@ func (n *PfdChangeNotifier) AddPfdSub(pfdSub *models.PfdSubscription) string {
 }
 
 func (n *PfdChangeNotifier) DeletePfdSub(subID string) error {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
+	n.mu.Lock()
+	defer n.mu.Unlock()
 
 	if _, exist := n.subIdToURI[subID]; !exist {
 		return errors.New("Subscription not found")
@@ -81,8 +81,8 @@ func (n *PfdChangeNotifier) DeletePfdSub(subID string) error {
 }
 
 func (n *PfdChangeNotifier) getSubIDs(appID string) []string {
-	n.mtx.RLock()
-	defer n.mtx.RUnlock()
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 
 	subIDs := make([]string, 0, len(n.appIdToSubIDs[appID]))
 	for subID := range n.appIdToSubIDs[appID] {
@@ -92,8 +92,8 @@ func (n *PfdChangeNotifier) getSubIDs(appID string) []string {
 }
 
 func (n *PfdChangeNotifier) getSubURI(subID string) string {
-	n.mtx.RLock()
-	defer n.mtx.RUnlock()
+	n.mu.RLock()
+	defer n.mu.RUnlock()
 	return n.subIdToURI[subID]
 }
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
+	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/sbi"
 	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
@@ -23,7 +23,7 @@ type NefApp struct {
 	ctx       context.Context
 	wg        sync.WaitGroup
 	cfg       *factory.Config
-	nefCtx    *nefctx.NefContext
+	nefCtx    *nef_context.NefContext
 	consumer  *consumer.Consumer
 	notifier  *notifier.Notifier
 	proc      *processor.Processor
@@ -35,7 +35,7 @@ func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
 	nef := &NefApp{cfg: cfg}
 
 	nef.setLogLevel()
-	if nef.nefCtx, err = nefctx.NewContext(nef); err != nil {
+	if nef.nefCtx, err = nef_context.NewContext(nef); err != nil {
 		return nil, err
 	}
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
@@ -57,7 +57,7 @@ func (a *NefApp) Config() *factory.Config {
 	return a.cfg
 }
 
-func (a *NefApp) Context() *nefctx.NefContext {
+func (a *NefApp) Context() *nef_context.NefContext {
 	return a.nefCtx
 }
 

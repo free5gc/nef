@@ -26,6 +26,12 @@ var (
 	OamLog       *logrus.Entry
 )
 
+const (
+	FieldAFID       string = "af_id"
+	FieldSubID      string = "sub_id"
+	FieldPfdTransID string = "pfdTrans_id"
+)
+
 func init() {
 	log = logrus.New()
 	log.SetReportCaller(false)
@@ -35,7 +41,7 @@ func init() {
 		TrimMessages:    true,
 		NoFieldsSpace:   true,
 		HideKeys:        true,
-		FieldsOrder:     []string{"component", "category"},
+		FieldsOrder:     []string{"component", "category", FieldAFID, FieldSubID, FieldPfdTransID},
 	}
 
 	MainLog = log.WithFields(logrus.Fields{"component": "NEF", "category": "Main"})

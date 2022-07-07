@@ -1,113 +1,54 @@
 package context
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"bitbucket.org/free5gc-team/nef/internal/logger"
+	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
-type AfContext struct {
-	afID       string
-	numSubscID uint64
-	numTransID uint64
-	subsc      map[string]*AfSubscription
-	pfdTrans   map[string]*AfPfdTransaction
-	mtx        sync.RWMutex
+type AfData struct {
+	AfID       string
+	NumSubscID uint64
+	NumTransID uint64
+	Subs       map[string]*AfSubscription
+	PfdTrans   map[string]*AfPfdTransaction
+	Mu         sync.RWMutex
+	Log        *logrus.Entry
 }
 
-func (a *AfContext) GetAfID() string {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	return a.afID
-}
-
-func (a *AfContext) newSubsc(numCorreID uint64) *AfSubscription {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	a.numSubscID++
-	afSubsc := AfSubscription{
-		notifCorreID: strconv.FormatUint(numCorreID, 10),
-		subscID:      strconv.FormatUint(a.numSubscID, 10),
+func (a *AfData) NewSub(numCorreID uint64, tiSub *models_nef.TrafficInfluSub) *AfSubscription {
+	a.NumSubscID++
+	sub := AfSubscription{
+		NotifCorreID: strconv.FormatUint(numCorreID, 10),
+		SubID:        strconv.FormatUint(a.NumSubscID, 10),
+		TiSub:        tiSub,
+		Log:          a.Log.WithField(logger.FieldSubID, fmt.Sprintf("SUB:%d", a.NumSubscID)),
 	}
-	return &afSubsc
+	sub.Log.Infoln("New subscription")
+	return &sub
 }
 
-func (a *AfContext) AddSubsc(afSubsc *AfSubscription) {
-	a.mtx.Lock()
-	a.subsc[afSubsc.subscID] = afSubsc
-	a.mtx.Unlock()
-	logger.CtxLog.Infof("New AF subscription[%s] added", afSubsc.subscID)
-}
-
-func (a *AfContext) newPfdTrans() *AfPfdTransaction {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	a.numTransID++
-	afPfdTrans := &AfPfdTransaction{
-		transID:        strconv.FormatUint(a.numTransID, 10),
-		externalAppIDs: make(map[string]bool),
+func (a *AfData) NewPfdTrans() *AfPfdTransaction {
+	a.NumTransID++
+	pfdTr := AfPfdTransaction{
+		TransID:   strconv.FormatUint(a.NumTransID, 10),
+		ExtAppIDs: make(map[string]struct{}),
+		Log:       a.Log.WithField(logger.FieldPfdTransID, fmt.Sprintf("PFDT:%d", a.NumTransID)),
 	}
-	return afPfdTrans
+	pfdTr.Log.Infoln("New pfd transcation")
+	return &pfdTr
 }
 
-func (a *AfContext) AddPfdTrans(afPfdTrans *AfPfdTransaction) {
-	a.mtx.Lock()
-	a.pfdTrans[afPfdTrans.transID] = afPfdTrans
-	a.mtx.Unlock()
-	logger.CtxLog.Infof("New AF PFD transaction[%s] added", afPfdTrans.transID)
-}
-
-func (a *AfContext) GetPfdTrans(transID string) *AfPfdTransaction {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	return a.pfdTrans[transID]
-}
-
-func (a *AfContext) GetAllPfdTrans() []*AfPfdTransaction {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-
-	allPfdTrans := make([]*AfPfdTransaction, 0, len(a.pfdTrans))
-	for _, afPfdTran := range a.pfdTrans {
-		allPfdTrans = append(allPfdTrans, afPfdTran)
-	}
-	return allPfdTrans
-}
-
-func (a *AfContext) DeletePfdTrans(transID string) {
-	a.mtx.Lock()
-	delete(a.pfdTrans, transID)
-	a.mtx.Unlock()
-	logger.CtxLog.Infof("Individual PFD Management Transaction[%s] is removed", transID)
-}
-
-func (a *AfContext) IsAppIDExisted(appID string) (bool, string) {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	for _, pfdTrans := range a.pfdTrans {
-		if pfdTrans.IsAppIDExisted(appID) {
-			return true, pfdTrans.GetTransID()
+func (a *AfData) IsAppIDExisted(appID string) (string, bool) {
+	for _, pfdTrans := range a.PfdTrans {
+		if _, ok := pfdTrans.ExtAppIDs[appID]; ok {
+			return pfdTrans.TransID, true
 		}
 	}
-	return false, ""
-}
-
-func (a *AfContext) GetAllSubsc() map[string]*AfSubscription {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	return a.subsc
-}
-
-func (a *AfContext) GetSubsc(subscID string) *AfSubscription {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	return a.subsc[subscID]
-}
-
-func (a *AfContext) DeleteSubsc(subscID string) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	delete(a.subsc, subscID)
+	return "", false
 }

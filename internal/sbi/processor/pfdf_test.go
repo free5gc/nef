@@ -170,13 +170,16 @@ func TestPostPfdChangeReports(t *testing.T) {
 		}
 	})
 
-	afCtx := nefApp.Context().NewAfCtx("af1")
-	nefApp.Context().AddAfCtx(afCtx)
-	defer nefApp.Context().DeleteAfCtx("af1")
-	afPfdTans := nefApp.Context().NewAfPfdTrans(afCtx)
-	afCtx.AddPfdTrans(afPfdTans)
-	afPfdTans.AddExtAppID("app1")
-	afPfdTans.AddExtAppID("app2")
+	af := nefApp.Context().NewAf("af1")
+	nefApp.Context().AddAf(af)
+	defer nefApp.Context().DeleteAf("af1")
+
+	af.Mu.Lock()
+	afPfdTr := af.NewPfdTrans()
+	af.PfdTrans[afPfdTr.TransID] = afPfdTr
+	afPfdTr.AddExtAppID("app1")
+	afPfdTr.AddExtAppID("app2")
+	af.Mu.Unlock()
 
 	nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
 		ApplicationIds: []string{"app1"},

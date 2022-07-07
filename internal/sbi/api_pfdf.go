@@ -27,7 +27,7 @@ func (s *Server) getPFDFEndpoints() []Endpoint {
 		},
 		{
 			Method:  http.MethodDelete,
-			Pattern: "/subscriptions/:subscID",
+			Pattern: "/subscriptions/:subID",
 			APIFunc: s.apiDeleteIndividualPFDSubscription,
 		},
 	}
@@ -64,7 +64,7 @@ func (s *Server) apiPostPFDSubscriptions(gc *gin.Context) {
 }
 
 func (s *Server) apiDeleteIndividualPFDSubscription(gc *gin.Context) {
-	hdlRsp := s.Processor().DeleteIndividualPFDSubscription(gc.Param("subscID"))
+	hdlRsp := s.Processor().DeleteIndividualPFDSubscription(gc.Param("subID"))
 
 	s.buildAndSendHttpResponse(gc, hdlRsp, false)
 }

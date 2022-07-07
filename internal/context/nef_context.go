@@ -1,7 +1,7 @@
 package context
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -21,8 +21,8 @@ type NefContext struct {
 	pcfPaUri   string
 	udrDrUri   string
 	numCorreID uint64
-	afCtxs     map[string]*AfContext
-	mtx        sync.RWMutex
+	afs        map[string]*AfData
+	mu         sync.RWMutex
 }
 
 func NewContext(nef nef) (*NefContext, error) {
@@ -30,137 +30,98 @@ func NewContext(nef nef) (*NefContext, error) {
 		nef:      nef,
 		nfInstID: uuid.New().String(),
 	}
-	c.afCtxs = make(map[string]*AfContext)
+	c.afs = make(map[string]*AfData)
 	logger.CtxLog.Infof("New nfInstID: [%s]", c.nfInstID)
 	return c, nil
 }
 
 func (c *NefContext) NfInstID() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.nfInstID
 }
 
 func (c *NefContext) SetNfInstID(id string) {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.nfInstID = id
 	logger.CtxLog.Infof("Set nfInstID: [%s]", c.nfInstID)
 }
 
 func (c *NefContext) PcfPaUri() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.pcfPaUri
 }
 
 func (c *NefContext) SetPcfPaUri(uri string) {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.pcfPaUri = uri
 	logger.CtxLog.Infof("Set pcfPaUri: [%s]", c.pcfPaUri)
 }
 
 func (c *NefContext) UdrDrUri() string {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.udrDrUri
 }
 
 func (c *NefContext) SetUdrDrUri(uri string) {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.udrDrUri = uri
 	logger.CtxLog.Infof("Set udrDrUri: [%s]", c.udrDrUri)
 }
 
-func (c *NefContext) NewAfCtx(afID string) *AfContext {
-	c.mtx.RLock()
-	afc, exist := c.afCtxs[afID]
-	c.mtx.RUnlock()
-	if exist {
-		logger.CtxLog.Infof("AF [%s] found", afID)
-		return afc
+func (c *NefContext) NewAf(afID string) *AfData {
+	af := &AfData{
+		AfID:     afID,
+		Subs:     make(map[string]*AfSubscription),
+		PfdTrans: make(map[string]*AfPfdTransaction),
+		Log:      logger.CtxLog.WithField(logger.FieldAFID, fmt.Sprintf("AF:%s", afID)),
 	}
-
-	logger.CtxLog.Infof("No AF found - new AF [%s]", afID)
-	afc = &AfContext{afID: afID}
-	afc.subsc = make(map[string]*AfSubscription)
-	afc.pfdTrans = make(map[string]*AfPfdTransaction)
-	return afc
+	return af
 }
 
-func (c *NefContext) AddAfCtx(afc *AfContext) {
-	c.mtx.Lock()
-	c.afCtxs[afc.afID] = afc
-	c.mtx.Unlock()
-	logger.CtxLog.Infof("New AF [%s] added", afc.afID)
+func (c *NefContext) AddAf(af *AfData) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.afs[af.AfID] = af
+	af.Log.Infoln("AF is added")
 }
 
-func (c *NefContext) GetAfCtx(afID string) *AfContext {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	return c.afCtxs[afID]
+func (c *NefContext) GetAf(afID string) *AfData {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.afs[afID]
 }
 
-func (c *NefContext) DeleteAfCtx(afID string) {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	if _, exist := c.afCtxs[afID]; !exist {
-		logger.CtxLog.Infof("AF [%s] does not exist", afID)
-		return
-	}
-	delete(c.afCtxs, afID)
+func (c *NefContext) DeleteAf(afID string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.afs, afID)
+	logger.CtxLog.Infof("AF[%s] is deleted", afID)
 }
 
-func (c *NefContext) NewAfSubsc(afc *AfContext) *AfSubscription {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
+func (c *NefContext) NewCorreID(af *AfData) uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.numCorreID++
-	return afc.newSubsc(c.numCorreID)
+	return c.numCorreID
 }
 
-func (c *NefContext) NewAfPfdTrans(afc *AfContext) *AfPfdTransaction {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	return afc.newPfdTrans()
-}
-
-func (c *NefContext) IsAppIDExisted(appID string) (bool, string, string) {
-	c.mtx.RLock()
-	defer c.mtx.RUnlock()
-	for _, afCtx := range c.afCtxs {
-		if exist, transID := afCtx.IsAppIDExisted(appID); exist {
-			return true, afCtx.GetAfID(), transID
+func (c *NefContext) IsAppIDExisted(appID string) (string, string, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, af := range c.afs {
+		af.Mu.RLock()
+		if transID, ok := af.IsAppIDExisted(appID); ok {
+			defer af.Mu.RUnlock()
+			return af.AfID, transID, true
 		}
+		af.Mu.RUnlock()
 	}
-	return false, "", ""
-}
-
-func (c *NefContext) GetAfCtxAndPfdTransWithTransID(afID, transID string) (*AfContext, *AfPfdTransaction, error) {
-	afCtx := c.GetAfCtx(afID)
-	if afCtx == nil {
-		return nil, nil, errors.New("AF not found")
-	}
-
-	afPfdTrans := afCtx.GetPfdTrans(transID)
-	if afPfdTrans == nil {
-		return nil, nil, errors.New("Transaction not found")
-	}
-
-	return afCtx, afPfdTrans, nil
-}
-
-func (c *NefContext) GetPfdTransWithAppID(afID, transID, appID string) (*AfPfdTransaction, error) {
-	_, afPfdTrans, err := c.GetAfCtxAndPfdTransWithTransID(afID, transID)
-	if err != nil {
-		return nil, err
-	}
-
-	if !afPfdTrans.IsAppIDExisted(appID) {
-		return nil, errors.New("Application ID not found")
-	}
-
-	return afPfdTrans, nil
+	return "", "", false
 }

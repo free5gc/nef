@@ -9,7 +9,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
-	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
+	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/internal/sbi/processor"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
@@ -46,7 +46,7 @@ func applyEndpoints(group *gin.RouterGroup, endpoints []Endpoint) {
 }
 
 type nef interface {
-	Context() *nefctx.NefContext
+	Context() *nef_context.NefContext
 	Config() *factory.Config
 	Processor() *processor.Processor
 }

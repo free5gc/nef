@@ -1,51 +1,33 @@
 package context
 
 import (
-	"sync"
+	"github.com/sirupsen/logrus"
 )
 
 type AfPfdTransaction struct {
-	transID        string
-	externalAppIDs map[string]bool
-	mtx            sync.RWMutex
-}
-
-func (a *AfPfdTransaction) GetTransID() string {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	return a.transID
+	TransID   string
+	ExtAppIDs map[string]struct{}
+	Log       *logrus.Entry
 }
 
 func (a *AfPfdTransaction) GetExtAppIDs() []string {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	ids := make([]string, 0, len(a.externalAppIDs))
-	for id := range a.externalAppIDs {
+	ids := make([]string, 0, len(a.ExtAppIDs))
+	for id := range a.ExtAppIDs {
 		ids = append(ids, id)
 	}
 	return ids
 }
 
-func (a *AfPfdTransaction) IsAppIDExisted(appID string) bool {
-	a.mtx.RLock()
-	defer a.mtx.RUnlock()
-	return a.externalAppIDs[appID]
-}
-
 func (a *AfPfdTransaction) AddExtAppID(appID string) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	a.externalAppIDs[appID] = true
+	a.ExtAppIDs[appID] = struct{}{}
+	a.Log.Infof("appID[%s] is added", appID)
 }
 
 func (a *AfPfdTransaction) DeleteExtAppID(appID string) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	delete(a.externalAppIDs, appID)
+	delete(a.ExtAppIDs, appID)
+	a.Log.Infof("appID[%s] is deleted", appID)
 }
 
 func (a *AfPfdTransaction) DeleteAllExtAppIDs() {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	a.externalAppIDs = make(map[string]bool)
+	a.ExtAppIDs = make(map[string]struct{})
 }

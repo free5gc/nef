@@ -249,7 +249,7 @@ linters:
     # Additional
     - lll
     - godox
-    - gomnd
+    # - gomnd
     - goconst
     # - gocognit
     # - maligned

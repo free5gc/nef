@@ -3,7 +3,7 @@ package consumer
 import (
 	"net/http"
 
-	nefctx "bitbucket.org/free5gc-team/nef/internal/context"
+	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
 	"bitbucket.org/free5gc-team/openapi"
@@ -15,7 +15,7 @@ import (
 )
 
 type nef interface {
-	Context() *nefctx.NefContext
+	Context() *nef_context.NefContext
 	Config() *factory.Config
 }
 
