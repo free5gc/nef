@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 
 	"bitbucket.org/free5gc-team/openapi/models"
@@ -22,7 +22,7 @@ func TestGetApplicationsPFD(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "All App IDs found, should return all PfdDataforApp",
+			description: "TC1: All App IDs found, should return all PfdDataforApp",
 			appIDs:      []string{"app1", "app2"},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
@@ -30,7 +30,7 @@ func TestGetApplicationsPFD(t *testing.T) {
 			},
 		},
 		{
-			description: "All App ID not found, should return ProblemDetails",
+			description: "TC2: All App ID not found, should return ProblemDetails",
 			appIDs:      []string{"app3"},
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
@@ -39,14 +39,12 @@ func TestGetApplicationsPFD(t *testing.T) {
 		},
 	}
 
-	Convey("Given App IDs, should get a list of PfdDataForApp", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				rsp := nefApp.Processor().GetApplicationsPFD(tc.appIDs)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rsp := nefApp.Processor().GetApplicationsPFD(tc.appIDs)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestGetIndividualApplicationPFD(t *testing.T) {
@@ -59,7 +57,7 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "App ID found, should return the PfdDataforApp",
+			description: "TC1: App ID found, should return the PfdDataforApp",
 			appID:       "app1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
@@ -67,7 +65,7 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 			},
 		},
 		{
-			description: "App ID not found, should return ProblemDetails",
+			description: "TC2: App ID not found, should return ProblemDetails",
 			appID:       "app3",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
@@ -76,14 +74,12 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 		},
 	}
 
-	Convey("Given App IDs, should get a list of PfdDataForApp", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				rsp := nefApp.Processor().GetIndividualApplicationPFD(tc.appID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rsp := nefApp.Processor().GetIndividualApplicationPFD(tc.appID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestPostPFDSubscriptions(t *testing.T) {
@@ -98,7 +94,7 @@ func TestPostPFDSubscriptions(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description:  "Successful subscription, should return PfdSubscription",
+			description:  "TC1: Successful subscription, should return PfdSubscription",
 			subscription: pfdSubsc,
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusCreated,
@@ -110,14 +106,12 @@ func TestPostPFDSubscriptions(t *testing.T) {
 		},
 	}
 
-	Convey("Given a subscription, should store it and return the resource URI", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				rsp := nefApp.Processor().PostPFDSubscriptions(tc.subscription)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rsp := nefApp.Processor().PostPFDSubscriptions(tc.subscription)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestDeleteIndividualPFDSubscription(t *testing.T) {
@@ -127,7 +121,7 @@ func TestDeleteIndividualPFDSubscription(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description:    "Successful unsubscription",
+			description:    "TC1: Successful unsubscription",
 			subscriptionID: "1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNoContent,
@@ -135,14 +129,12 @@ func TestDeleteIndividualPFDSubscription(t *testing.T) {
 		},
 	}
 
-	Convey("Given a subscription ID, should delete the specified subscription", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				rsp := nefApp.Processor().DeleteIndividualPFDSubscription(tc.subscriptionID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rsp := nefApp.Processor().DeleteIndividualPFDSubscription(tc.subscriptionID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 var (
@@ -248,23 +240,20 @@ func TestPostPfdChangeReports(t *testing.T) {
 		},
 	}
 
-	Convey("Subscribe for appIds, should receive notifications when their Pfds changing", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				tc.triggerFunc()
-				for i := 0; i < len(tc.expectedNotifications); i++ {
-					r := <-notifChan
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			tc.triggerFunc()
+			for i := 0; i < len(tc.expectedNotifications); i++ {
+				r := <-notifChan
 
-					var getNotifications []models.PfdChangeNotification
-					if err := json.NewDecoder(r.Body).Decode(&getNotifications); err != nil {
-						t.Fatal(err)
-					}
-					So(tc.expectedNotifications, ShouldContainKey, r.URL.String())
-					So(tc.expectedNotifications[r.URL.String()], ShouldResemble, getNotifications)
+				var getNotifications []models.PfdChangeNotification
+				if err := json.NewDecoder(r.Body).Decode(&getNotifications); err != nil {
+					t.Fatal(err)
 				}
-			})
-		}
-	})
+				require.Equal(t, tc.expectedNotifications[r.URL.String()], getNotifications)
+			}
+		})
+	}
 }
 
 func initNEFNotificationStub(notifyURI string) {

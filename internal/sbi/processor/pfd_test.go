@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
 
 	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
@@ -162,7 +162,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
@@ -191,7 +191,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid AF ID, should return ProblemDetails",
+			description: "TC2: Invalid AF ID, should return ProblemDetails",
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
@@ -200,25 +200,23 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF ID, should return PfdManagements belonging to this AF", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				afPfdTr.AddExtAppID("app2")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			afPfdTr.AddExtAppID("app2")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().GetPFDManagementTransactions(tc.afID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().GetPFDManagementTransactions(tc.afID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestDeletePFDManagementTransactions(t *testing.T) {
@@ -231,14 +229,14 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNoContent,
 			},
 		},
 		{
-			description: "Invalid AF ID, should return ProblemDetails",
+			description: "TC2: Invalid AF ID, should return ProblemDetails",
 			afID:        "af2",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
@@ -247,23 +245,21 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF ID, should delete PfdManagements belonging to this AF", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().DeletePFDManagementTransactions(tc.afID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().DeletePFDManagementTransactions(tc.afID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestPostPFDManagementTransactions(t *testing.T) {
@@ -277,7 +273,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{
@@ -322,7 +318,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid AF ID, should return ProblemDetails",
+			description: "TC2: Invalid AF ID, should return ProblemDetails",
 			afID:        "af2",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{
@@ -359,18 +355,16 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF ID, should add a PfdManagement belonging to this AF", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				rsp := nefApp.Processor().PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().PostPFDManagementTransactions(tc.afID, tc.pfdManagement)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestGetIndividualPFDManagementTransaction(t *testing.T) {
@@ -384,7 +378,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			expectedResponse: &HandlerResponse{
@@ -412,7 +406,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid transaction ID, should return ProblemDetails",
+			description: "TC2: Invalid transaction ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "-1",
 			expectedResponse: &HandlerResponse{
@@ -422,25 +416,23 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF and transaction ID, should return the PfdManagement", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				afPfdTr.AddExtAppID("app2")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			afPfdTr.AddExtAppID("app2")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().GetIndividualPFDManagementTransaction(tc.afID, tc.transID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().GetIndividualPFDManagementTransaction(tc.afID, tc.transID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
@@ -454,7 +446,7 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			expectedResponse: &HandlerResponse{
@@ -462,7 +454,7 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid transaction ID, should return ProblemDetails",
+			description: "TC2: Invalid transaction ID, should return ProblemDetails",
 			afID:        "af2",
 			transID:     "1",
 			expectedResponse: &HandlerResponse{
@@ -472,23 +464,21 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF and transaction ID, should delete the PfdManagement", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().DeleteIndividualPFDManagementTransaction(tc.afID, tc.transID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestPutIndividualPFDManagementTransaction(t *testing.T) {
@@ -503,7 +493,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			pfdManagement: &models.PfdManagement{
@@ -549,7 +539,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid transaction ID, should return ProblemDetails",
+			description: "TC2: Invalid transaction ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "-1",
 			pfdManagement: &models.PfdManagement{
@@ -575,7 +565,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid PfdManagement, should return ProblemDetails",
+			description: "TC3: Invalid PfdManagement, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			pfdManagement: &models.PfdManagement{
@@ -588,23 +578,21 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF and transaction ID, should update the PfdManagement", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().PutIndividualPFDManagementTransaction(tc.afID, tc.transID, tc.pfdManagement)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestGetIndividualApplicationPFDManagement(t *testing.T) {
@@ -619,7 +607,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -636,7 +624,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid App ID, should return ProblemDetails",
+			description: "TC2: Invalid App ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app2",
@@ -647,24 +635,22 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().GetIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().GetIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
@@ -679,7 +665,7 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -688,7 +674,7 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid App ID, should return ProblemDetails",
+			description: "TC2: Invalid App ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app2",
@@ -699,24 +685,22 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF, transaction and App ID, should delete the PfdData", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().DeleteIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestPutIndividualApplicationPFDManagement(t *testing.T) {
@@ -732,7 +716,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -756,7 +740,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid App ID, should return ProblemDetails",
+			description: "TC2: Invalid App ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app2",
@@ -773,7 +757,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid PfdData, should return ProblemDetails",
+			description: "TC3: Invalid PfdData, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -792,24 +776,22 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF, transaction and App ID, should update the PfdData", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().PutIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
@@ -826,7 +808,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 		expectedResponse *HandlerResponse
 	}{
 		{
-			description: "Valid input",
+			description: "TC1: Valid input",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -850,7 +832,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid App ID, should return ProblemDetails",
+			description: "TC2: Invalid App ID, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app2",
@@ -868,7 +850,7 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "Invalid PfdData, should return ProblemDetails",
+			description: "TC3: Invalid PfdData, should return ProblemDetails",
 			afID:        "af1",
 			transID:     "1",
 			appID:       "app1",
@@ -887,24 +869,23 @@ func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 		},
 	}
 
-	Convey("Given AF, transaction and App ID, should partially update the PfdData", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app1")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app1")
+			af.Mu.Unlock()
 
-				rsp := nefApp.Processor().PatchIndividualApplicationPFDManagement(tc.afID, tc.transID, tc.appID, tc.pfdData)
-				So(rsp, ShouldResemble, tc.expectedResponse)
-			})
-		}
-	})
+			rsp := nefApp.Processor().PatchIndividualApplicationPFDManagement(
+				tc.afID, tc.transID, tc.appID, tc.pfdData)
+			require.Equal(t, tc.expectedResponse, rsp)
+		})
+	}
 }
 
 func TestValidatePfdManagement(t *testing.T) {
@@ -915,7 +896,7 @@ func TestValidatePfdManagement(t *testing.T) {
 		expectedReports map[string]models.PfdReport
 	}{
 		{
-			description: "Valid",
+			description: "TC1: Valid",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{
 					"app1": {
@@ -937,7 +918,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			expectedReports: map[string]models.PfdReport{},
 		},
 		{
-			description: "Empty PfdDatas, should return ProblemDetails",
+			description: "TC2: Empty PfdDatas, should return ProblemDetails",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{},
 			},
@@ -945,7 +926,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			expectedReports: map[string]models.PfdReport{},
 		},
 		{
-			description: "An appID is already provisioned, should mark in PfdReports",
+			description: "TC3: An appID is already provisioned, should mark in PfdReports",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{
 					"app100": {
@@ -971,7 +952,7 @@ func TestValidatePfdManagement(t *testing.T) {
 			},
 		},
 		{
-			description: "None of the PFDs were created, should return ProblemDetails and mark in PfdReports",
+			description: "TC4: None of the PFDs were created, should return ProblemDetails and mark in PfdReports",
 			pfdManagement: &models.PfdManagement{
 				PfdDatas: map[string]models.PfdData{
 					"app100": {
@@ -992,25 +973,23 @@ func TestValidatePfdManagement(t *testing.T) {
 		},
 	}
 
-	Convey("Given a PfdManagement along with its belonging AF and transaction ID, check its validity", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				af := nefApp.Context().NewAf("af1")
-				nefApp.Context().AddAf(af)
-				defer nefApp.Context().DeleteAf("af1")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			af := nefApp.Context().NewAf("af1")
+			nefApp.Context().AddAf(af)
+			defer nefApp.Context().DeleteAf("af1")
 
-				af.Mu.Lock()
-				afPfdTr := af.NewPfdTrans()
-				af.PfdTrans[afPfdTr.TransID] = afPfdTr
-				afPfdTr.AddExtAppID("app100")
-				af.Mu.Unlock()
+			af.Mu.Lock()
+			afPfdTr := af.NewPfdTrans()
+			af.PfdTrans[afPfdTr.TransID] = afPfdTr
+			afPfdTr.AddExtAppID("app100")
+			af.Mu.Unlock()
 
-				rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefApp.Context())
-				So(rst, ShouldResemble, tc.expectedProblem)
-				So(tc.pfdManagement.PfdReports, ShouldResemble, tc.expectedReports)
-			})
-		}
-	})
+			rst := validatePfdManagement("af2", "1", tc.pfdManagement, nefApp.Context())
+			require.Equal(t, tc.expectedProblem, rst)
+			require.Equal(t, tc.expectedReports, tc.pfdManagement.PfdReports)
+		})
+	}
 }
 
 func TestValidatePfdData(t *testing.T) {
@@ -1020,7 +999,7 @@ func TestValidatePfdData(t *testing.T) {
 		expectedResult *models.ProblemDetails
 	}{
 		{
-			description: "Valid",
+			description: "TC1: Valid",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1030,7 +1009,7 @@ func TestValidatePfdData(t *testing.T) {
 			expectedResult: nil,
 		},
 		{
-			description: "Without ExternalAppId, should return ProblemDetails",
+			description: "TC2: Without ExternalAppId, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				Pfds: map[string]models.Pfd{
 					"pfd1": pfd1,
@@ -1039,14 +1018,14 @@ func TestValidatePfdData(t *testing.T) {
 			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoExtAppID),
 		},
 		{
-			description: "Empty Pfds, should return ProblemDetails",
+			description: "TC3: Empty Pfds, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 			},
 			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfd),
 		},
 		{
-			description: "Without PfdID, should return ProblemDetails",
+			description: "TC4: Without PfdID, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1061,7 +1040,7 @@ func TestValidatePfdData(t *testing.T) {
 			expectedResult: openapi.ProblemDetailsDataNotFound(DetailNoPfdID),
 		},
 		{
-			description: "FlowDescriptions, Urls and DomainNames are all empty, should return ProblemDetails",
+			description: "TC5: FlowDescriptions, Urls and DomainNames are all empty, should return ProblemDetails",
 			pfdData: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1074,14 +1053,12 @@ func TestValidatePfdData(t *testing.T) {
 		},
 	}
 
-	Convey("Given a PfdData, check its validity", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				rst := validatePfdData(tc.pfdData, nefApp.Context(), false)
-				So(rst, ShouldResemble, tc.expectedResult)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			rst := validatePfdData(tc.pfdData, nefApp.Context(), false)
+			require.Equal(t, tc.expectedResult, rst)
+		})
+	}
 }
 
 func TestPatchModifyPfdData(t *testing.T) {
@@ -1093,7 +1070,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 		expectedResult  *models.PfdData
 	}{
 		{
-			description: "Given a PfdData with non-existing appID, should append the Pfds to the PfdData",
+			description: "TC1: Given a PfdData with non-existing appID, should append the Pfds to the PfdData",
 			old: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1116,7 +1093,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 			},
 		},
 		{
-			description: "Given a PfdData with existing appID, should update the PfdData",
+			description: "TC2: Given a PfdData with existing appID, should update the PfdData",
 			old: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1148,7 +1125,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 			},
 		},
 		{
-			description: "Given a PfdData with existing appID and empty content, should delete the PfdData",
+			description: "TC3: Given a PfdData with existing appID and empty content, should delete the PfdData",
 			old: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1173,7 +1150,7 @@ func TestPatchModifyPfdData(t *testing.T) {
 			},
 		},
 		{
-			description: "Given an invalid PfdData, should return ProblemDetails",
+			description: "TC4: Given an invalid PfdData, should return ProblemDetails",
 			old: &models.PfdData{
 				ExternalAppId: "app1",
 				Pfds: map[string]models.Pfd{
@@ -1198,15 +1175,13 @@ func TestPatchModifyPfdData(t *testing.T) {
 		},
 	}
 
-	Convey("Given an old and new PfdData, should perform PATCH operation to update the old one", t, func() {
-		for _, tc := range testCases {
-			Convey(tc.description, func() {
-				problemDetail := patchModifyPfdData(tc.old, tc.new)
-				So(problemDetail, ShouldResemble, tc.expectedProblem)
-				So(tc.old, ShouldResemble, tc.expectedResult)
-			})
-		}
-	})
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			problemDetail := patchModifyPfdData(tc.old, tc.new)
+			require.Equal(t, tc.expectedProblem, problemDetail)
+			require.Equal(t, tc.expectedResult, tc.old)
+		})
+	}
 }
 
 func initNRFNfmStub() {

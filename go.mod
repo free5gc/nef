@@ -13,7 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.7.3
 	github.com/google/uuid v1.3.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/smartystreets/goconvey v1.6.4
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.5
 	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v2 v2.4.0
