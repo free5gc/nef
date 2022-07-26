@@ -121,7 +121,7 @@ func TestMain(m *testing.M) {
 	var err error
 	openapi.InterceptH2CClient()
 	initNRFNfmStub()
-	initNRFDiscStub()
+	initNRFDiscUDRStub()
 
 	cfg := &factory.Config{
 		Info: &factory.Info{
@@ -1197,12 +1197,12 @@ func initNRFNfmStub() {
 		JSON(nrfRegisterInstanceRsp)
 }
 
-func initNRFDiscStub() {
+func initNRFDiscUDRStub() {
 	searchResult := &models.SearchResult{
 		ValidityPeriod: 100,
 		NfInstances: []models.NfProfile{
 			{
-				NfInstanceId: "udr-unit-testing",
+				NfInstanceId: "nef-unit-testing",
 				NfType:       "UDR",
 				NfStatus:     "REGISTERED",
 				UdrInfo: &models.UdrInfo{
@@ -1241,6 +1241,58 @@ func initNRFDiscStub() {
 		MatchParam("target-nf-type", "UDR").
 		MatchParam("requester-nf-type", "NEF").
 		MatchParam("service-names", "nudr-dr").
+		Reply(http.StatusOK).
+		JSON(searchResult)
+}
+
+func initNRFDiscPCFStub() {
+	searchResult := &models.SearchResult{
+		ValidityPeriod: 100,
+		NfInstances: []models.NfProfile{
+			{
+				NfInstanceId: "nef-unit-testing",
+				NfType:       "PCF",
+				NfStatus:     "REGISTERED",
+				Ipv4Addresses: []string{
+					"127.0.0.7",
+				},
+				PcfInfo: &models.PcfInfo{
+					DnnList: []string{
+						"free5gc",
+						"internet",
+					},
+				},
+				NfServices: &[]models.NfService{
+					{
+						ServiceInstanceId: "1",
+						ServiceName:       "npcf-policyauthorization",
+						Versions: &[]models.NfServiceVersion{
+							{
+								ApiVersionInUri: "v1",
+								ApiFullVersion:  "1.0.0",
+							},
+						},
+						Scheme:          "http",
+						NfServiceStatus: "REGISTERED",
+						IpEndPoints: &[]models.IpEndPoint{
+							{
+								Ipv4Address: "127.0.0.7",
+								Transport:   "TCP",
+								Port:        8000,
+							},
+						},
+						ApiPrefix: "http://127.0.0.7:8000",
+					},
+				},
+			},
+		},
+	}
+
+	gock.New("http://127.0.0.10:8000/nnrf-disc/v1").
+		Get("/nf-instances").
+		MatchParam("target-nf-type", "PCF").
+		MatchParam("requester-nf-type", "NEF").
+		MatchParam("service-names", "npcf-policyauthorization").
 		Reply(http.StatusOK).
 		JSON(searchResult)
 }

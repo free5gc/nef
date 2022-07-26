@@ -34,13 +34,15 @@ const (
 	PfdMngResUriPrefix       = "/3gpp-pfd-management/v1"
 	NefPfdMngResUriPrefix    = "/nnef-pfdmanagement/v1"
 	NefOamResUriPrefix       = "/nnef-oam/v1"
+	NefCallbackResUriPrefix  = "/nnef-callback/v1"
 )
 
 const (
-	ServiceTraffInflu string = "3gpp-traffic-influence"
-	ServicePfdMng     string = "3gpp-pfd-management"
-	ServiceNefPfd     string = string(models.ServiceName_NNEF_PFDMANAGEMENT)
-	ServiceNefOam     string = "nnef-oam"
+	ServiceTraffInflu  string = "3gpp-traffic-influence"
+	ServicePfdMng      string = "3gpp-pfd-management"
+	ServiceNefPfd      string = string(models.ServiceName_NNEF_PFDMANAGEMENT)
+	ServiceNefOam      string = "nnef-oam"
+	ServiceNefCallback string = "nnef-callback"
 )
 
 type Config struct {
@@ -320,6 +322,8 @@ func (c *Config) ServiceUri(name string) string {
 		return c.SbiUri() + NefPfdMngResUriPrefix
 	case ServiceNefOam:
 		return c.SbiUri() + NefOamResUriPrefix
+	case ServiceNefCallback:
+		return c.SbiUri() + NefCallbackResUriPrefix
 	default:
 		return ""
 	}

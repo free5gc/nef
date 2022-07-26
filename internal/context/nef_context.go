@@ -104,12 +104,18 @@ func (c *NefContext) DeleteAf(afID string) {
 	logger.CtxLog.Infof("AF[%s] is deleted", afID)
 }
 
-func (c *NefContext) NewCorreID(af *AfData) uint64 {
+func (c *NefContext) NewCorreID() uint64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.numCorreID++
 	return c.numCorreID
+}
+
+func (c *NefContext) ResetCorreID() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.numCorreID = 0
 }
 
 func (c *NefContext) IsAppIDExisted(appID string) (string, string, bool) {
@@ -124,4 +130,20 @@ func (c *NefContext) IsAppIDExisted(appID string) (string, string, bool) {
 		af.Mu.RUnlock()
 	}
 	return "", "", false
+}
+
+func (c *NefContext) FindAfSub(CorrID string) (*AfData, *AfSubscription) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, af := range c.afs {
+		af.Mu.RLock()
+		for _, sub := range af.Subs {
+			if sub.NotifCorreID == CorrID {
+				defer af.Mu.RUnlock()
+				return af, sub
+			}
+		}
+		af.Mu.RUnlock()
+	}
+	return nil, nil
 }
