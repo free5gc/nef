@@ -190,7 +190,13 @@ func TestGetTrafficInfluenceSubscription(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			rsp := nefApp.Processor().GetTrafficInfluenceSubscription(tc.afID)
-			require.Equal(t, tc.expectedResponse, rsp)
+			require.Equal(t, tc.expectedResponse.Status, rsp.Status)
+			require.Equal(t, tc.expectedResponse.Headers, rsp.Headers)
+			if trafficInfluSub, ok := tc.expectedResponse.Body.(*[]models_nef.TrafficInfluSub); ok {
+				require.ElementsMatch(t, *trafficInfluSub, *rsp.Body.(*[]models_nef.TrafficInfluSub))
+			} else {
+				require.Equal(t, tc.expectedResponse.Body, rsp.Body)
+			}
 		})
 	}
 

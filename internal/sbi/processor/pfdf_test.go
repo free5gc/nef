@@ -173,19 +173,19 @@ func TestPostPfdChangeReports(t *testing.T) {
 	afPfdTr.AddExtAppID("app2")
 	af.Mu.Unlock()
 
-	nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
+	subsID1 := nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
 		ApplicationIds: []string{"app1"},
 		NotifyUri:      "http://pfdSub2URI",
 	})
-	nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
+	subsID2 := nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.PfdSubscription{
 		ApplicationIds: []string{"app1", "app2"},
 		NotifyUri:      "http://pfdSub3URI",
 	})
 	defer func() {
-		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub("2"); err != nil {
+		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub(subsID1); err != nil {
 			t.Fatal(err)
 		}
-		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub("3"); err != nil {
+		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub(subsID2); err != nil {
 			t.Fatal(err)
 		}
 	}()
