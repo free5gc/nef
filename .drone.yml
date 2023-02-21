@@ -8,6 +8,9 @@ steps:
     depends_on: [ clone ]
     commands:
       - golangci-lint run ./...
+    volumes:
+      - name: ssh_key
+        path: /root/.ssh
 
   - name: Unit test and build
     pull: never
@@ -16,4 +19,11 @@ steps:
     commands:
       - gotestsum ./... -v -cover -race
       - make
+    volumes:
+      - name: ssh_key
+        path: /root/.ssh
 
+volumes:
+  - name: ssh_key
+    host:
+      path: /root/.ssh
