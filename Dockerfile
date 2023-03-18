@@ -14,7 +14,7 @@ USER free5gc
 
 # Set working dir
 WORKDIR /free5gc
-RUN mkdir -p config/TLS/ log/
+RUN mkdir -p config/ cert/ log/
 
 # Copy executable
 COPY build/bin/${F5GC_MODULE} ./

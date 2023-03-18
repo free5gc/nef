@@ -29,8 +29,8 @@ const (
 
 const (
 	NefDefaultTLSKeyLogPath  = "./log/nefsslkey.log"
-	NefDefaultTLSPemPath     = "./config/TLS/nef.pem"
-	NefDefaultTLSKeyPath     = "./config/TLS/nef.key"
+	NefDefaultCertPemPath    = "./cert/nef.pem"
+	NefDefaultPrivateKeyPath = "./cert/nef.key"
 	NefDefaultConfigPath     = "./config/nefcfg.yaml"
 	NefExpectedConfigVersion = "1.0.1"
 	NefSbiDefaultIPv4        = "127.0.0.5"
@@ -340,7 +340,7 @@ func (c *Config) TLSPemPath() string {
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Pem
 	}
-	return NefDefaultTLSPemPath
+	return NefDefaultCertPemPath
 }
 
 func (c *Config) TLSKeyPath() string {
@@ -350,7 +350,7 @@ func (c *Config) TLSKeyPath() string {
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Key
 	}
-	return NefDefaultTLSKeyPath
+	return NefDefaultPrivateKeyPath
 }
 
 func (c *Config) NFServices() []models.NfService {
