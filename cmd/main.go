@@ -11,6 +11,7 @@ import (
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	nefapp "bitbucket.org/free5gc-team/nef/pkg/app"
 	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	logger_util "bitbucket.org/free5gc-team/util/logger"
 	"bitbucket.org/free5gc-team/util/version"
 )
 
@@ -31,13 +32,9 @@ func main() {
 			Name:  "config, c",
 			Usage: "Load configuration from `FILE`",
 		},
-		cli.StringFlag{
+		cli.StringSliceFlag{
 			Name:  "log, l",
 			Usage: "Output NF log to `FILE`",
-		},
-		cli.StringFlag{
-			Name:  "log5gc, lc",
-			Usage: "Output free5gc log to `FILE`",
 		},
 	}
 
@@ -47,7 +44,7 @@ func main() {
 }
 
 func action(cliCtx *cli.Context) error {
-	tlsKeyLogPath, err := initLogFile(cliCtx.String("log"), cliCtx.String("log5gc"))
+	tlsKeyLogPath, err := initLogFile(cliCtx.StringSlice("log"))
 	if err != nil {
 		return err
 	}
@@ -71,14 +68,19 @@ func action(cliCtx *cli.Context) error {
 	return nil
 }
 
-func initLogFile(logNfPath, log5gcPath string) (string, error) {
-	if err := logger.LogFileHook(logNfPath, log5gcPath); err != nil {
-		return "", err
-	}
+func initLogFile(logNfPath []string) (string, error) {
+	logTlsKeyPath := ""
 
-	logTlsKeyPath := factory.NefDefaultTLSKeyLogPath
-	if logNfPath != "" {
-		nfDir, _ := filepath.Split(logNfPath)
+	for _, path := range logNfPath {
+		if err := logger_util.LogFileHook(logger.Log, path); err != nil {
+			return "", err
+		}
+
+		if logTlsKeyPath != "" {
+			continue
+		}
+
+		nfDir, _ := filepath.Split(path)
 		tmpDir := filepath.Join(nfDir, "key")
 		if err := os.MkdirAll(tmpDir, 0o775); err != nil {
 			logger.InitLog.Errorf("Make directory %s failed: %+v", tmpDir, err)

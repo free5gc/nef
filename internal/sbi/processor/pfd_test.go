@@ -137,7 +137,7 @@ func TestMain(m *testing.M) {
 			NrfUri: "http://127.0.0.10:8000",
 			ServiceList: []factory.Service{
 				{
-					ServiceName: "nnef-pfdmanagement",
+					ServiceName: factory.ServiceNefPfd,
 				},
 			},
 		},

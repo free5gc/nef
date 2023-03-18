@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -33,8 +34,10 @@ type NefApp struct {
 func NewApp(cfg *factory.Config, tlsKeyLogPath string) (*NefApp, error) {
 	var err error
 	nef := &NefApp{cfg: cfg}
+	nef.SetLogEnable(cfg.GetLogEnable())
+	nef.SetLogLevel(cfg.GetLogLevel())
+	nef.SetReportCaller(cfg.GetLogReportCaller())
 
-	nef.setLogLevel()
 	if nef.nefCtx, err = nef_context.NewContext(nef); err != nil {
 		return nil, err
 	}
@@ -77,35 +80,46 @@ func (a *NefApp) SbiServer() *sbi.Server {
 	return a.sbiServer
 }
 
-func (a *NefApp) setLogLevel() {
-	cLogger := a.cfg.Logger
-	if cLogger == nil {
-		logger.InitLog.Warnln("NEF config without log level setting!!!")
+func (a *NefApp) SetLogEnable(enable bool) {
+	logger.MainLog.Infof("Log enable is set to [%v]", enable)
+	if enable && logger.Log.Out == os.Stderr {
+		return
+	} else if !enable && logger.Log.Out == ioutil.Discard {
 		return
 	}
-	if cLogger.NEF != nil {
-		setLoggerLogLevel("NEF", cLogger.NEF.DebugLevel, cLogger.NEF.ReportCaller,
-			logger.SetLogLevel, logger.SetReportCaller)
+
+	a.cfg.SetLogEnable(enable)
+	if enable {
+		logger.Log.SetOutput(os.Stderr)
+	} else {
+		logger.Log.SetOutput(ioutil.Discard)
 	}
 }
 
-func setLoggerLogLevel(loggerName, DebugLevel string, reportCaller bool,
-	logLevelFn func(l logrus.Level), reportCallerFn func(b bool),
-) {
-	if DebugLevel != "" {
-		if level, err := logrus.ParseLevel(DebugLevel); err != nil {
-			logger.InitLog.Warnf("%s Log level [%s] is invalid, set to [info] level",
-				loggerName, DebugLevel)
-			logLevelFn(logrus.InfoLevel)
-		} else {
-			logger.InitLog.Infof("%s Log level is set to [%s] level", loggerName, level)
-			logLevelFn(level)
-		}
-	} else {
-		logger.InitLog.Infof("%s Log level is default set to [info] level", loggerName)
-		logLevelFn(logrus.InfoLevel)
+func (a *NefApp) SetLogLevel(level string) {
+	lvl, err := logrus.ParseLevel(level)
+	if err != nil {
+		logger.MainLog.Warnf("Log level [%s] is invalid", level)
+		return
 	}
-	reportCallerFn(reportCaller)
+
+	logger.MainLog.Infof("Log level is set to [%s]", level)
+	if lvl == logger.Log.GetLevel() {
+		return
+	}
+
+	a.cfg.SetLogLevel(level)
+	logger.Log.SetLevel(lvl)
+}
+
+func (a *NefApp) SetReportCaller(reportCaller bool) {
+	logger.MainLog.Infof("Report Caller is set to [%v]", reportCaller)
+	if reportCaller == logger.Log.ReportCaller {
+		return
+	}
+
+	a.cfg.SetLogReportCaller(reportCaller)
+	logger.Log.SetReportCaller(reportCaller)
 }
 
 func (a *NefApp) Run() error {

@@ -17,24 +17,6 @@ import (
 
 	"bitbucket.org/free5gc-team/nef/internal/logger"
 	"bitbucket.org/free5gc-team/openapi/models"
-	logger_util "bitbucket.org/free5gc-team/util/logger"
-)
-
-const (
-	NefDefaultTLSKeyLogPath  = "./log/nefsslkey.log"
-	NefDefaultTLSPemPath     = "./config/TLS/nef.pem"
-	NefDefaultTLSKeyPath     = "./config/TLS/nef.key"
-	NefDefaultConfigPath     = "./config/nefcfg.yaml"
-	NefExpectedConfigVersion = "1.0.0"
-	NefSbiDefaultIPv4        = "127.0.0.5"
-	NefSbiDefaultPort        = 8000
-	NefSbiDefaultScheme      = "https"
-	NefDefaultNrfUri         = "https://127.0.0.10:8000"
-	TraffInfluResUriPrefix   = "/3gpp-traffic-influence/v1"
-	PfdMngResUriPrefix       = "/3gpp-pfd-management/v1"
-	NefPfdMngResUriPrefix    = "/nnef-pfdmanagement/v1"
-	NefOamResUriPrefix       = "/nnef-oam/v1"
-	NefCallbackResUriPrefix  = "/nnef-callback/v1"
 )
 
 const (
@@ -45,29 +27,44 @@ const (
 	ServiceNefCallback string = "nnef-callback"
 )
 
+const (
+	NefDefaultTLSKeyLogPath  = "./log/nefsslkey.log"
+	NefDefaultTLSPemPath     = "./config/TLS/nef.pem"
+	NefDefaultTLSKeyPath     = "./config/TLS/nef.key"
+	NefDefaultConfigPath     = "./config/nefcfg.yaml"
+	NefExpectedConfigVersion = "1.0.1"
+	NefSbiDefaultIPv4        = "127.0.0.5"
+	NefSbiDefaultPort        = 8000
+	NefSbiDefaultScheme      = "https"
+	NefDefaultNrfUri         = "https://127.0.0.10:8000"
+	TraffInfluResUriPrefix   = "/" + ServiceTraffInflu + "/v1"
+	PfdMngResUriPrefix       = "/" + ServicePfdMng + "/v1"
+	NefPfdMngResUriPrefix    = "/" + ServiceNefPfd + "/v1"
+	NefOamResUriPrefix       = "/" + ServiceNefOam + "/v1"
+	NefCallbackResUriPrefix  = "/" + ServiceNefCallback + "/v1"
+)
+
 type Config struct {
-	Info          *Info               `yaml:"info" valid:"required"`
-	Configuration *Configuration      `yaml:"configuration" valid:"required"`
-	Logger        *logger_util.Logger `yaml:"logger" valid:"optional"`
-	mu            sync.RWMutex
+	Info          *Info          `yaml:"info" valid:"required"`
+	Configuration *Configuration `yaml:"configuration" valid:"required"`
+	Logger        *Logger        `yaml:"logger" valid:"required"`
+	sync.RWMutex
 }
 
 func (c *Config) Validate() (bool, error) {
 	if info := c.Info; info != nil {
-		if result, err := info.validate(); err != nil {
-			return result, err
+		if !govalidator.IsIn(info.Version, NefExpectedConfigVersion) {
+			err := errors.New("Config version should be " + NefExpectedConfigVersion)
+			return false, appendInvalid(err)
 		}
 	}
+
 	if configuration := c.Configuration; configuration != nil {
 		if result, err := configuration.validate(); err != nil {
 			return result, err
 		}
 	}
-	if logger := c.Logger; logger != nil {
-		if result, err := logger.Validate(); err != nil {
-			return result, err
-		}
-	}
+
 	result, err := govalidator.ValidateStruct(c)
 	return result, appendInvalid(err)
 }
@@ -77,15 +74,16 @@ type Info struct {
 	Description string `yaml:"description,omitempty" valid:"type(string)"`
 }
 
-func (i *Info) validate() (bool, error) {
-	result, err := govalidator.ValidateStruct(i)
-	return result, appendInvalid(err)
-}
-
 type Configuration struct {
 	Sbi         *Sbi      `yaml:"sbi,omitempty" valid:"required"`
 	NrfUri      string    `yaml:"nrfUri,omitempty" valid:"required"`
 	ServiceList []Service `yaml:"serviceList,omitempty" valid:"required"`
+}
+
+type Logger struct {
+	Enable       bool   `yaml:"enable" valid:"type(bool)"`
+	Level        string `yaml:"level" valid:"required,in(trace|debug|info|warn|error|fatal|panic)"`
+	ReportCaller bool   `yaml:"reportCaller" valid:"type(bool)"`
 }
 
 func (c *Configuration) validate() (bool, error) {
@@ -100,7 +98,7 @@ func (c *Configuration) validate() (bool, error) {
 		case s.ServiceName == ServiceNefOam:
 		default:
 			err := errors.New("Invalid serviceList[" + strconv.Itoa(i) + "]: " +
-				s.ServiceName + ", should be nnef-pfdmanagement or nnef-oam")
+				s.ServiceName + ", should be " + ServiceNefPfd + " or " + ServiceNefOam)
 			return false, appendInvalid(err)
 		}
 	}
@@ -164,8 +162,8 @@ func appendInvalid(err error) error {
 }
 
 func (c *Config) Print() {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	spew.Config.Indent = "\t"
 	str := spew.Sdump(c.Configuration)
@@ -175,8 +173,8 @@ func (c *Config) Print() {
 }
 
 func (c *Config) Version() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Info.Version != "" {
 		return c.Info.Version
@@ -184,9 +182,83 @@ func (c *Config) Version() string {
 	return ""
 }
 
+func (c *Config) SetLogEnable(enable bool) {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		c.Logger = &Logger{
+			Enable: enable,
+			Level:  "info",
+		}
+	} else {
+		c.Logger.Enable = enable
+	}
+}
+
+func (c *Config) SetLogLevel(level string) {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		c.Logger = &Logger{
+			Level: level,
+		}
+	} else {
+		c.Logger.Level = level
+	}
+}
+
+func (c *Config) SetLogReportCaller(reportCaller bool) {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		c.Logger = &Logger{
+			Level:        "info",
+			ReportCaller: reportCaller,
+		}
+	} else {
+		c.Logger.ReportCaller = reportCaller
+	}
+}
+
+func (c *Config) GetLogEnable() bool {
+	c.RLock()
+	defer c.RUnlock()
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		return false
+	}
+	return c.Logger.Enable
+}
+
+func (c *Config) GetLogLevel() string {
+	c.RLock()
+	defer c.RUnlock()
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		return "info"
+	}
+	return c.Logger.Level
+}
+
+func (c *Config) GetLogReportCaller() bool {
+	c.RLock()
+	defer c.RUnlock()
+	if c.Logger == nil {
+		logger.CfgLog.Warnf("Logger should not be nil")
+		return false
+	}
+	return c.Logger.ReportCaller
+}
+
 func (c *Config) SbiScheme() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.Sbi.Scheme != "" {
 		return c.Configuration.Sbi.Scheme
@@ -195,8 +267,8 @@ func (c *Config) SbiScheme() string {
 }
 
 func (c *Config) SbiPort() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.Sbi.Port != 0 {
 		return c.Configuration.Sbi.Port
@@ -205,8 +277,8 @@ func (c *Config) SbiPort() int {
 }
 
 func (c *Config) SbiBindingIP() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	bindIP := "0.0.0.0"
 	if c.Configuration.Sbi.BindingIPv4 != "" {
@@ -224,8 +296,8 @@ func (c *Config) SbiBindingAddr() string {
 }
 
 func (c *Config) SbiRegisterIP() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.Sbi.RegisterIPv4 != "" {
 		return c.Configuration.Sbi.RegisterIPv4
@@ -242,8 +314,8 @@ func (c *Config) SbiUri() string {
 }
 
 func (c *Config) NrfUri() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.NrfUri != "" {
 		return c.Configuration.NrfUri
@@ -252,8 +324,8 @@ func (c *Config) NrfUri() string {
 }
 
 func (c *Config) ServiceList() []Service {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.ServiceList != nil && len(c.Configuration.ServiceList) > 0 {
 		return c.Configuration.ServiceList
@@ -262,8 +334,8 @@ func (c *Config) ServiceList() []Service {
 }
 
 func (c *Config) TLSPemPath() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Pem
@@ -272,8 +344,8 @@ func (c *Config) TLSPemPath() string {
 }
 
 func (c *Config) TLSKeyPath() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.Configuration.Sbi.Tls != nil {
 		return c.Configuration.Sbi.Tls.Key

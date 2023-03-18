@@ -33,24 +33,10 @@ func InitConfigFactory(f string, cfg *Config) error {
 	return nil
 }
 
-func CheckConfigVersion(cfg *Config) error {
-	currentVersion := cfg.Version()
-	if currentVersion != NefExpectedConfigVersion {
-		return fmt.Errorf("config version is [%s], but expected is [%s].",
-			currentVersion, NefExpectedConfigVersion)
-	}
-	logger.CfgLog.Infof("config version [%s]", currentVersion)
-
-	return nil
-}
-
 func ReadConfig(cfgPath string) (*Config, error) {
 	cfg := &Config{}
 	if err := InitConfigFactory(cfgPath, cfg); err != nil {
 		return nil, fmt.Errorf("ReadConfig [%s] Error: %+v", cfgPath, err)
-	}
-	if err := CheckConfigVersion(cfg); err != nil {
-		return nil, err
 	}
 	if _, err := cfg.Validate(); err != nil {
 		validErrs := err.(govalidator.Errors).Errors()
