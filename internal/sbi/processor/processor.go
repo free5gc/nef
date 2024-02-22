@@ -1,10 +1,10 @@
 package processor
 
 import (
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/sbi/consumer"
+	"github.com/free5gc/nef/internal/sbi/notifier"
+	"github.com/free5gc/nef/pkg/factory"
 )
 
 type nef interface {

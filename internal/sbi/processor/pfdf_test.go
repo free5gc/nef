@@ -6,10 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/free5gc/openapi/models"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-
-	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 func TestGetApplicationsPFD(t *testing.T) {

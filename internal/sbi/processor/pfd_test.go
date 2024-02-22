@@ -5,15 +5,14 @@ import (
 	"os"
 	"testing"
 
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/sbi/consumer"
+	"github.com/free5gc/nef/internal/sbi/notifier"
+	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/models"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 type nefTestApp struct {

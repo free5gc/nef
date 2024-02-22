@@ -3,15 +3,15 @@ package consumer
 import (
 	"net/http"
 
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/Nnrf_NFDiscovery"
-	"bitbucket.org/free5gc-team/openapi/Nnrf_NFManagement"
-	"bitbucket.org/free5gc-team/openapi/Npcf_PolicyAuthorization"
-	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
-	"bitbucket.org/free5gc-team/openapi/models"
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/Nnrf_NFDiscovery"
+	"github.com/free5gc/openapi/Nnrf_NFManagement"
+	"github.com/free5gc/openapi/Npcf_PolicyAuthorization"
+	"github.com/free5gc/openapi/Nudr_DataRepository"
+	"github.com/free5gc/openapi/models"
 )
 
 type nef interface {

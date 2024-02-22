@@ -3,9 +3,9 @@ package processor
 import (
 	"net/http"
 
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/models"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/models"
 )
 
 func (p *Processor) SmfNotification(

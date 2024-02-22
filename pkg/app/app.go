@@ -9,15 +9,14 @@ import (
 	"sync"
 	"syscall"
 
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/internal/sbi"
+	"github.com/free5gc/nef/internal/sbi/consumer"
+	"github.com/free5gc/nef/internal/sbi/notifier"
+	"github.com/free5gc/nef/internal/sbi/processor"
+	"github.com/free5gc/nef/pkg/factory"
 	"github.com/sirupsen/logrus"
-
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/sbi"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/consumer"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/notifier"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/processor"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
 type NefApp struct {

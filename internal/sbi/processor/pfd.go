@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/models"
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/models"
 )
 
 const (

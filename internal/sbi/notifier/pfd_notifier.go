@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"sync"
 
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi/Nnef_PFDmanagement"
-	"bitbucket.org/free5gc-team/openapi/models"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/openapi/Nnef_PFDmanagement"
+	"github.com/free5gc/openapi/models"
 )
 
 type PfdChangeNotifier struct {

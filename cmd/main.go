@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"runtime/debug"
 
+	"github.com/free5gc/nef/internal/logger"
+	nefapp "github.com/free5gc/nef/pkg/app"
+	"github.com/free5gc/nef/pkg/factory"
+	logger_util "github.com/free5gc/util/logger"
+	"github.com/free5gc/util/version"
 	"github.com/urfave/cli"
-
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	nefapp "bitbucket.org/free5gc-team/nef/pkg/app"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	logger_util "bitbucket.org/free5gc-team/util/logger"
-	"bitbucket.org/free5gc-team/util/version"
 )
 
 func main() {

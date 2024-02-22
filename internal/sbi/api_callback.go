@@ -3,9 +3,8 @@ package sbi
 import (
 	"net/http"
 
+	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
-
-	"bitbucket.org/free5gc-team/openapi/models"
 )
 
 func (s *Server) getCallbackEndpoints() []Endpoint {

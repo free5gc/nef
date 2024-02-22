@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/pkg/factory"
 	"github.com/google/uuid"
-
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
 )
 
 type nef interface {

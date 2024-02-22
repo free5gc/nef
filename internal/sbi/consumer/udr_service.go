@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/antihax/optional"
-
-	"bitbucket.org/free5gc-team/openapi/Nudr_DataRepository"
-	"bitbucket.org/free5gc-team/openapi/models"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/openapi/Nudr_DataRepository"
+	"github.com/free5gc/openapi/models"
 )
 
 type nudrService struct {
@@ -70,7 +70,12 @@ func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, inter
 
 	result, rsp, err = client.InfluenceDataApi.
 		ApplicationDataInfluenceDataGet(context.Background(), param)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
@@ -107,7 +112,12 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 
 	result, rsp, err = client.InfluenceDataApi.
 		ApplicationDataInfluenceDataGet(context.Background(), param)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
@@ -142,7 +152,12 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdPut(context.TODO(), influenceID, *tiData)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusCreated { // TODO: check more status codes
@@ -179,7 +194,12 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) (int, interface{}) {
 	}
 
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(context.TODO(), param)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
@@ -212,7 +232,12 @@ func (s *nudrService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.Pf
 	client := s.getClient(uri)
 
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(context.TODO(), appID, *pfdDataForApp)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK || rsp.StatusCode == http.StatusCreated {
@@ -244,7 +269,12 @@ func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
 	client := s.getClient(uri)
 
 	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(context.TODO(), appID)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if err != nil {
@@ -275,7 +305,12 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 	client := s.getClient(uri)
 
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(context.TODO(), appID)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
@@ -310,7 +345,12 @@ func (s *nudrService) AppDataInfluenceDataPatch(
 
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdPatch(context.Background(), influenceID, *tiSubPatch)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
@@ -342,7 +382,12 @@ func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, inter
 
 	rsp, err = client.IndividualInfluenceDataDocumentApi.
 		ApplicationDataInfluenceDataInfluenceIdDelete(context.Background(), influenceID)
-
+	defer func() {
+		rsp_err := rsp.Request.Response.Body.Close()
+		if rsp_err != nil {
+			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+		}
+	}()
 	if rsp != nil {
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {

@@ -3,9 +3,8 @@ package sbi
 import (
 	"net/http"
 
+	"github.com/free5gc/openapi/models_nef"
 	"github.com/gin-gonic/gin"
-
-	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 func (s *Server) getTrafficInfluenceEndpoints() []Endpoint {

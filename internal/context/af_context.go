@@ -5,10 +5,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/openapi/models_nef"
 	"github.com/sirupsen/logrus"
-
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 type AfData struct {

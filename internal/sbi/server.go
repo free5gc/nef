@@ -6,16 +6,15 @@ import (
 	"runtime/debug"
 	"sync"
 
+	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/internal/sbi/processor"
+	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/util/httpwrapper"
+	logger_util "github.com/free5gc/util/logger"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
-	nef_context "bitbucket.org/free5gc-team/nef/internal/context"
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/internal/sbi/processor"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/util/httpwrapper"
-	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
 const (

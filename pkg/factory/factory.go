@@ -9,9 +9,8 @@ import (
 	"io/ioutil"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/free5gc/nef/internal/logger"
 	"gopkg.in/yaml.v2"
-
-	"bitbucket.org/free5gc-team/nef/internal/logger"
 )
 
 // TODO: Support configuration update from REST api

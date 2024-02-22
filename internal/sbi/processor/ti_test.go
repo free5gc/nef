@@ -4,12 +4,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/free5gc/openapi/models"
+	"github.com/free5gc/openapi/models_nef"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/h2non/gock.v1"
-
-	"bitbucket.org/free5gc-team/openapi/models"
-	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 var (

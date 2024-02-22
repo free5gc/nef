@@ -3,13 +3,12 @@ package processor
 import (
 	"net/http"
 
+	"github.com/free5gc/nef/internal/logger"
+	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
+	"github.com/free5gc/openapi/models"
+	"github.com/free5gc/openapi/models_nef"
 	"github.com/google/uuid"
-
-	"bitbucket.org/free5gc-team/nef/internal/logger"
-	"bitbucket.org/free5gc-team/nef/pkg/factory"
-	"bitbucket.org/free5gc-team/openapi"
-	"bitbucket.org/free5gc-team/openapi/models"
-	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 func (p *Processor) GetTrafficInfluenceSubscription(

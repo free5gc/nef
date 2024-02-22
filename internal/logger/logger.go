@@ -1,9 +1,8 @@
 package logger
 
 import (
+	logger_util "github.com/free5gc/util/logger"
 	"github.com/sirupsen/logrus"
-
-	logger_util "bitbucket.org/free5gc-team/util/logger"
 )
 
 var (

@@ -1,9 +1,8 @@
 package context
 
 import (
+	"github.com/free5gc/openapi/models_nef"
 	"github.com/sirupsen/logrus"
-
-	"bitbucket.org/free5gc-team/openapi/models_nef"
 )
 
 type AfSubscription struct {
