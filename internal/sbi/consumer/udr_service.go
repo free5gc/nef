@@ -72,9 +72,11 @@ func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, inter
 		ApplicationDataInfluenceDataGet(context.Background(), param)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -115,9 +117,11 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 		ApplicationDataInfluenceDataGet(context.Background(), param)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -156,9 +160,11 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 		ApplicationDataInfluenceDataInfluenceIdPut(context.TODO(), influenceID, *tiData)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -199,9 +205,11 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) (int, interface{}) {
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(context.TODO(), param)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -238,9 +246,11 @@ func (s *nudrService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.Pf
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(context.TODO(), appID, *pfdDataForApp)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -276,9 +286,11 @@ func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
 	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(context.TODO(), appID)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -313,9 +325,11 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(context.TODO(), appID)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -354,9 +368,11 @@ func (s *nudrService) AppDataInfluenceDataPatch(
 		ApplicationDataInfluenceDataInfluenceIdPatch(context.Background(), influenceID, *tiSubPatch)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
@@ -392,9 +408,11 @@ func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, inter
 		ApplicationDataInfluenceDataInfluenceIdDelete(context.Background(), influenceID)
 	if rsp != nil {
 		defer func() {
-			rsp_err := rsp.Request.Response.Body.Close()
-			if rsp_err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
 			}
 		}()
 
