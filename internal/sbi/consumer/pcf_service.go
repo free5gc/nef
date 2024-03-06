@@ -69,6 +69,15 @@ func (s *npcfService) GetAppSession(appSessionId string) (int, interface{}) {
 		GetAppSession(context.Background(), appSessionId)
 
 	if rsp != nil {
+		defer func() {
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
+			}
+		}()
+
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
 			rspBody = &result
@@ -78,12 +87,6 @@ func (s *npcfService) GetAppSession(appSessionId string) (int, interface{}) {
 	} else {
 		// API Service Internal Error or Server No Response
 		rspCode, rspBody = handleAPIServiceNoResponse(err)
-		defer func() {
-			err := rsp.Request.Response.Body.Close()
-			if err != nil {
-				logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
-			}
-		}()
 	}
 
 	return rspCode, rspBody
@@ -106,13 +109,16 @@ func (s *npcfService) PostAppSessions(asc *models.AppSessionContext) (int, inter
 	client := s.getClient(uri)
 
 	result, rsp, err = client.ApplicationSessionsCollectionApi.PostAppSessions(context.TODO(), *asc)
-	defer func() {
-		rsp_err := rsp.Request.Response.Body.Close()
-		if rsp_err != nil {
-			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
-		}
-	}()
 	if rsp != nil {
+		defer func() {
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
+			}
+		}()
+
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusCreated {
 			logger.ConsumerLog.Debugf("PostAppSessions RspData: %+v", result)
@@ -152,12 +158,6 @@ func (s *npcfService) PutAppSession(
 	appSessID = appSessionId
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.
 		GetAppSession(context.Background(), appSessionId)
-	defer func() {
-		rsp_err := rsp.Request.Response.Body.Close()
-		if rsp_err != nil {
-			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
-		}
-	}()
 	if rsp != nil {
 		if rsp.Body != nil {
 			if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
@@ -170,8 +170,16 @@ func (s *npcfService) PutAppSession(
 			// Patch
 			result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.ModAppSession(
 				context.Background(), appSessionId, *ascUpdateData)
-
 			if rsp != nil {
+				defer func() {
+					if rsp.Request.Response != nil {
+						rsp_err := rsp.Request.Response.Body.Close()
+						if rsp_err != nil {
+							logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+						}
+					}
+				}()
+
 				rspCode = rsp.StatusCode
 				if rsp.StatusCode == http.StatusOK {
 					logger.ConsumerLog.Debugf("PatchAppSessions RspData: %+v", result)
@@ -218,13 +226,16 @@ func (s *npcfService) PatchAppSession(appSessionId string,
 
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.ModAppSession(
 		context.Background(), appSessionId, *ascUpdateData)
-	defer func() {
-		rsp_err := rsp.Request.Response.Body.Close()
-		if rsp_err != nil {
-			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
-		}
-	}()
 	if rsp != nil {
+		defer func() {
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
+			}
+		}()
+
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
 			logger.ConsumerLog.Debugf("PatchAppSessions RspData: %+v", result)
@@ -261,13 +272,16 @@ func (s *npcfService) DeleteAppSession(appSessionId string) (int, interface{}) {
 
 	result, rsp, err = client.IndividualApplicationSessionContextDocumentApi.DeleteAppSession(
 		context.Background(), appSessionId, param)
-	defer func() {
-		rsp_err := rsp.Request.Response.Body.Close()
-		if rsp_err != nil {
-			logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
-		}
-	}()
 	if rsp != nil {
+		defer func() {
+			if rsp.Request.Response != nil {
+				rsp_err := rsp.Request.Response.Body.Close()
+				if rsp_err != nil {
+					logger.ConsumerLog.Errorf("ResponseBody can't be close: %+v", err)
+				}
+			}
+		}()
+
 		rspCode = rsp.StatusCode
 		if rsp.StatusCode == http.StatusOK {
 			logger.ConsumerLog.Debugf("DeleteAppSessions RspData: %+v", result)
