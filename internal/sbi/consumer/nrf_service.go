@@ -187,7 +187,7 @@ func (s *nnrfService) buildNfProfile() (*models.NfProfile, error) {
 func (s *nnrfService) DeregisterNFInstance() error {
 	logger.ConsumerLog.Infof("DeregisterNFInstance")
 
-	ctx, _, err := s.consumer.Context().GetTokenCtx("nnrf-nfm", "NRF")
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_NFM, models.NfType_NRF)
 	if err != nil {
 		return nil
 	}
@@ -225,7 +225,12 @@ func (s *nnrfService) SearchNFInstances(
 
 	client := s.getNFDiscoveryClient(nrfUri)
 
-	res, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(context.Background(),
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_NFM, models.NfType_NRF)
+	if err != nil {
+		return nil, "", err
+	}
+
+	res, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(ctx,
 		serviceNfType[srvName], models.NfType_NEF, param)
 	if rsp != nil && rsp.Body != nil {
 		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {

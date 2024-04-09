@@ -151,12 +151,12 @@ func (c *NefContext) FindAfSub(CorrID string) (*AfData, *AfSubscription) {
 	return nil, nil
 }
 
-func (c *NefContext) GetTokenCtx(scope, targetNF string) (
+func (c *NefContext) GetTokenCtx(serviceName models.ServiceName, targetNF models.NfType) (
 	context.Context, *models.ProblemDetails, error,
 ) {
 	if !c.OAuth2Required {
 		return context.TODO(), nil, nil
 	}
-	return oauth.GetTokenCtx(models.NfType_NEF,
-		c.nfInstID, c.Config().NrfUri(), scope, targetNF)
+	return oauth.GetTokenCtx(models.NfType_NEF, targetNF,
+		c.nfInstID, c.Config().NrfUri(), string(serviceName))
 }
