@@ -76,6 +76,7 @@ type Info struct {
 type Configuration struct {
 	Sbi         *Sbi      `yaml:"sbi,omitempty" valid:"required"`
 	NrfUri      string    `yaml:"nrfUri,omitempty" valid:"required"`
+	NrfCertPem  string    `yaml:"nrfCertPem,omitempty" valid:"optional"`
 	ServiceList []Service `yaml:"serviceList,omitempty" valid:"required"`
 }
 
@@ -320,6 +321,16 @@ func (c *Config) NrfUri() string {
 		return c.Configuration.NrfUri
 	}
 	return NefDefaultNrfUri
+}
+
+func (c *Config) NrfCertPem() string {
+	c.RLock()
+	defer c.RUnlock()
+
+	if c.Configuration.NrfCertPem != "" {
+		return c.Configuration.NrfCertPem
+	}
+	return "" // havn't setup in config
 }
 
 func (c *Config) ServiceList() []Service {

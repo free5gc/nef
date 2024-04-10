@@ -110,6 +110,7 @@ func (s *nnrfService) getNFManagementClient(uri string) *Nnrf_NFManagement.APICl
 
 func (s *nnrfService) RegisterNFInstance() error {
 	var rsp *http.Response
+	var nf models.NfProfile
 	var err error
 
 	client := s.getNFManagementClient(s.consumer.Config().NrfUri())
@@ -119,7 +120,7 @@ func (s *nnrfService) RegisterNFInstance() error {
 	}
 
 	for {
-		_, rsp, err = client.NFInstanceIDDocumentApi.RegisterNFInstance(
+		nf, rsp, err = client.NFInstanceIDDocumentApi.RegisterNFInstance(
 			context.TODO(), s.consumer.Context().NfInstID(), *nfProfile)
 		if rsp != nil && rsp.Body != nil {
 			if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
@@ -143,6 +144,20 @@ func (s *nnrfService) RegisterNFInstance() error {
 			resourceUri := rsp.Header.Get("Location")
 			// resouceNrfUri := resourceUri[:strings.Index(resourceUri, "/nnrf-nfm/")]
 			s.consumer.Context().SetNfInstID(resourceUri[strings.LastIndex(resourceUri, "/")+1:])
+
+			oauth2 := false
+			if nf.CustomInfo != nil {
+				v, ok := nf.CustomInfo["oauth2"].(bool)
+				if ok {
+					oauth2 = v
+					logger.MainLog.Infoln("OAuth2 setting receive from NRF:", oauth2)
+				}
+			}
+			s.consumer.Context().OAuth2Required = oauth2
+			if oauth2 && s.consumer.Context().Config().NrfCertPem() == "" {
+				logger.CfgLog.Error("OAuth2 enable but no nrfCertPem provided in config.")
+			}
+
 			logger.ConsumerLog.Infof("NFRegister Created")
 			break
 		} else {
@@ -172,10 +187,15 @@ func (s *nnrfService) buildNfProfile() (*models.NfProfile, error) {
 func (s *nnrfService) DeregisterNFInstance() error {
 	logger.ConsumerLog.Infof("DeregisterNFInstance")
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_NFM, models.NfType_NRF)
+	if err != nil {
+		return nil
+	}
+
 	client := s.getNFManagementClient(s.consumer.Config().NrfUri())
 
 	rsp, err := client.NFInstanceIDDocumentApi.DeregisterNFInstance(
-		context.Background(), s.consumer.Context().NfInstID())
+		ctx, s.consumer.Context().NfInstID())
 	if rsp != nil && rsp.Body != nil {
 		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {
 			logger.ConsumerLog.Errorf("response body cannot close: %+v", bodyCloseErr)
@@ -205,7 +225,12 @@ func (s *nnrfService) SearchNFInstances(
 
 	client := s.getNFDiscoveryClient(nrfUri)
 
-	res, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(context.Background(),
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NNRF_NFM, models.NfType_NRF)
+	if err != nil {
+		return nil, "", err
+	}
+
+	res, rsp, err := client.NFInstancesStoreApi.SearchNFInstances(ctx,
 		serviceNfType[srvName], models.NfType_NEF, param)
 	if rsp != nil && rsp.Body != nil {
 		if bodyCloseErr := rsp.Body.Close(); bodyCloseErr != nil {

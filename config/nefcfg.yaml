@@ -12,6 +12,7 @@ configuration:
       pem: cert/nef.pem # NEF TLS Certificate
       key: cert/nef.key # NEF TLS Private key
   nrfUri: http://127.0.0.10:8000 # A valid URI of NRF
+  nrfCertPem: cert/nrf.pem # NRF Certificate
   serviceList: # the SBI services provided by this NEF
     - serviceName: nnef-pfdmanagement # Nnef_PFDManagement Service
     - serviceName: nnef-oam # OAM service

@@ -1,11 +1,14 @@
 package context
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi/models"
+	"github.com/free5gc/openapi/oauth"
 	"github.com/google/uuid"
 )
 
@@ -16,12 +19,13 @@ type nef interface {
 type NefContext struct {
 	nef
 
-	nfInstID   string // NF Instance ID
-	pcfPaUri   string
-	udrDrUri   string
-	numCorreID uint64
-	afs        map[string]*AfData
-	mu         sync.RWMutex
+	nfInstID       string // NF Instance ID
+	pcfPaUri       string
+	udrDrUri       string
+	numCorreID     uint64
+	OAuth2Required bool
+	afs            map[string]*AfData
+	mu             sync.RWMutex
 }
 
 func NewContext(nef nef) (*NefContext, error) {
@@ -145,4 +149,14 @@ func (c *NefContext) FindAfSub(CorrID string) (*AfData, *AfSubscription) {
 		af.Mu.RUnlock()
 	}
 	return nil, nil
+}
+
+func (c *NefContext) GetTokenCtx(serviceName models.ServiceName, targetNF models.NfType) (
+	context.Context, *models.ProblemDetails, error,
+) {
+	if !c.OAuth2Required {
+		return context.TODO(), nil, nil
+	}
+	return oauth.GetTokenCtx(models.NfType_NEF, targetNF,
+		c.nfInstID, c.Config().NrfUri(), string(serviceName))
 }
