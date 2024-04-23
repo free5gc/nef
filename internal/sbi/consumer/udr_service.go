@@ -1,7 +1,6 @@
 package consumer
 
 import (
-	"context"
 	"net/http"
 	"sync"
 
@@ -68,8 +67,13 @@ func (s *nudrService) AppDataInfluenceDataGet(influenceIDs []string) (int, inter
 		InfluenceIds: optional.NewInterface(influenceIDs),
 	}
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
 	result, rsp, err = client.InfluenceDataApi.
-		ApplicationDataInfluenceDataGet(context.Background(), param)
+		ApplicationDataInfluenceDataGet(ctx, param)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -113,8 +117,13 @@ func (s *nudrService) AppDataInfluenceDataIdGet(influenceID string) (int, interf
 		InfluenceIds: optional.NewInterface(influenceID),
 	}
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
 	result, rsp, err = client.InfluenceDataApi.
-		ApplicationDataInfluenceDataGet(context.Background(), param)
+		ApplicationDataInfluenceDataGet(ctx, param)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -156,8 +165,13 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 	}
 	client := s.getClient(uri)
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdPut(context.TODO(), influenceID, *tiData)
+		ApplicationDataInfluenceDataInfluenceIdPut(ctx, influenceID, *tiData)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -202,7 +216,12 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) (int, interface{}) {
 		AppId: optional.NewInterface(appIDs),
 	}
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(context.TODO(), param)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsGet(ctx, param)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -243,7 +262,12 @@ func (s *nudrService) AppDataPfdsAppIdPut(appID string, pfdDataForApp *models.Pf
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(context.TODO(), appID, *pfdDataForApp)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdPut(ctx, appID, *pfdDataForApp)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -283,7 +307,12 @@ func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (int, interface{}) {
 	}
 	client := s.getClient(uri)
 
-	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(context.TODO(), appID)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
+	rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdDelete(ctx, appID)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -322,7 +351,12 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (int, interface{}) {
 	}
 	client := s.getClient(uri)
 
-	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(context.TODO(), appID)
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
+	result, rsp, err = client.DefaultApi.ApplicationDataPfdsAppIdGet(ctx, appID)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -364,8 +398,13 @@ func (s *nudrService) AppDataInfluenceDataPatch(
 	}
 	client := s.getClient(uri)
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
 	result, rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdPatch(context.Background(), influenceID, *tiSubPatch)
+		ApplicationDataInfluenceDataInfluenceIdPatch(ctx, influenceID, *tiSubPatch)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
@@ -404,8 +443,13 @@ func (s *nudrService) AppDataInfluenceDataDelete(influenceID string) (int, inter
 	}
 	client := s.getClient(uri)
 
+	ctx, _, err := s.consumer.Context().GetTokenCtx(models.ServiceName_NUDR_DR, models.NfType_UDR)
+	if err != nil {
+		return rspCode, rspBody
+	}
+
 	rsp, err = client.IndividualInfluenceDataDocumentApi.
-		ApplicationDataInfluenceDataInfluenceIdDelete(context.Background(), influenceID)
+		ApplicationDataInfluenceDataInfluenceIdDelete(ctx, influenceID)
 	if rsp != nil {
 		defer func() {
 			if rsp.Request.Response != nil {
