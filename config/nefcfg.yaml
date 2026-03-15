@@ -16,6 +16,7 @@ configuration:
   serviceList: # the SBI services provided by this NEF
     - serviceName: nnef-pfdmanagement # Nnef_PFDManagement Service
     - serviceName: nnef-oam # OAM service
+    - serviceName: nnef-callback # Callback service
 
 logger: # log output setting
   enable: true # true or false
