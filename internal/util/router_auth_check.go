@@ -3,11 +3,10 @@ package util
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
 	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/openapi/models"
+	"github.com/gin-gonic/gin"
 )
 
 type RouterAuthorizationCheck struct {
