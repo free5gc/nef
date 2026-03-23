@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -181,7 +182,9 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 // 3GPP TS 29.519 release 17 version 17.6.0
 // Resource structure: 6.2.2
 // Request/Response: 6.2.3.3.1
-func (s *nudrService) AppDataPfdsGet(appIDs []string, suppFeat *string) ([]models.PfdDataForAppExt, *models.ProblemDetails, error) {
+func (s *nudrService) AppDataPfdsGet(appIDs []string,
+	suppFeat *string,
+) ([]models.PfdDataForAppExt, *models.ProblemDetails, error) {
 	uri, err := s.getUdrDrUri()
 	if err != nil {
 		return nil, nil, err
@@ -369,19 +372,33 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string, suppFeat *string) (
 }
 
 func mapReadIndividualPFDError(errPfdData error) (*models.ProblemDetails, error) {
-	switch apiErr := errPfdData.(type) {
-	case openapi.GenericOpenAPIError:
-		return mapGenericReadIndividualPFDError(&apiErr)
-	case *openapi.GenericOpenAPIError:
-		return mapGenericReadIndividualPFDError(apiErr)
-	case error:
-		if isPfdDataNotFoundDecodeError(apiErr.Error()) {
-			return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
-		}
-		return openapi.ProblemDetailsSystemFailure(apiErr.Error()), nil
-	default:
+	if errPfdData == nil {
 		return nil, openapi.ReportError("server no response")
 	}
+
+	if apiErr, ok := extractGenericOpenAPIError(errPfdData); ok {
+		return mapGenericReadIndividualPFDError(apiErr)
+	}
+
+	if isPfdDataNotFoundDecodeError(errPfdData.Error()) {
+		return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
+	}
+
+	return openapi.ProblemDetailsSystemFailure(errPfdData.Error()), nil
+}
+
+func extractGenericOpenAPIError(err error) (*openapi.GenericOpenAPIError, bool) {
+	var apiErr openapi.GenericOpenAPIError
+	if errors.As(err, &apiErr) {
+		return &apiErr, true
+	}
+
+	var apiErrPtr *openapi.GenericOpenAPIError
+	if errors.As(err, &apiErrPtr) && apiErrPtr != nil {
+		return apiErrPtr, true
+	}
+
+	return nil, false
 }
 
 func mapGenericReadIndividualPFDError(apiErr *openapi.GenericOpenAPIError) (*models.ProblemDetails, error) {
@@ -393,28 +410,38 @@ func mapGenericReadIndividualPFDError(apiErr *openapi.GenericOpenAPIError) (*mod
 		return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
 	}
 
-	switch errorModel := apiErr.Model().(type) {
-	case DataRepository.ReadIndividualPFDDataError:
-		return mapReadIndividualPFDDataProblem(errorModel.ProblemDetails), nil
-	case *DataRepository.ReadIndividualPFDDataError:
-		if errorModel == nil {
-			return nil, openapi.ReportError("openapi error")
-		}
-		return mapReadIndividualPFDDataProblem(errorModel.ProblemDetails), nil
-	case models.ProblemDetails:
-		return mapReadIndividualPFDDataProblem(errorModel), nil
-	case *models.ProblemDetails:
-		if errorModel == nil {
-			return nil, openapi.ReportError("openapi error")
-		}
-		return mapReadIndividualPFDDataProblem(*errorModel), nil
-	case error:
+	if problemDetails, ok := extractReadIndividualPFDProblemDetails(apiErr.Model()); ok {
+		return mapReadIndividualPFDDataProblem(*problemDetails), nil
+	}
+
+	if errorModel, ok := apiErr.Model().(error); ok {
 		if isPfdDataNotFoundDecodeError(errorModel.Error()) {
 			return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
 		}
 		return openapi.ProblemDetailsSystemFailure(errorModel.Error()), nil
+	}
+
+	return nil, openapi.ReportError("openapi error")
+}
+
+func extractReadIndividualPFDProblemDetails(errorModel interface{}) (*models.ProblemDetails, bool) {
+	switch v := errorModel.(type) {
+	case DataRepository.ReadIndividualPFDDataError:
+		return &v.ProblemDetails, true
+	case *DataRepository.ReadIndividualPFDDataError:
+		if v == nil {
+			return nil, false
+		}
+		return &v.ProblemDetails, true
+	case models.ProblemDetails:
+		return &v, true
+	case *models.ProblemDetails:
+		if v == nil {
+			return nil, false
+		}
+		return v, true
 	default:
-		return nil, openapi.ReportError("openapi error")
+		return nil, false
 	}
 }
 
