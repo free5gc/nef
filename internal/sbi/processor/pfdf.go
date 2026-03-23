@@ -16,11 +16,10 @@ import (
 // 3GPP TS 29.551 release 17 version 17.6.0
 // Resource structure: 5.3.1
 // Request/Response  : 5.3.2.3.1
-func (p *Processor) GetApplicationsPFD(c *gin.Context, appIDs []string) {
+func (p *Processor) GetApplicationsPFD(c *gin.Context, appIDs []string, suppFeat *string) {
 	logger.PFDFLog.Infof("GetApplicationsPFD - appIDs: %v", appIDs)
 
-	// TODO: Support SupportedFeatures
-	pdfDataForAppExt, pd, errAppDataGet := p.Consumer().AppDataPfdsGet(appIDs)
+	pdfDataForAppExt, pd, errAppDataGet := p.Consumer().AppDataPfdsGet(appIDs, suppFeat)
 
 	switch {
 	case pd != nil:
@@ -50,11 +49,10 @@ func (p *Processor) GetApplicationsPFD(c *gin.Context, appIDs []string) {
 // 3GPP TS 29.551 release 17 version 17.6.0
 // Resource structure: 5.3.1
 // Request/Response  : 5.3.3.3.1
-func (p *Processor) GetIndividualApplicationPFD(c *gin.Context, appID string) {
+func (p *Processor) GetIndividualApplicationPFD(c *gin.Context, appID string, suppFeat *string) {
 	logger.PFDFLog.Infof("GetIndividualApplicationPFD - appID[%s]", appID)
 
-	// TODO: Support SupportedFeatures
-	pdfDataRsp, pdfDataProblemDetails, errPdfData := p.Consumer().AppDataPfdsAppIdGet(appID)
+	pdfDataRsp, pdfDataProblemDetails, errPdfData := p.Consumer().AppDataPfdsAppIdGet(appID, suppFeat)
 
 	switch {
 	case pdfDataProblemDetails != nil:

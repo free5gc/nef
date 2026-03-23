@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func TestGetApplicationsPFD(t *testing.T) {
 			httpRecorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(httpRecorder)
 
-			nefApp.Processor().GetApplicationsPFD(c, tc.appIDs)
+			nefApp.Processor().GetApplicationsPFD(c, tc.appIDs, nil)
 			require.Equal(t, tc.expectedResponse.Status, httpRecorder.Code)
 
 			assertJSONBodyEqual(t, tc.expectedResponse.Body, httpRecorder.Body.Bytes())
@@ -55,6 +56,12 @@ func TestGetApplicationsPFD(t *testing.T) {
 
 func TestGetIndividualApplicationPFD(t *testing.T) {
 	initUDRDrGetPfdDataStub()
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Get("/application-data/pfds/app404plaintext").
+		Persist().
+		Reply(http.StatusNotFound).
+		Type("text/plain").
+		BodyString("404 page not found")
 	defer gock.Off()
 
 	testCases := []struct {
@@ -75,7 +82,15 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 			appID:       "app3",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusNotFound,
-				Body:   &models.ProblemDetails{Status: http.StatusNotFound},
+				Body:   openapi.ProblemDetailsDataNotFound("PFD data not found"),
+			},
+		},
+		{
+			description: "TC3: App ID not found with plain-text 404 body, should return ProblemDetails",
+			appID:       "app404plaintext",
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusNotFound,
+				Body:   openapi.ProblemDetailsDataNotFound("PFD data not found"),
 			},
 		},
 	}
@@ -85,7 +100,7 @@ func TestGetIndividualApplicationPFD(t *testing.T) {
 			httpRecorder := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(httpRecorder)
 
-			nefApp.Processor().GetIndividualApplicationPFD(c, tc.appID)
+			nefApp.Processor().GetIndividualApplicationPFD(c, tc.appID, nil)
 			require.Equal(t, tc.expectedResponse.Status, httpRecorder.Code)
 
 			assertJSONBodyEqual(t, tc.expectedResponse.Body, httpRecorder.Body.Bytes())

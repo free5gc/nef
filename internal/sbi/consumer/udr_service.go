@@ -3,6 +3,7 @@ package consumer
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/free5gc/openapi"
@@ -10,6 +11,12 @@ import (
 	"github.com/free5gc/openapi/nrf/NFDiscovery"
 	"github.com/free5gc/openapi/udr/DataRepository"
 	sbi_metrics "github.com/free5gc/util/metrics/sbi"
+)
+
+const (
+	pfdDataNotFoundDetail          = "PFD data not found"
+	errDetailUndefinedResponseType = "undefined response type"
+	errDetailInvalidCharacter      = "invalid character"
 )
 
 type nudrService struct {
@@ -174,7 +181,7 @@ func (s *nudrService) AppDataInfluenceDataPut(influenceID string,
 // 3GPP TS 29.519 release 17 version 17.6.0
 // Resource structure: 6.2.2
 // Request/Response: 6.2.3.3.1
-func (s *nudrService) AppDataPfdsGet(appIDs []string) ([]models.PfdDataForAppExt, *models.ProblemDetails, error) {
+func (s *nudrService) AppDataPfdsGet(appIDs []string, suppFeat *string) ([]models.PfdDataForAppExt, *models.ProblemDetails, error) {
 	uri, err := s.getUdrDrUri()
 	if err != nil {
 		return nil, nil, err
@@ -193,6 +200,9 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) ([]models.PfdDataForAppExt
 
 	pfdDataReq := DataRepository.ReadPFDDataRequest{
 		AppId: appIDs,
+	}
+	if suppFeat != nil {
+		pfdDataReq.SetSuppFeat(*suppFeat)
 	}
 
 	pfdDataResp, errPfdData := client.PFDDataStoreApi.ReadPFDData(ctx, &pfdDataReq)
@@ -324,7 +334,7 @@ func (s *nudrService) AppDataPfdsAppIdDelete(appID string) (*models.ProblemDetai
 // 3GPP TS 29.519 release 17 version 17.6.0
 // Resource structure: 6.2.2
 // Request/Response: 6.2.4.3.1
-func (s *nudrService) AppDataPfdsAppIdGet(appID string) (
+func (s *nudrService) AppDataPfdsAppIdGet(appID string, suppFeat *string) (
 	*DataRepository.ReadIndividualPFDDataResponse, *models.ProblemDetails, error,
 ) {
 	uri, err := s.getUdrDrUri()
@@ -345,28 +355,79 @@ func (s *nudrService) AppDataPfdsAppIdGet(appID string) (
 	pfdDataReq := DataRepository.ReadIndividualPFDDataRequest{
 		AppId: &appID,
 	}
+	if suppFeat != nil {
+		pfdDataReq.SetSuppFeat(*suppFeat)
+	}
 
 	pfdData, errPfdData := client.IndividualPFDDataDocumentApi.ReadIndividualPFDData(ctx, &pfdDataReq)
 
 	if errPfdData != nil {
-		switch apiErr := errPfdData.(type) {
-		// API error
-		case openapi.GenericOpenAPIError:
-			switch errorModel := apiErr.Model().(type) {
-			case DataRepository.ReadIndividualPFDDataError:
-				return nil, &errorModel.ProblemDetails, nil
-			case error:
-				return nil, openapi.ProblemDetailsSystemFailure(errorModel.Error()), nil
-			default:
-				return nil, nil, openapi.ReportError("openapi error")
-			}
-		case error:
-			return nil, openapi.ProblemDetailsSystemFailure(apiErr.Error()), nil
-		default:
-			return nil, nil, openapi.ReportError("server no response")
-		}
+		pd, mapErr := mapReadIndividualPFDError(errPfdData)
+		return nil, pd, mapErr
 	}
 	return pfdData, nil, nil
+}
+
+func mapReadIndividualPFDError(errPfdData error) (*models.ProblemDetails, error) {
+	switch apiErr := errPfdData.(type) {
+	case openapi.GenericOpenAPIError:
+		return mapGenericReadIndividualPFDError(&apiErr)
+	case *openapi.GenericOpenAPIError:
+		return mapGenericReadIndividualPFDError(apiErr)
+	case error:
+		if isPfdDataNotFoundDecodeError(apiErr.Error()) {
+			return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
+		}
+		return openapi.ProblemDetailsSystemFailure(apiErr.Error()), nil
+	default:
+		return nil, openapi.ReportError("server no response")
+	}
+}
+
+func mapGenericReadIndividualPFDError(apiErr *openapi.GenericOpenAPIError) (*models.ProblemDetails, error) {
+	if apiErr == nil {
+		return nil, openapi.ReportError("openapi error")
+	}
+
+	if apiErr.ErrorStatus == http.StatusNotFound {
+		return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
+	}
+
+	switch errorModel := apiErr.Model().(type) {
+	case DataRepository.ReadIndividualPFDDataError:
+		return mapReadIndividualPFDDataProblem(errorModel.ProblemDetails), nil
+	case *DataRepository.ReadIndividualPFDDataError:
+		if errorModel == nil {
+			return nil, openapi.ReportError("openapi error")
+		}
+		return mapReadIndividualPFDDataProblem(errorModel.ProblemDetails), nil
+	case models.ProblemDetails:
+		return mapReadIndividualPFDDataProblem(errorModel), nil
+	case *models.ProblemDetails:
+		if errorModel == nil {
+			return nil, openapi.ReportError("openapi error")
+		}
+		return mapReadIndividualPFDDataProblem(*errorModel), nil
+	case error:
+		if isPfdDataNotFoundDecodeError(errorModel.Error()) {
+			return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail), nil
+		}
+		return openapi.ProblemDetailsSystemFailure(errorModel.Error()), nil
+	default:
+		return nil, openapi.ReportError("openapi error")
+	}
+}
+
+func mapReadIndividualPFDDataProblem(pd models.ProblemDetails) *models.ProblemDetails {
+	if pd.Status == http.StatusNotFound || isPfdDataNotFoundDecodeError(pd.Detail) {
+		return openapi.ProblemDetailsDataNotFound(pfdDataNotFoundDetail)
+	}
+	return &pd
+}
+
+func isPfdDataNotFoundDecodeError(detail string) bool {
+	return strings.Contains(detail, errDetailUndefinedResponseType) ||
+		strings.Contains(detail, errDetailInvalidCharacter)
 }
 
 // AppDataInfluenceDataPatch Patch the TrafficInfluData for the related influenceID and tiSubPatch and returns it.

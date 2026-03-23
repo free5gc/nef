@@ -409,7 +409,7 @@ func (p *Processor) GetIndividualApplicationPFDManagement(
 		return
 	}
 
-	pdfData, pd, errPfdData := p.Consumer().AppDataPfdsAppIdGet(appID)
+	pdfData, pd, errPfdData := p.Consumer().AppDataPfdsAppIdGet(appID, nil)
 
 	switch {
 	case pd != nil:
@@ -607,7 +607,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(
 	pfdNotifyContext := p.Notifier().PfdChangeNotifier.NewPfdNotifyContext()
 	defer pfdNotifyContext.FlushNotifications()
 
-	pdfData, problemDetails, errPfdData := p.Consumer().AppDataPfdsAppIdGet(appID)
+	pdfData, problemDetails, errPfdData := p.Consumer().AppDataPfdsAppIdGet(appID, nil)
 
 	switch {
 	case problemDetails != nil:
@@ -656,7 +656,7 @@ func (p *Processor) buildPfdManagement(afID string, afPfdTr *nef_context.AfPfdTr
 		PfdDatas: make(map[string]models.PfdData, len(appIDs)),
 	}
 
-	data, pd, err := p.Consumer().AppDataPfdsGet(appIDs)
+	data, pd, err := p.Consumer().AppDataPfdsGet(appIDs, nil)
 
 	switch {
 	case pd != nil:
