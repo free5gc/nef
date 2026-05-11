@@ -11,8 +11,10 @@ import (
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/internal/sbi/processor"
+	"github.com/free5gc/nef/internal/util"
 	"github.com/free5gc/nef/pkg/app"
 	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/util/httpwrapper"
 	logger_util "github.com/free5gc/util/logger"
 	"github.com/free5gc/util/metrics"
@@ -63,6 +65,10 @@ func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
 
 	endpoints = s.getCallbackRoutes()
 	group = s.router.Group(factory.NefCallbackResUriPrefix)
+	callbackAuthCheck := util.NewRouterAuthorizationCheck(models.ServiceName("nnef-callback"))
+	group.Use(func(c *gin.Context) {
+		callbackAuthCheck.Check(c, s.Context())
+	})
 	applyRoutes(group, endpoints)
 
 	s.router.Use(cors.New(cors.Config{

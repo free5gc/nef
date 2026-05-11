@@ -127,9 +127,11 @@ func (c *Configuration) validate() (bool, error) {
 		switch s.ServiceName {
 		case ServiceNefPfd:
 		case ServiceNefOam:
+		case ServiceNefCallback:
 		default:
 			err := errors.New("invalid serviceList[" + strconv.Itoa(i) + "]: " +
-				s.ServiceName + ", should be " + ServiceNefPfd + " or " + ServiceNefOam)
+				s.ServiceName + ", should be " + ServiceNefPfd + ", " + ServiceNefOam +
+				" or " + ServiceNefCallback)
 			return false, appendInvalid(err)
 		}
 	}

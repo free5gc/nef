@@ -15,6 +15,10 @@ type nef interface {
 	Config() *factory.Config
 }
 
+type NFContext interface {
+	AuthorizationCheck(token string, serviceName models.ServiceName) error
+}
+
 type NefContext struct {
 	nef
 
@@ -26,6 +30,8 @@ type NefContext struct {
 	afs            map[string]*AfData
 	mu             sync.RWMutex
 }
+
+var _ NFContext = &NefContext{}
 
 func NewContext(nef nef) (*NefContext, error) {
 	c := &NefContext{
@@ -158,4 +164,14 @@ func (c *NefContext) GetTokenCtx(serviceName models.ServiceName, targetNF models
 	}
 	return oauth.GetTokenCtx(models.NrfNfManagementNfType_NEF, targetNF,
 		c.nfInstID, c.Config().NrfUri(), string(serviceName))
+}
+
+func (c *NefContext) AuthorizationCheck(token string, serviceName models.ServiceName) error {
+	if !c.OAuth2Required {
+		logger.CtxLog.Debugf("NefContext::AuthorizationCheck: OAuth2 not required\n")
+		return nil
+	}
+
+	logger.CtxLog.Debugf("NefContext::AuthorizationCheck: token[%s] serviceName[%s]\n", token, serviceName)
+	return oauth.VerifyOAuth(token, string(serviceName), c.Config().NrfCertPem())
 }
