@@ -174,6 +174,9 @@ func (c *NefContext) AuthorizationCheck(token string, serviceName models.Service
 		logger.CtxLog.Debugf("NefContext::AuthorizationCheck: OAuth2 not required")
 		return nil
 	}
-	logger.CtxLog.Debugf("NefContext::AuthorizationCheck: token[%s] serviceName[%s]", token, serviceName)
+	logger.CtxLog.Debugf(
+		"NefContext::AuthorizationCheck: tokenPresent[%t] tokenLen[%d] serviceName[%s]",
+		token != "", len(token), serviceName,
+	)
 	return oauth.VerifyOAuth(token, string(serviceName), c.Config().NrfCertPem())
 }

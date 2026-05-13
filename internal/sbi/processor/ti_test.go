@@ -144,11 +144,13 @@ var (
 			Sst: 1,
 			Sd:  "010203",
 		},
+		Ipv4Addr: "10.60.0.11",
 		TrafficFilters: []models.FlowInfo{
 			{
 				FlowId: 1,
 				FlowDescriptions: []string{
 					"permit out ip from 192.168.0.26 to 10.60.0.0/16",
+					"permit out ip from 192.168.0.24 to 10.60.0.11",
 				},
 			},
 		},
@@ -160,6 +162,24 @@ var (
 					PortNumber: 0,
 				},
 			},
+		},
+	}
+
+
+	tiSub7ForAf1 = models.NefTrafficInfluSub{
+		AfServiceId: "Service7",
+		AfAppId:     "App7",
+		Ipv4Addr:    "10.60.0.12",
+		TrafficFilters: []models.FlowInfo{
+			{
+				FlowId: 1,
+				FlowDescriptions: []string{
+					"permit out ip from 192.168.0.26 to 10.60.0.12",
+				},
+			},
+		},
+		TrafficRoutes: []*models.RouteToLocation{
+			nil,
 		},
 	}
 
