@@ -136,10 +136,11 @@ var (
 	}
 
 	tiSub6ForAf1 = models.NefTrafficInfluSub{
-		AfServiceId: "Service6",
-		AfAppId:     "App6",
-		AnyUeInd:    true,
-		Dnn:         "internet",
+		AfServiceId:             "Service6",
+		AfAppId:                 "App6",
+		AnyUeInd:                true,
+		Dnn:                     "internet",
+		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/traffic-influence/app6",
 		Snssai: &models.Snssai{
 			Sst: 1,
 			Sd:  "010203",
@@ -154,22 +155,12 @@ var (
 				},
 			},
 		},
-		TrafficRoutes: []*models.RouteToLocation{
-			{
-				Dnai: "mec",
-				RouteInfo: &models.RouteInformation{
-					Ipv4Addr:   "10.60.0.1",
-					PortNumber: 0,
-				},
-			},
-		},
 	}
-
-
 	tiSub7ForAf1 = models.NefTrafficInfluSub{
-		AfServiceId: "Service7",
-		AfAppId:     "App7",
-		Ipv4Addr:    "10.60.0.12",
+		AfServiceId:             "Service7",
+		AfAppId:                 "App7",
+		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/traffic-influence/app7",
+		Ipv4Addr:                "10.60.0.12",
 		TrafficFilters: []models.FlowInfo{
 			{
 				FlowId: 1,
@@ -180,6 +171,29 @@ var (
 		},
 		TrafficRoutes: []*models.RouteToLocation{
 			nil,
+		},
+	}
+	tiSub8ForAf1 = models.NefTrafficInfluSub{
+		AfServiceId: "Service8",
+		AfAppId: "App8",
+		Dnn: "internet",
+		Snssai: &models.Snssai{
+			Sst: 1,
+			Sd: "010203",
+		},
+		AnyUeInd: true,
+		TrafficFilters: []models.FlowInfo{
+			{
+				FlowId: 1,
+				FlowDescriptions: []string{
+					"permit out ip from 192.168.0.21 to 10.60.0.0/16",
+				},
+			},
+		},
+		TrafficRoutes: []*models.RouteToLocation{
+			{
+				Dnai: "mec",
+			},
 		},
 	}
 
@@ -377,7 +391,7 @@ func TestPostTrafficInfluenceSubscription(t *testing.T) {
 		{
 			description: "TC3: Missing notificationDestination",
 			afID:        "af1",
-			tiSub:       &tiSub6ForAf1,
+			tiSub:       &tiSub8ForAf1,
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusBadRequest,
 				Body: &models.ProblemDetails{
@@ -683,7 +697,7 @@ func TestPutIndividualTrafficInfluenceSubscription(t *testing.T) {
 			description: "TC4: Missing notificationDestination",
 			afID:        "af1",
 			subID:       "1",
-			tiSub:       &tiSub6ForAf1,
+			tiSub:       &tiSub8ForAf1,
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusBadRequest,
 				Body: &models.ProblemDetails{
