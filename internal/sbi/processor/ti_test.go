@@ -175,11 +175,11 @@ var (
 	}
 	tiSub8ForAf1 = models.NefTrafficInfluSub{
 		AfServiceId: "Service8",
-		AfAppId: "App8",
-		Dnn: "internet",
+		AfAppId:     "App8",
+		Dnn:         "internet",
 		Snssai: &models.Snssai{
 			Sst: 1,
-			Sd: "010203",
+			Sd:  "010203",
 		},
 		AnyUeInd: true,
 		TrafficFilters: []models.FlowInfo{
