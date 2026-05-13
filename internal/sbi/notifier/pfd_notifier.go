@@ -124,24 +124,29 @@ func (nc *PfdNotifyContext) FlushNotifications() {
 			pfdChangeNotifications = append(pfdChangeNotifications, nc.appIdToNotification[appID])
 		}
 
-		go func(id string) {
-			defer func() {
-				if p := recover(); p != nil {
-					// Print stack for panic to log. Fatalf() will let program exit.
-					logger.PFDManageLog.Fatalf("panic: %v\n%s", p, string(debug.Stack()))
-				}
-			}()
+		notifyReq := &PFDmanagement.NnefPFDmanagementNotifyRequest{
+			PfdChangeNotification: pfdChangeNotifications,
+		}
 
-			notifyReq := &PFDmanagement.NnefPFDmanagementNotifyRequest{
-				PfdChangeNotification: pfdChangeNotifications,
-			}
-
-			_, err := nc.notifier.clientPfdManagement.PFDSubscriptionsApi.NnefPFDmanagementNotify(
-				context.TODO(), nc.notifier.getSubURI(id), notifyReq)
-			if err != nil {
-				logger.PFDManageLog.Fatal(err)
-			}
-		}(subID)
+		go nc.notifier.sendPFDChangeNotification(subID, notifyReq)
 		// TODO: Handle the response of notification properly
+	}
+}
+
+func (n *PfdChangeNotifier) sendPFDChangeNotification(
+	subID string,
+	notifyReq *PFDmanagement.NnefPFDmanagementNotifyRequest,
+) {
+	defer func() {
+		if p := recover(); p != nil {
+			// Async callback failures must stay local and must not terminate NEF.
+			logger.PFDManageLog.Errorf("panic while sending PFD notification: %v\n%s", p, string(debug.Stack()))
+		}
+	}()
+
+	uri := n.getSubURI(subID)
+	_, err := n.clientPfdManagement.PFDSubscriptionsApi.NnefPFDmanagementNotify(context.TODO(), uri, notifyReq)
+	if err != nil {
+		logger.PFDManageLog.Errorf("PFD notification delivery failed, subID[%s] notifyUri[%s], err[%+v]", subID, uri, err)
 	}
 }

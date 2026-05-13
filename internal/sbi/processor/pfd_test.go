@@ -228,6 +228,30 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 	}
 }
 
+func TestGetPFDManagementTransactionsWithMalformedMultipartFromUDR(t *testing.T) {
+	initUDRDrGetPfdDatasMultipartStub()
+	defer gock.Off()
+
+	af := nefApp.Context().NewAf("af1")
+	nefApp.Context().AddAf(af)
+	defer nefApp.Context().DeleteAf("af1")
+
+	af.Mu.Lock()
+	afPfdTr := af.NewPfdTrans()
+	af.PfdTrans[afPfdTr.TransID] = afPfdTr
+	afPfdTr.AddExtAppID("app1")
+	afPfdTr.AddExtAppID("app2")
+	af.Mu.Unlock()
+
+	httpRecorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(httpRecorder)
+
+	require.NotPanics(t, func() {
+		nefApp.Processor().GetPFDManagementTransactions(c, "af1")
+	})
+	require.Equal(t, http.StatusInternalServerError, httpRecorder.Code)
+}
+
 func TestDeletePFDManagementTransactions(t *testing.T) {
 	initUDRDrDeletePfdDataStub()
 	defer gock.Off()
@@ -458,6 +482,30 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 			assertJSONBodyEqual(t, tc.expectedResponse.Body, httpRecorder.Body.Bytes())
 		})
 	}
+}
+
+func TestGetIndividualPFDManagementTransactionWithMalformedMultipartFromUDR(t *testing.T) {
+	initUDRDrGetPfdDatasMultipartStub()
+	defer gock.Off()
+
+	af := nefApp.Context().NewAf("af1")
+	nefApp.Context().AddAf(af)
+	defer nefApp.Context().DeleteAf("af1")
+
+	af.Mu.Lock()
+	afPfdTr := af.NewPfdTrans()
+	af.PfdTrans[afPfdTr.TransID] = afPfdTr
+	afPfdTr.AddExtAppID("app1")
+	afPfdTr.AddExtAppID("app2")
+	af.Mu.Unlock()
+
+	httpRecorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(httpRecorder)
+
+	require.NotPanics(t, func() {
+		nefApp.Processor().GetIndividualPFDManagementTransaction(c, "af1", afPfdTr.TransID)
+	})
+	require.Equal(t, http.StatusInternalServerError, httpRecorder.Code)
 }
 
 func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
@@ -1370,6 +1418,16 @@ func initUDRDrGetPfdDatasStub() {
 		Persist().
 		Reply(http.StatusNotFound).
 		JSON(models.ProblemDetails{Status: http.StatusNotFound})
+}
+
+func initUDRDrGetPfdDatasMultipartStub() {
+	gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+		Get("/application-data/pfds").
+		MatchParam("appId", "app1").
+		Persist().
+		Reply(http.StatusOK).
+		SetHeader("Content-Type", "multipart/related; boundary=BOUND123").
+		BodyString("--BOUND123\r\nContent-Type: application/json\r\n\r\n[]\r\n--BOUND123--\r\n")
 }
 
 func initUDRDrGetPfdDataStub() {

@@ -413,6 +413,32 @@ func TestPostTrafficInfluenceSubscription(t *testing.T) {
 				},
 			},
 		},
+		{
+			description: "TC5: Missing trafficRoutes",
+			afID:        "af1",
+			tiSub:       &tiSub6ForAf1,
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusBadRequest,
+				Body: &models.ProblemDetails{
+					Status: http.StatusBadRequest,
+					Title:  "Malformed request syntax",
+					Detail: "Missing trafficRoutes",
+				},
+			},
+		},
+		{
+			description: "TC6: Illegal null route element",
+			afID:        "af1",
+			tiSub:       &tiSub7ForAf1,
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusBadRequest,
+				Body: &models.ProblemDetails{
+					Status: http.StatusBadRequest,
+					Title:  "Malformed request syntax",
+					Detail: "Illegal null route element at index 0",
+				},
+			},
+		},
 	}
 
 	nefCtx := nefApp.Context()
@@ -692,6 +718,34 @@ func TestPutIndividualTrafficInfluenceSubscription(t *testing.T) {
 					Status: http.StatusBadRequest,
 					Title:  "Malformed request syntax",
 					Detail: "Missing one of Gpsi, Ipv4Addr, Ipv6Addr, ExternalGroupId, AnyUeInd",
+				},
+			},
+		},
+		{
+			description: "TC6: Missing trafficRoutes",
+			afID:        "af1",
+			subID:       "6",
+			tiSub:       &tiSub6ForAf1,
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusBadRequest,
+				Body: &models.ProblemDetails{
+					Status: http.StatusBadRequest,
+					Title:  "Malformed request syntax",
+					Detail: "Missing trafficRoutes",
+				},
+			},
+		},
+		{
+			description: "TC7: Illegal null route element",
+			afID:        "af1",
+			subID:       "7",
+			tiSub:       &tiSub7ForAf1,
+			expectedResponse: &HandlerResponse{
+				Status: http.StatusBadRequest,
+				Body: &models.ProblemDetails{
+					Status: http.StatusBadRequest,
+					Title:  "Malformed request syntax",
+					Detail: "Illegal null route element at index 0",
 				},
 			},
 		},

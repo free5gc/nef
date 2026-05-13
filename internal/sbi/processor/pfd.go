@@ -611,7 +611,7 @@ func (p *Processor) PatchIndividualApplicationPFDManagement(
 			Status: http.StatusInternalServerError,
 			Detail: "Query to UDR failed",
 		}
-		c.Set(sbi.IN_PB_DETAILS_CTX_STR, problemDetails.Cause)
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, problemDetailsErr.Detail)
 		c.JSON(int(problemDetailsErr.Status), problemDetailsErr)
 		return
 	}

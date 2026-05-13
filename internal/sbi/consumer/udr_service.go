@@ -195,7 +195,17 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) ([]models.PfdDataForAppExt
 		AppId: appIDs,
 	}
 
-	pfdDataResp, errPfdData := client.PFDDataStoreApi.ReadPFDData(ctx, &pfdDataReq)
+	var pfdDataResp *DataRepository.ReadPFDDataResponse
+	var errPfdData error
+	func() {
+		defer func() {
+			if p := recover(); p != nil {
+				errPfdData = fmt.Errorf("panic from UDR ReadPFDData: %v", p)
+			}
+		}()
+
+		pfdDataResp, errPfdData = client.PFDDataStoreApi.ReadPFDData(ctx, &pfdDataReq)
+	}()
 
 	if errPfdData != nil {
 		switch apiErr := errPfdData.(type) {
@@ -214,6 +224,10 @@ func (s *nudrService) AppDataPfdsGet(appIDs []string) ([]models.PfdDataForAppExt
 		default:
 			return nil, nil, openapi.ReportError("server no response")
 		}
+	}
+
+	if pfdDataResp == nil {
+		return nil, openapi.ProblemDetailsSystemFailure("server no response"), nil
 	}
 
 	return pfdDataResp.PfdDataForAppExt, nil, nil

@@ -53,6 +53,19 @@ func TestGetApplicationsPFD(t *testing.T) {
 	}
 }
 
+func TestGetApplicationsPFDWithMalformedMultipartFromUDR(t *testing.T) {
+	initUDRDrGetPfdDatasMultipartStub()
+	defer gock.Off()
+
+	httpRecorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(httpRecorder)
+
+	require.NotPanics(t, func() {
+		nefApp.Processor().GetApplicationsPFD(c, []string{"app1"})
+	})
+	require.Equal(t, http.StatusInternalServerError, httpRecorder.Code)
+}
+
 func TestGetIndividualApplicationPFD(t *testing.T) {
 	initUDRDrGetPfdDataStub()
 	defer gock.Off()
