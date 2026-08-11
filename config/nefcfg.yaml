@@ -17,7 +17,8 @@ configuration:
     - serviceName: nnef-pfdmanagement  # Nnef_PFDManagement Service (also mounts /3gpp-pfd-management)
     - serviceName: nnef-oam            # OAM service
     - serviceName: 3gpp-traffic-influence # AF-facing Traffic Influence API
-    - serviceName: nnef-callback       # Inbound SMF event notification callback
+    - serviceName: 3gpp-monitoring-event  # AF-facing Monitoring Event API
+    - serviceName: nnef-callback       # Inbound SMF/AMF event notification callback
 
 logger: # log output setting
   enable: true # true or false

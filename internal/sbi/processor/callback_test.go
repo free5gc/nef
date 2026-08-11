@@ -2,11 +2,13 @@ package processor
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
@@ -57,7 +59,7 @@ func TestBindOAuthTokenToRequest(t *testing.T) {
 	})
 }
 
-func TestPostSmfEventExposureNotificationToAfWithToken(t *testing.T) {
+func TestPostNotificationToAfWithToken(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
@@ -77,12 +79,12 @@ func TestPostSmfEventExposureNotificationToAfWithToken(t *testing.T) {
 	tokenCtx := context.WithValue(context.Background(), openapi.ContextOAuth2, tok)
 
 	eeNotif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: "notif-1"}
-	if err := postSmfEventExposureNotificationToAf("http://af.example.com/notify", eeNotif, tokenCtx); err != nil {
+	if err := postNotificationToAf("http://af.example.com/notify", eeNotif, tokenCtx); err != nil {
 		t.Fatalf("post callback failed: %v", err)
 	}
 }
 
-func TestPostSmfEventExposureNotificationToAfNon2xx(t *testing.T) {
+func TestPostNotificationToAfNon2xx(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
@@ -96,7 +98,7 @@ func TestPostSmfEventExposureNotificationToAfNon2xx(t *testing.T) {
 	})}
 
 	eeNotif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: "notif-2"}
-	err := postSmfEventExposureNotificationToAf("http://af.example.com/notify", eeNotif, context.TODO())
+	err := postNotificationToAf("http://af.example.com/notify", eeNotif, context.TODO())
 	if err == nil {
 		t.Fatal("expected error when AF callback returns non-2xx")
 	}
@@ -226,6 +228,148 @@ func TestSmfNotification_AfReturnsError(t *testing.T) {
 	c, w := newGinContext()
 	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
 	nefApp.Processor().SmfNotification(c, notif)
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusBadGateway, w.Code)
+}
+
+// TestAmfEventNotification_NotifyCorrelationIdNotFound verifies that AmfEventNotification
+// returns 404 when the NotifyCorrelationId has no matching monitoring subscription.
+func TestAmfEventNotification_NotifyCorrelationIdNotFound(t *testing.T) {
+	c, w := newGinContext()
+
+	notif := &models.Amf_EvtExpos_AmfEventNotification{NotifyCorrelationId: "unknown-corr-id"}
+	nefApp.Processor().AmfEventNotification(c, notif)
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// TestAmfEventNotification_EmptyNotifDest verifies that AmfEventNotification returns
+// 500 when the matching subscription has an empty notificationDestination.
+func TestAmfEventNotification_EmptyNotifDest(t *testing.T) {
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-amf-callback-test-1")
+	af.Mu.Lock()
+	correID := nefCtx.NewCorreID()
+	monSub := &models.NefMonitoringEventSubscription{
+		NotificationDestination: "", // intentionally empty
+	}
+	monSubCtx := af.NewMonSub(correID, monSub)
+	af.MonSubs[monSubCtx.SubID] = monSubCtx
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	defer func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	}()
+
+	c, w := newGinContext()
+	notif := &models.Amf_EvtExpos_AmfEventNotification{NotifyCorrelationId: monSubCtx.NotifCorreID}
+	nefApp.Processor().AmfEventNotification(c, notif)
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestAmfEventNotification_SuccessfulForward verifies that AmfEventNotification translates
+// AMF's report into the AF-facing NefMonitoringNotification shape and forwards it, returning
+// 204 when the AF responds successfully.
+func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+
+	var afReceivedBody []byte
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var readErr error
+		afReceivedBody, readErr = io.ReadAll(req.Body)
+		require.NoError(t, readErr)
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-amf-callback-test-2")
+	af.Mu.Lock()
+	correID := nefCtx.NewCorreID()
+	monSub := &models.NefMonitoringEventSubscription{
+		Msisdn:                  "0900000001",
+		NotificationDestination: "http://af.example.com/notify",
+		MonitoringType:          models.MonitoringType_UE_REACHABILITY,
+		Self:                    "http://nef.example.com/3gpp-monitoring-event/v1/af-amf-callback-test-2/subscriptions/1",
+	}
+	monSubCtx := af.NewMonSub(correID, monSub)
+	af.MonSubs[monSubCtx.SubID] = monSubCtx
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	defer func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	}()
+
+	eventTime := time.Now().UTC()
+	notif := &models.Amf_EvtExpos_AmfEventNotification{
+		NotifyCorrelationId: monSubCtx.NotifCorreID,
+		ReportList: []models.Amf_EvtExpos_AmfEventReport{
+			{
+				Type:      models.Amf_EvtExpos_AmfEventType_REACHABILITY_REPORT,
+				TimeStamp: &eventTime,
+			},
+		},
+	}
+
+	c, w := newGinContext()
+	nefApp.Processor().AmfEventNotification(c, notif)
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.NotEmpty(t, afReceivedBody, "AF mock should have received the notification body")
+
+	var forwarded models.NefMonitoringNotification
+	require.NoError(t, json.Unmarshal(afReceivedBody, &forwarded))
+	require.Equal(t, monSub.Self, forwarded.Subscription)
+	require.Len(t, forwarded.MonitoringEventReports, 1)
+	require.Equal(t, monSub.Msisdn, forwarded.MonitoringEventReports[0].Msisdn)
+	require.Equal(t, monSub.MonitoringType, forwarded.MonitoringEventReports[0].MonitoringType)
+}
+
+// TestAmfEventNotification_AfReturnsError verifies that AmfEventNotification returns
+// 502 (BadGateway) when the AF callback endpoint responds with a non-2xx status.
+func TestAmfEventNotification_AfReturnsError(t *testing.T) {
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusForbidden,
+			Body:       io.NopCloser(strings.NewReader(`{"status":403,"title":"Forbidden"}`)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-amf-callback-test-3")
+	af.Mu.Lock()
+	correID := nefCtx.NewCorreID()
+	monSub := &models.NefMonitoringEventSubscription{
+		NotificationDestination: "http://af.example.com/notify",
+		MonitoringType:          models.MonitoringType_UE_REACHABILITY,
+	}
+	monSubCtx := af.NewMonSub(correID, monSub)
+	af.MonSubs[monSubCtx.SubID] = monSubCtx
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	defer func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	}()
+
+	c, w := newGinContext()
+	notif := &models.Amf_EvtExpos_AmfEventNotification{NotifyCorrelationId: monSubCtx.NotifCorreID}
+	nefApp.Processor().AmfEventNotification(c, notif)
 	c.Writer.WriteHeaderNow()
 
 	require.Equal(t, http.StatusBadGateway, w.Code)
