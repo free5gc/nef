@@ -28,6 +28,8 @@ type NefContext struct {
 	nfInstID       string // NF Instance ID
 	pcfPaUri       string
 	udrDrUri       string
+	namfEvtsUri    string
+	udmSdmUri      string
 	numCorreID     uint64
 	OAuth2Required bool
 	afs            map[string]*AfData
@@ -83,11 +85,38 @@ func (c *NefContext) SetUdrDrUri(uri string) {
 	logger.CtxLog.Infof("Set udrDrUri: [%s]", c.udrDrUri)
 }
 
+func (c *NefContext) NamfEvtsUri() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.namfEvtsUri
+}
+
+func (c *NefContext) SetNamfEvtsUri(uri string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.namfEvtsUri = uri
+	logger.CtxLog.Infof("Set namfEvtsUri: [%s]", c.namfEvtsUri)
+}
+
+func (c *NefContext) UdmSdmUri() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.udmSdmUri
+}
+
+func (c *NefContext) SetUdmSdmUri(uri string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.udmSdmUri = uri
+	logger.CtxLog.Infof("Set udmSdmUri: [%s]", c.udmSdmUri)
+}
+
 func (c *NefContext) NewAf(afID string) *AfData {
 	af := &AfData{
 		AfID:     afID,
 		Subs:     make(map[string]*AfSubscription),
 		PfdTrans: make(map[string]*AfPfdTransaction),
+		MonSubs:  make(map[string]*AfMonitoringSubscription),
 		Log:      logger.CtxLog.WithField(logger.FieldAFID, fmt.Sprintf("AF:%s", afID)),
 	}
 	return af
@@ -147,6 +176,22 @@ func (c *NefContext) FindAfSub(CorrID string) (*AfData, *AfSubscription) {
 	for _, af := range c.afs {
 		af.Mu.RLock()
 		for _, sub := range af.Subs {
+			if sub.NotifCorreID == CorrID {
+				defer af.Mu.RUnlock()
+				return af, sub
+			}
+		}
+		af.Mu.RUnlock()
+	}
+	return nil, nil
+}
+
+func (c *NefContext) FindAfMonSub(CorrID string) (*AfData, *AfMonitoringSubscription) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, af := range c.afs {
+		af.Mu.RLock()
+		for _, sub := range af.MonSubs {
 			if sub.NotifCorreID == CorrID {
 				defer af.Mu.RUnlock()
 				return af, sub

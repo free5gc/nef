@@ -2,6 +2,12 @@ module github.com/free5gc/nef
 
 go 1.26.2
 
+// TEMPORARY: points at the companion openapi PR (free5gc/openapi#82) branch,
+// rebased onto v1.3.0, which adds the Monitoring Event models this PR needs.
+// Remove this replace directive once that PR merges and a new free5gc/openapi
+// release/tag incorporating it is available, then bump the require below to match.
+replace github.com/free5gc/openapi => /Users/dev/dev/openapi-ref
+
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/davecgh/go-spew v1.1.1
