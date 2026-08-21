@@ -6,7 +6,7 @@ go 1.26.2
 // rebased onto v1.3.0, which adds the Monitoring Event models this PR needs.
 // Remove this replace directive once that PR merges and a new free5gc/openapi
 // release/tag incorporating it is available, then bump the require below to match.
-replace github.com/free5gc/openapi => /Users/dev/dev/openapi-ref
+replace github.com/free5gc/openapi => github.com/ALIIQBAL786/openapi v1.2.5-0.20260821073625-0370cb189670
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
