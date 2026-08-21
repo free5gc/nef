@@ -1,3 +1,5 @@
+github.com/ALIIQBAL786/openapi v1.2.5-0.20260821073625-0370cb189670 h1:HPDjFpSWWlNZICKhSbI2XzXf8hDwe+9mdHhfuOTPtP4=
+github.com/ALIIQBAL786/openapi v1.2.5-0.20260821073625-0370cb189670/go.mod h1:ggzAcwqg4JotSSdUvFFFruK6M0Yyr6mhBOCFaDHZmdE=
 github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 h1:+JkXLHME8vLJafGhOH4aoV2Iu8bR55nU6iKMVfYVLjY=
 github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1/go.mod h1:nuudZmJhzWtx2212z+pkuy7B6nkBqa+xwNXZHL1j8cg=
 github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d h1:Byv0BzEl3/e6D5CLfI0j/7hiIEtvGVFPCZ7Ei2oq8iQ=
