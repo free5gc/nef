@@ -2,11 +2,11 @@ module github.com/free5gc/nef
 
 go 1.26.2
 
-// TEMPORARY: points at the official free5gc/openapi#83 branch, which adds the
-// generated Monitoring Event models this PR needs. Remove this replace directive
-// once that PR merges and a new free5gc/openapi release/tag incorporating it is
-// available, then bump the require below to match.
-replace github.com/free5gc/openapi => github.com/free5gc/openapi v1.3.1-0.20260825045625-c2ff7b123d02
+// TEMPORARY: pins to the merged free5gc/openapi#83 commit (Monitoring Event
+// models), which this PR needs. Remove this replace directive once a new
+// free5gc/openapi release/tag incorporating it is cut, then bump the require
+// below to match.
+replace github.com/free5gc/openapi => github.com/free5gc/openapi v1.3.1-0.20260825075004-424d4d5df062
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
