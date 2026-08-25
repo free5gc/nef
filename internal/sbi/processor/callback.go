@@ -88,7 +88,7 @@ func (p *Processor) AmfEventNotification(
 
 	af.Mu.RLock()
 	notifDestination := ""
-	var monSubCopy models.NefMonitoringEventSubscription
+	var monSubCopy models.Nef_MonEvt_MonitoringEventSubscription
 	if monSub.MonSub != nil {
 		notifDestination = monSub.MonSub.NotificationDestination
 		monSubCopy = *monSub.MonSub
@@ -102,9 +102,9 @@ func (p *Processor) AmfEventNotification(
 		return
 	}
 
-	reports := make([]models.NefMonitoringEventReport, 0, len(notif.ReportList))
+	reports := make([]models.Nef_MonEvt_MonitoringEventReport, 0, len(notif.ReportList))
 	for _, r := range notif.ReportList {
-		reports = append(reports, models.NefMonitoringEventReport{
+		reports = append(reports, models.Nef_MonEvt_MonitoringEventReport{
 			ExternalId:     monSubCopy.ExternalId,
 			Msisdn:         monSubCopy.Msisdn,
 			MonitoringType: monSubCopy.MonitoringType,
@@ -115,7 +115,7 @@ func (p *Processor) AmfEventNotification(
 			// codes this field expects.
 		})
 	}
-	monNotif := &models.NefMonitoringNotification{
+	monNotif := &models.Nef_MonEvt_MonitoringNotification{
 		Subscription:           monSubCopy.Self,
 		MonitoringEventReports: reports,
 	}
@@ -149,7 +149,7 @@ func (p *Processor) AmfEventNotification(
 // (TS 29.122) LocationInfo shape used by MonitoringEventReport. Only NR and E-UTRA
 // locations are mapped; the other UserLocation variants (N3GA/UTRA/GERA) are not yet
 // supported by AMF's LOCATION_REPORT event.
-func toLocationInfo(loc *models.UserLocation) *models.NefLocationInfo {
+func toLocationInfo(loc *models.UserLocation) *models.Nef_MonEvt_LocationInfo {
 	if loc == nil {
 		return nil
 	}
@@ -157,7 +157,7 @@ func toLocationInfo(loc *models.UserLocation) *models.NefLocationInfo {
 	switch {
 	case loc.NrLocation != nil:
 		nr := loc.NrLocation
-		info := &models.NefLocationInfo{
+		info := &models.Nef_MonEvt_LocationInfo{
 			AgeOfLocationInfo: nr.AgeOfLocationInformation,
 		}
 		if nr.Ncgi != nil {
@@ -173,7 +173,7 @@ func toLocationInfo(loc *models.UserLocation) *models.NefLocationInfo {
 		return info
 	case loc.EutraLocation != nil:
 		eutra := loc.EutraLocation
-		info := &models.NefLocationInfo{
+		info := &models.Nef_MonEvt_LocationInfo{
 			AgeOfLocationInfo: eutra.AgeOfLocationInformation,
 		}
 		if eutra.Ecgi != nil {

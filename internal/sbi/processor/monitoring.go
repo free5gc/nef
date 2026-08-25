@@ -15,10 +15,10 @@ import (
 // supportedMonitoringTypes are the monitoring types AMF's Namf_EventExposure already exposes.
 // Other 3GPP-defined MonitoringType values (e.g. COMMUNICATION_FAILURE, which needs UDM's
 // Nudm_EE) are not yet wired up.
-var supportedMonitoringTypes = map[models.MonitoringType]models.Amf_EvtExpos_AmfEventType{
-	models.MonitoringType_LOSS_OF_CONNECTIVITY: models.Amf_EvtExpos_AmfEventType_LOSS_OF_CONNECTIVITY,
-	models.MonitoringType_UE_REACHABILITY:      models.Amf_EvtExpos_AmfEventType_REACHABILITY_REPORT,
-	models.MonitoringType_LOCATION_REPORTING:   models.Amf_EvtExpos_AmfEventType_LOCATION_REPORT,
+var supportedMonitoringTypes = map[models.Nef_MonEvt_MonitoringType]models.Amf_EvtExpos_AmfEventType{
+	models.Nef_MonEvt_MonitoringType_LOSS_OF_CONNECTIVITY: models.Amf_EvtExpos_AmfEventType_LOSS_OF_CONNECTIVITY,
+	models.Nef_MonEvt_MonitoringType_UE_REACHABILITY:      models.Amf_EvtExpos_AmfEventType_REACHABILITY_REPORT,
+	models.Nef_MonEvt_MonitoringType_LOCATION_REPORTING:   models.Amf_EvtExpos_AmfEventType_LOCATION_REPORT,
 }
 
 // GetMonitoringEventSubscriptions Read all monitoring event subscriptions for a given AF
@@ -40,7 +40,7 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 	af.Mu.RLock()
 	defer af.Mu.RUnlock()
 
-	monSubs := make([]models.NefMonitoringEventSubscription, 0, len(af.MonSubs))
+	monSubs := make([]models.Nef_MonEvt_MonitoringEventSubscription, 0, len(af.MonSubs))
 	for _, sub := range af.MonSubs {
 		monSubs = append(monSubs, *sub.MonSub)
 	}
@@ -52,7 +52,7 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 func (p *Processor) PostMonitoringEventSubscription(
 	c *gin.Context,
 	afID string,
-	monSub *models.NefMonitoringEventSubscription,
+	monSub *models.Nef_MonEvt_MonitoringEventSubscription,
 ) {
 	logger.SBILog.Infof("PostMonitoringEventSubscription - afID[%s]", afID)
 
@@ -213,7 +213,7 @@ func (p *Processor) DeleteIndividualMonitoringEventSubscription(
 }
 
 func validateMonitoringEventData(
-	monSub *models.NefMonitoringEventSubscription,
+	monSub *models.Nef_MonEvt_MonitoringEventSubscription,
 ) (models.Amf_EvtExpos_AmfEventType, *models.ProblemDetails) {
 	if monSub.NotificationDestination == "" {
 		return "", openapi.ProblemDetailsMalformedReqSyntax("Missing notificationDestination")
