@@ -13,38 +13,38 @@ import (
 )
 
 var (
-	monSub1ForAf1 = models.NefMonitoringEventSubscription{
+	monSub1ForAf1 = models.Nef_MonEvt_MonitoringEventSubscription{
 		ExternalId:              "10001@domain.com",
 		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/monitoring-event/app1",
-		MonitoringType:          models.MonitoringType_UE_REACHABILITY,
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
 		MaximumNumberOfReports:  1,
 	}
 
-	monSub2ForAf1 = models.NefMonitoringEventSubscription{
+	monSub2ForAf1 = models.Nef_MonEvt_MonitoringEventSubscription{
 		ExternalId:             "10002@domain.com",
-		MonitoringType:         models.MonitoringType_UE_REACHABILITY,
+		MonitoringType:         models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
 		MaximumNumberOfReports: 1,
 		// NotificationDestination intentionally missing
 	}
 
-	monSub3ForAf1 = models.NefMonitoringEventSubscription{
+	monSub3ForAf1 = models.Nef_MonEvt_MonitoringEventSubscription{
 		ExternalId:              "10003@domain.com",
 		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/monitoring-event/app3",
-		MonitoringType:          models.MonitoringType_ROAMING_STATUS, // not yet supported
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_ROAMING_STATUS, // not yet supported
 		MaximumNumberOfReports:  1,
 	}
 
-	monSub4ForAf1 = models.NefMonitoringEventSubscription{
+	monSub4ForAf1 = models.Nef_MonEvt_MonitoringEventSubscription{
 		Ipv4Addr:                "10.60.0.10", // no ExternalId/Msisdn
 		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/monitoring-event/app4",
-		MonitoringType:          models.MonitoringType_LOCATION_REPORTING,
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_LOCATION_REPORTING,
 		MaximumNumberOfReports:  1,
 	}
 
-	monSub5ForAf1 = models.NefMonitoringEventSubscription{
+	monSub5ForAf1 = models.Nef_MonEvt_MonitoringEventSubscription{
 		ExternalId:              "10005@domain.com",
 		NotificationDestination: "http://127.0.0.100:8000/nnef-callback/v1/monitoring-event/app5",
-		MonitoringType:          models.MonitoringType_LOSS_OF_CONNECTIVITY,
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_LOSS_OF_CONNECTIVITY,
 		// MaximumNumberOfReports and MonitorExpireTime both missing
 	}
 )
@@ -60,7 +60,7 @@ func TestGetMonitoringEventSubscriptions(t *testing.T) {
 			afID:        "af1",
 			expectedResponse: &HandlerResponse{
 				Status: http.StatusOK,
-				Body:   &[]models.NefMonitoringEventSubscription{monSub1ForAf1},
+				Body:   &[]models.Nef_MonEvt_MonitoringEventSubscription{monSub1ForAf1},
 			},
 		},
 		{
@@ -94,8 +94,8 @@ func TestGetMonitoringEventSubscriptions(t *testing.T) {
 			nefApp.Processor().GetMonitoringEventSubscriptions(c, tc.afID)
 			require.Equal(t, tc.expectedResponse.Status, httpRecorder.Code)
 
-			if monSubs, ok := tc.expectedResponse.Body.(*[]models.NefMonitoringEventSubscription); ok {
-				var rspSubs []models.NefMonitoringEventSubscription
+			if monSubs, ok := tc.expectedResponse.Body.(*[]models.Nef_MonEvt_MonitoringEventSubscription); ok {
+				var rspSubs []models.Nef_MonEvt_MonitoringEventSubscription
 				require.NoError(t, json.Unmarshal(httpRecorder.Body.Bytes(), &rspSubs))
 				require.ElementsMatch(t, *monSubs, rspSubs)
 			} else {
@@ -193,7 +193,7 @@ func TestPostMonitoringEventSubscription(t *testing.T) {
 	testCases := []struct {
 		description      string
 		afID             string
-		monSub           *models.NefMonitoringEventSubscription
+		monSub           *models.Nef_MonEvt_MonitoringEventSubscription
 		expectedResponse *HandlerResponse
 	}{
 		{

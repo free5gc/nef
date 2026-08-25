@@ -35,7 +35,7 @@ func (a *AfData) NewSub(numCorreID uint64, tiSub *models.Nef_TrafInfl_TrafficInf
 }
 
 func (a *AfData) NewMonSub(
-	numCorreID uint64, monSub *models.NefMonitoringEventSubscription,
+	numCorreID uint64, monSub *models.Nef_MonEvt_MonitoringEventSubscription,
 ) *AfMonitoringSubscription {
 	a.NumMonSubscID++
 	sub := AfMonitoringSubscription{

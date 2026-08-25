@@ -7,7 +7,7 @@ import (
 
 type AfMonitoringSubscription struct {
 	SubID        string
-	MonSub       *models.NefMonitoringEventSubscription
+	MonSub       *models.Nef_MonEvt_MonitoringEventSubscription
 	AmfSubID     string // AMF-side (Namf_EventExposure) subscription resource ID, needed to delete it
 	NotifCorreID string
 	Log          *logrus.Entry

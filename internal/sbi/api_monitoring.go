@@ -40,7 +40,7 @@ func (s *Server) apiGetMonitoringEventSubscriptions(gc *gin.Context) {
 }
 
 func (s *Server) apiPostMonitoringEventSubscription(gc *gin.Context) {
-	var monSub models.NefMonitoringEventSubscription
+	var monSub models.Nef_MonEvt_MonitoringEventSubscription
 	reqBody, err := gc.GetRawData()
 	if err != nil {
 		logger.SBILog.Errorf("Get Request Body error: %+v", err)
