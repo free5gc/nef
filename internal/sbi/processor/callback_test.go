@@ -252,7 +252,7 @@ func TestAmfEventNotification_EmptyNotifDest(t *testing.T) {
 	af := nefCtx.NewAf("af-amf-callback-test-1")
 	af.Mu.Lock()
 	correID := nefCtx.NewCorreID()
-	monSub := &models.NefMonitoringEventSubscription{
+	monSub := &models.Nef_MonEvt_MonitoringEventSubscription{
 		NotificationDestination: "", // intentionally empty
 	}
 	monSubCtx := af.NewMonSub(correID, monSub)
@@ -295,10 +295,10 @@ func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
 	af := nefCtx.NewAf("af-amf-callback-test-2")
 	af.Mu.Lock()
 	correID := nefCtx.NewCorreID()
-	monSub := &models.NefMonitoringEventSubscription{
+	monSub := &models.Nef_MonEvt_MonitoringEventSubscription{
 		Msisdn:                  "0900000001",
 		NotificationDestination: "http://af.example.com/notify",
-		MonitoringType:          models.MonitoringType_UE_REACHABILITY,
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
 		Self:                    "http://nef.example.com/3gpp-monitoring-event/v1/af-amf-callback-test-2/subscriptions/1",
 	}
 	monSubCtx := af.NewMonSub(correID, monSub)
@@ -328,7 +328,7 @@ func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, w.Code)
 	require.NotEmpty(t, afReceivedBody, "AF mock should have received the notification body")
 
-	var forwarded models.NefMonitoringNotification
+	var forwarded models.Nef_MonEvt_MonitoringNotification
 	require.NoError(t, json.Unmarshal(afReceivedBody, &forwarded))
 	require.Equal(t, monSub.Self, forwarded.Subscription)
 	require.Len(t, forwarded.MonitoringEventReports, 1)
@@ -354,9 +354,9 @@ func TestAmfEventNotification_AfReturnsError(t *testing.T) {
 	af := nefCtx.NewAf("af-amf-callback-test-3")
 	af.Mu.Lock()
 	correID := nefCtx.NewCorreID()
-	monSub := &models.NefMonitoringEventSubscription{
+	monSub := &models.Nef_MonEvt_MonitoringEventSubscription{
 		NotificationDestination: "http://af.example.com/notify",
-		MonitoringType:          models.MonitoringType_UE_REACHABILITY,
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
 	}
 	monSubCtx := af.NewMonSub(correID, monSub)
 	af.MonSubs[monSubCtx.SubID] = monSubCtx
