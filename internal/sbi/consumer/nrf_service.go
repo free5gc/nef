@@ -181,7 +181,15 @@ func (s *nnrfService) buildNfProfile() (
 	if len(nfServices) == 0 {
 		return nil, fmt.Errorf("buildNfProfile err: NFServices is Empty")
 	}
-	profile.NfServices = nfServices
+	profile.NfServices = make([]models.Nrf_NFMgmt_NFService, 0, len(nfServices))
+	for _, nfService := range nfServices {
+		allowed, known := nef_context.AllowedNfTypesForService(nfService.ServiceName)
+		if !known {
+			return nil, fmt.Errorf("no AllowedNfTypes policy for service %q", nfService.ServiceName)
+		}
+		nfService.AllowedNfTypes = allowed
+		profile.NfServices = append(profile.NfServices, nfService)
+	}
 	return profile, nil
 }
 

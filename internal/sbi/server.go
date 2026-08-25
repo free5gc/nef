@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/internal/sbi/processor"
 	nef_util "github.com/free5gc/nef/internal/util"
@@ -47,14 +48,7 @@ func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
 
 	s.router.Use(metrics.InboundMetrics())
 
-	// Callback endpoint: protected by OAuth2 middleware (callers must present
-	// a valid nnef-callback Bearer token issued by NRF).
-	callbackAuthCheck := nef_util.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName("nnef-callback"))
-	callbackGroup := s.router.Group(factory.NefCallbackResUriPrefix)
-	callbackGroup.Use(func(c *gin.Context) {
-		callbackAuthCheck.Check(c, s.Context())
-	})
-	applyRoutes(callbackGroup, s.getCallbackRoutes())
+	mountCallbackRoutes(s.router, s, s.Context())
 
 	// All other route groups are mounted only when their service is declared in
 	// ServiceList, and each group is protected by OAuth2 middleware.
@@ -118,6 +112,17 @@ func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
 	}
 
 	return s, nil
+}
+
+func mountCallbackRoutes(router *gin.Engine, s *Server, authContext nef_context.NFContext) {
+	// Callback endpoint: protected by OAuth2 middleware (callers must present
+	// a valid nnef-callback Bearer token issued by NRF).
+	callbackAuthCheck := nef_util.NewRouterAuthorizationCheck(nef_context.ServiceNameNnefCallback)
+	callbackGroup := router.Group(factory.NefCallbackResUriPrefix)
+	callbackGroup.Use(func(c *gin.Context) {
+		callbackAuthCheck.Check(c, authContext)
+	})
+	applyRoutes(callbackGroup, s.getCallbackRoutes())
 }
 
 func (s *Server) Run(wg *sync.WaitGroup) error {
