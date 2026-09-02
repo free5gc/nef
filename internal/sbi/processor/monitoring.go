@@ -3,6 +3,7 @@ package processor
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/pkg/factory"
@@ -75,11 +76,14 @@ func (p *Processor) PostMonitoringEventSubscription(
 		}
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
+	// correID and the UDM/AMF calls below intentionally run without af.Mu held: they involve
+	// synchronous outbound network I/O (NRF discovery + UDM + AMF), and holding a per-AF lock
+	// across that would stall unrelated GET/DELETE/callback traffic for the same AF. Calling
+	// nefCtx.NewCorreID() here (rather than under af.Mu) also avoids a lock-order inversion
+	// with the notification path (FindAfMonSub locks nefCtx.mu then af.Mu); af.Mu below never
+	// needs to acquire nefCtx.mu while held, so the two locks are never nested in either order.
 	correID := nefCtx.NewCorreID()
-	monSubCtx := af.NewMonSub(correID, monSub)
+	notifCorreID := strconv.FormatUint(correID, 10)
 
 	// AMF's event-subscription lookup only matches by Supi, not Gpsi (it never resolves
 	// GPSI itself), so NEF must resolve the AF-facing GPSI to a SUPI first via Nudm_SDM.
@@ -101,7 +105,7 @@ func (p *Processor) PostMonitoringEventSubscription(
 	}
 
 	amfSubID, pd, err := p.Consumer().CreateEventSubscription(
-		supi, []models.Amf_EvtExpos_AmfEventType{amfEventType}, p.genAmfEventNotifyUri(), monSubCtx.NotifCorreID)
+		supi, []models.Amf_EvtExpos_AmfEventType{amfEventType}, p.genAmfEventNotifyUri(), notifCorreID)
 	switch {
 	case pd != nil:
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -116,10 +120,13 @@ func (p *Processor) PostMonitoringEventSubscription(
 		c.JSON(int(problemDetails.Status), problemDetails)
 		return
 	}
-	monSubCtx.AmfSubID = amfSubID
 
+	af.Mu.Lock()
+	monSubCtx := af.NewMonSub(correID, monSub)
+	monSubCtx.AmfSubID = amfSubID
 	af.MonSubs[monSubCtx.SubID] = monSubCtx
 	af.Log.Infoln("Monitoring event subscription is added")
+	af.Mu.Unlock()
 
 	nefCtx.AddAf(af)
 
