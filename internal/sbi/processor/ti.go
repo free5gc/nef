@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/pkg/factory"
 	"github.com/free5gc/openapi"
@@ -74,18 +75,18 @@ func (p *Processor) PostTrafficInfluenceSubscription(
 		}
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
 	correID := nefCtx.NewCorreID()
+
+	// Reserve the subscription ID under af.Mu; outbound calls below run without it.
+	af.Mu.Lock()
 	afSub := af.NewSub(correID, tiSub)
+	af.Mu.Unlock()
 	if afSub == nil {
 		pd := openapi.ProblemDetailsSystemFailure("No resource can be allocated")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
-
 	if len(tiSub.Gpsi) > 0 || len(tiSub.Ipv4Addr) > 0 || len(tiSub.Ipv6Addr) > 0 {
 		// Single UE, sent to PCF
 		asc := p.convertTrafficInfluSubToAppSessionContext(tiSub, afSub.NotifCorreID)
@@ -134,13 +135,15 @@ func (p *Processor) PostTrafficInfluenceSubscription(
 		return
 	}
 
+	tiSub.Self = p.genTrafficInfluSubURI(afID, afSub.SubID)
+	af.Mu.Lock()
 	af.Subs[afSub.SubID] = afSub
+	af.Mu.Unlock()
 	af.Log.Infoln("Subscription is added")
 
+	// Avoid nesting the global context lock inside af.Mu.
 	nefCtx.AddAf(af)
 
-	// Create Location URI
-	tiSub.Self = p.genTrafficInfluSubURI(afID, afSub.SubID)
 	headers := map[string][]string{
 		"Location": {tiSub.Self},
 	}
@@ -212,20 +215,24 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(
 		return
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
-	afSub, ok := af.Subs[subID]
+	afSub, ok := lockTrafficInfluenceSubscription(af, subID)
 	if !ok {
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
+	defer afSub.OpMu.Unlock()
 
-	afSub.TiSub = tiSub
-	if afSub.AppSessID != "" {
-		asc := p.convertTrafficInfluSubToAppSessionContext(tiSub, afSub.NotifCorreID)
+	af.Mu.RLock()
+	appSessID := afSub.AppSessID
+	influID := afSub.InfluID
+	notifCorreID := afSub.NotifCorreID
+	af.Mu.RUnlock()
+
+	updatedAppSessID := appSessID
+	if appSessID != "" {
+		asc := p.convertTrafficInfluSubToAppSessionContext(tiSub, notifCorreID)
 		appSessId, pd, err := p.Consumer().PostAppSessions(asc)
 
 		switch {
@@ -242,12 +249,12 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(
 			c.JSON(int(problemDetails.Status), problemDetails)
 			return
 		default:
-			afSub.AppSessID = appSessId
+			updatedAppSessID = appSessId
 		}
-	} else if afSub.InfluID != "" {
-		tiData := p.convertTrafficInfluSubToTrafficInfluData(tiSub, afSub.NotifCorreID)
+	} else if influID != "" {
+		tiData := p.convertTrafficInfluSubToTrafficInfluData(tiSub, notifCorreID)
 
-		_, pd, err := p.Consumer().AppDataInfluenceDataPut(afSub.InfluID, tiData)
+		_, pd, err := p.Consumer().AppDataInfluenceDataPut(influID, tiData)
 		switch {
 		case pd != nil:
 			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -268,6 +275,11 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(
 		c.JSON(int(pd.Status), pd)
 		return
 	}
+
+	af.Mu.Lock()
+	afSub.TiSub = tiSub
+	afSub.AppSessID = updatedAppSessID
+	af.Mu.Unlock()
 
 	c.JSON(http.StatusOK, afSub.TiSub)
 }
@@ -292,21 +304,24 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(
 		return
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
-	afSub, ok := af.Subs[subID]
+	afSub, ok := lockTrafficInfluenceSubscription(af, subID)
 	if !ok {
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
+	defer afSub.OpMu.Unlock()
 
-	if afSub.AppSessID != "" {
+	af.Mu.RLock()
+	appSessID := afSub.AppSessID
+	influID := afSub.InfluID
+	af.Mu.RUnlock()
+
+	if appSessID != "" {
 		ascUpdateData := p.convertTrafficInfluSubPatchToAppSessionContextUpdateData(tiSubPatch)
 
-		_, pd, err := p.Consumer().PatchAppSession(afSub.AppSessID, ascUpdateData)
+		_, pd, err := p.Consumer().PatchAppSession(appSessID, ascUpdateData)
 		switch {
 		case pd != nil:
 			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -321,9 +336,9 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(
 			c.JSON(int(problemDetails.Status), problemDetails)
 			return
 		}
-	} else if afSub.InfluID != "" {
+	} else if influID != "" {
 		tiDataPatch := p.convertTrafficInfluSubPatchToTrafficInfluDataPatch(tiSubPatch)
-		_, pd, err := p.Consumer().AppDataInfluenceDataPatch(afSub.InfluID, tiDataPatch)
+		_, pd, err := p.Consumer().AppDataInfluenceDataPatch(influID, tiDataPatch)
 
 		switch {
 		case pd != nil:
@@ -345,7 +360,9 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(
 		return
 	}
 
+	af.Mu.Lock()
 	afSub.PatchTiSubData(tiSubPatch)
+	af.Mu.Unlock()
 	c.JSON(http.StatusOK, afSub.TiSub)
 }
 
@@ -367,19 +384,22 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(
 		return
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
-	sub, ok := af.Subs[subID]
+	sub, ok := lockTrafficInfluenceSubscription(af, subID)
 	if !ok {
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
+	defer sub.OpMu.Unlock()
 
-	if sub.AppSessID != "" {
-		_, pd, err := p.Consumer().DeleteAppSession(sub.AppSessID)
+	af.Mu.RLock()
+	appSessID := sub.AppSessID
+	influID := sub.InfluID
+	af.Mu.RUnlock()
+
+	if appSessID != "" {
+		_, pd, err := p.Consumer().DeleteAppSession(appSessID)
 		switch {
 		case err != nil:
 			problemDetails := &models.ProblemDetails{
@@ -393,7 +413,7 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(
 			return
 		}
 	} else {
-		pd, errInfluenceDataDelete := p.Consumer().AppDataInfluenceDataDelete(sub.InfluID)
+		pd, errInfluenceDataDelete := p.Consumer().AppDataInfluenceDataDelete(influID)
 
 		switch {
 		case pd != nil:
@@ -410,8 +430,36 @@ func (p *Processor) DeleteIndividualTrafficInfluenceSubscription(
 			return
 		}
 	}
+	af.Mu.Lock()
 	delete(af.Subs, subID)
+	af.Mu.Unlock()
 	c.Status(http.StatusNoContent)
+}
+
+// lockTrafficInfluenceSubscription locks the current subscription for mutation.
+// OpMu is acquired outside af.Mu, then map membership is revalidated.
+func lockTrafficInfluenceSubscription(
+	af *nef_context.AfData,
+	subID string,
+) (*nef_context.AfSubscription, bool) {
+	af.Mu.RLock()
+	sub, ok := af.Subs[subID]
+	af.Mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+
+	sub.OpMu.Lock()
+
+	af.Mu.RLock()
+	current, ok := af.Subs[subID]
+	af.Mu.RUnlock()
+	if !ok || current != sub {
+		sub.OpMu.Unlock()
+		return nil, false
+	}
+
+	return sub, true
 }
 
 func validateTrafficInfluenceData(
