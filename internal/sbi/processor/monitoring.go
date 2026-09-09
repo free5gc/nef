@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/nef/pkg/factory"
 	"github.com/free5gc/openapi"
@@ -188,18 +189,20 @@ func (p *Processor) DeleteIndividualMonitoringEventSubscription(
 		return
 	}
 
-	af.Mu.Lock()
-	defer af.Mu.Unlock()
-
-	monSubCtx, ok := af.MonSubs[subID]
+	monSubCtx, ok := lockMonitoringSubscription(af, subID)
 	if !ok {
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
+	defer monSubCtx.OpMu.Unlock()
 
-	pd, err := p.Consumer().DeleteEventSubscription(monSubCtx.AmfSubID)
+	af.Mu.RLock()
+	amfSubID := monSubCtx.AmfSubID
+	af.Mu.RUnlock()
+
+	pd, err := p.Consumer().DeleteEventSubscription(amfSubID)
 	switch {
 	case pd != nil:
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -215,8 +218,36 @@ func (p *Processor) DeleteIndividualMonitoringEventSubscription(
 		return
 	}
 
+	af.Mu.Lock()
 	delete(af.MonSubs, subID)
+	af.Mu.Unlock()
 	c.Status(http.StatusNoContent)
+}
+
+// lockMonitoringSubscription locks the subscription for mutation.
+// OpMu is acquired outside af.Mu, then map membership is revalidated.
+func lockMonitoringSubscription(
+	af *nef_context.AfData,
+	subID string,
+) (*nef_context.AfMonitoringSubscription, bool) {
+	af.Mu.RLock()
+	sub, ok := af.MonSubs[subID]
+	af.Mu.RUnlock()
+	if !ok {
+		return nil, false
+	}
+
+	sub.OpMu.Lock()
+
+	af.Mu.RLock()
+	current, ok := af.MonSubs[subID]
+	af.Mu.RUnlock()
+	if !ok || current != sub {
+		sub.OpMu.Unlock()
+		return nil, false
+	}
+
+	return sub, true
 }
 
 func validateMonitoringEventData(

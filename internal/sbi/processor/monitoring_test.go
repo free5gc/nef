@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -368,6 +369,50 @@ func TestDeleteIndividualMonitoringEventSubscription(t *testing.T) {
 	}
 	nefCtx.DeleteAf(af1.AfID)
 	nefCtx.ResetCorreID()
+}
+
+func TestMonitoringEventSubscriptionDeleteDoesNotHoldAfDataLock(t *testing.T) {
+	nefCtx := nefApp.Context()
+
+	afID := "af-delete-lock-test"
+	af := nefCtx.NewAf(afID)
+	correID := nefCtx.NewCorreID()
+	af.Mu.Lock()
+	sub := af.NewMonSub(correID, &monSub1ForAf1)
+	sub.AmfSubID = "amf-sub-lock-test"
+	af.MonSubs[sub.SubID] = sub
+	af.Mu.Unlock()
+	nefCtx.AddAf(af)
+	t.Cleanup(func() {
+		nefCtx.DeleteAf(afID)
+		nefCtx.ResetCorreID()
+	})
+
+	defer gock.Off()
+	initNRFDiscAMFStub()
+	gock.New("http://127.0.0.18:8000/namf-evts/v1").
+		Delete("/subscriptions/.*").
+		AddMatcher(afMonDataReadLockAvailableMatcher(t, af)).
+		Reply(http.StatusNoContent)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	nefApp.Processor().DeleteIndividualMonitoringEventSubscription(c, afID, sub.SubID)
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+}
+
+func afMonDataReadLockAvailableMatcher(t *testing.T, af *nef_context.AfData) gock.MatchFunc {
+	t.Helper()
+	return func(_ *http.Request, _ *gock.Request) (bool, error) {
+		if af.Mu.TryRLock() {
+			af.Mu.RUnlock()
+		} else {
+			t.Error("af.Mu is held while performing outbound network I/O")
+		}
+		return true, nil
+	}
 }
 
 func initNRFDiscAMFStub() {
