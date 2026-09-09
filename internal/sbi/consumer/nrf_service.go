@@ -157,9 +157,8 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context, nefCtx *nef_contex
 					logger.MainLog.Infoln("OAuth2 setting receive from NRF:", oauth2)
 				}
 			}
-			s.consumer.Context().OAuth2Required = oauth2
-			if oauth2 && s.consumer.Context().Config().NrfCertPem() == "" {
-				logger.CfgLog.Error("OAuth2 enable but no nrfCertPem provided in config.")
+			if oauthErr := s.consumer.Context().SetOAuth2Required(oauth2); oauthErr != nil {
+				return "", "", oauthErr
 			}
 			finish = true
 		}
@@ -182,14 +181,22 @@ func (s *nnrfService) buildNfProfile() (
 	if len(nfServices) == 0 {
 		return nil, fmt.Errorf("buildNfProfile err: NFServices is Empty")
 	}
-	profile.NfServices = nfServices
+	profile.NfServices = make([]models.Nrf_NFMgmt_NFService, 0, len(nfServices))
+	for _, nfService := range nfServices {
+		allowed, known := nef_context.AllowedNfTypesForService(nfService.ServiceName)
+		if !known {
+			return nil, fmt.Errorf("no AllowedNfTypes policy for service %q", nfService.ServiceName)
+		}
+		nfService.AllowedNfTypes = allowed
+		profile.NfServices = append(profile.NfServices, nfService)
+	}
 	return profile, nil
 }
 
 func (s *nnrfService) DeregisterNFInstance() (problemDetails *models.ProblemDetails, err error) {
 	logger.ConsumerLog.Infof("DeregisterNFInstance")
 
-	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_NFM, models.Nrf_NFMgmt_NFType_NEF)
+	ctx, pd, err := s.consumer.Context().GetTokenCtxForNRF(models.Nrf_NFMgmt_ServiceName_NNRF_NFM)
 	if err != nil {
 		return pd, err
 	}
@@ -232,7 +239,7 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.Nrf_NFMgmt
 		return nil, "", openapi.ReportError("nrf not found")
 	}
 
-	ctx, _, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
+	ctx, _, err := s.consumer.Context().GetTokenCtxForNRF(models.Nrf_NFMgmt_ServiceName_NNRF_DISC)
 	if err != nil {
 		return nil, "", err
 	}

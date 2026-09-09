@@ -192,6 +192,11 @@ func (a *NefApp) registerToNrf(ctx context.Context) error {
 }
 
 func (a *NefApp) Start() error {
+	if err := a.registerToNrf(a.ctx); err != nil {
+		return err
+	}
+	logger.MainLog.Infoln("register to NRF successfully")
+
 	a.wg.Add(1)
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */
@@ -205,13 +210,6 @@ func (a *NefApp) Start() error {
 		go func() {
 			a.metricsServer.Run(&a.wg)
 		}()
-	}
-
-	err := a.registerToNrf(a.ctx)
-	if err != nil {
-		logger.MainLog.Errorf("register to NRF failed: %+v", err)
-	} else {
-		logger.MainLog.Infoln("register to NRF successfully")
 	}
 
 	a.WaitRoutineStopped()
