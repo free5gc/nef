@@ -64,16 +64,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(
 	}
 
 	nefCtx := p.Context()
-	af := nefCtx.GetAf(afID)
-	if af == nil {
-		af = nefCtx.NewAf(afID)
-		if af == nil {
-			pd := openapi.ProblemDetailsSystemFailure("No resource can be allocated")
-			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
-			c.JSON(int(pd.Status), pd)
-			return
-		}
-	}
+	af := nefCtx.GetOrCreateAf(afID)
 
 	correID := nefCtx.NewCorreID()
 
@@ -140,9 +131,6 @@ func (p *Processor) PostTrafficInfluenceSubscription(
 	af.Subs[afSub.SubID] = afSub
 	af.Mu.Unlock()
 	af.Log.Infoln("Subscription is added")
-
-	// Avoid nesting the global context lock inside af.Mu.
-	nefCtx.AddAf(af)
 
 	headers := map[string][]string{
 		"Location": {tiSub.Self},
