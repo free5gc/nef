@@ -124,7 +124,6 @@ var (
 func TestMain(m *testing.M) {
 	var err error
 	initNRFNfmStub()
-	initNRFDiscUDRStub()
 
 	cfg := &factory.Config{
 		Info: &factory.Info{
@@ -156,6 +155,7 @@ func TestMain(m *testing.M) {
 
 func TestGetPFDManagementTransactions(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasStub()
 	defer gock.Off()
 
@@ -229,6 +229,7 @@ func TestGetPFDManagementTransactions(t *testing.T) {
 
 func TestGetPFDManagementTransactionsWithMalformedMultipartFromUDR(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasMultipartStub()
 	defer gock.Off()
 
@@ -254,6 +255,7 @@ func TestGetPFDManagementTransactionsWithMalformedMultipartFromUDR(t *testing.T)
 
 func TestDeletePFDManagementTransactions(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrDeletePfdDataStub()
 	defer gock.Off()
 
@@ -304,6 +306,7 @@ func TestDeletePFDManagementTransactions(t *testing.T) {
 
 func TestPostPFDManagementTransactions(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrPutPfdDataStub(http.StatusCreated)
 	defer gock.Off()
 
@@ -415,6 +418,7 @@ func TestPostPFDManagementTransactions(t *testing.T) {
 
 func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasStub()
 	defer gock.Off()
 
@@ -489,6 +493,7 @@ func TestGetIndividualPFDManagementTransaction(t *testing.T) {
 
 func TestGetIndividualPFDManagementTransactionWithMalformedMultipartFromUDR(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasMultipartStub()
 	defer gock.Off()
 
@@ -514,6 +519,7 @@ func TestGetIndividualPFDManagementTransactionWithMalformedMultipartFromUDR(t *t
 
 func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrDeletePfdDataStub()
 	defer gock.Off()
 
@@ -567,6 +573,7 @@ func TestDeleteIndividualPFDManagementTransaction(t *testing.T) {
 
 func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrPutPfdDataStub(http.StatusOK)
 	defer gock.Off()
 
@@ -687,6 +694,7 @@ func TestPutIndividualPFDManagementTransaction(t *testing.T) {
 
 func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDataStub()
 	defer gock.Off()
 
@@ -751,6 +759,7 @@ func TestGetIndividualApplicationPFDManagement(t *testing.T) {
 
 func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrDeletePfdDataStub()
 	defer gock.Off()
 
@@ -808,6 +817,7 @@ func TestDeleteIndividualApplicationPFDManagement(t *testing.T) {
 
 func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrPutPfdDataStub(http.StatusOK)
 	defer gock.Off()
 
@@ -905,6 +915,7 @@ func TestPutIndividualApplicationPFDManagement(t *testing.T) {
 
 func TestPatchIndividualApplicationPFDManagement(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDataStub()
 	initUDRDrPutPfdDataStub(http.StatusOK)
 	defer gock.Off()

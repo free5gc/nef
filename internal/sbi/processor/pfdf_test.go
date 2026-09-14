@@ -16,6 +16,7 @@ import (
 
 func TestGetApplicationsPFD(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasStub()
 	defer gock.Off()
 
@@ -57,6 +58,7 @@ func TestGetApplicationsPFD(t *testing.T) {
 
 func TestGetApplicationsPFDWithMalformedMultipartFromUDR(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDatasMultipartStub()
 	defer gock.Off()
 
@@ -71,6 +73,7 @@ func TestGetApplicationsPFDWithMalformedMultipartFromUDR(t *testing.T) {
 
 func TestGetIndividualApplicationPFD(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	initUDRDrGetPfdDataStub()
 	defer gock.Off()
 
@@ -192,6 +195,7 @@ var (
 
 func TestPostPfdChangeReports(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscUDRStub()
 	// Note: Because TestPostPFDSubscriptions() already used subscription ID 1, the ID will start from 2 here.
 	initUDRDrPutPfdDataStub(http.StatusOK)
 	initUDRDrDeletePfdDataStub()
