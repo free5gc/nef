@@ -1,6 +1,8 @@
 package context
 
 import (
+	"sync"
+
 	"github.com/free5gc/openapi/models"
 	"github.com/sirupsen/logrus"
 )
@@ -12,6 +14,10 @@ type AfSubscription struct {
 	InfluID      string // use in multiple UE case
 	NotifCorreID string
 	Log          *logrus.Entry
+
+	// OpMu serializes outbound mutations for this subscription.
+	// It must be acquired without holding the parent AfData.Mu.
+	OpMu sync.Mutex
 }
 
 func (s *AfSubscription) PatchTiSubData(tiSubPatch *models.Nef_TrafInfl_TrafficInfluSubPatch) {

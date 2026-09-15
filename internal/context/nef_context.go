@@ -93,6 +93,20 @@ func (c *NefContext) NewAf(afID string) *AfData {
 	return af
 }
 
+func (c *NefContext) GetOrCreateAf(afID string) *AfData {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if af := c.afs[afID]; af != nil {
+		return af
+	}
+
+	af := c.NewAf(afID)
+	c.afs[afID] = af
+	af.Log.Infoln("AF is added")
+	return af
+}
+
 func (c *NefContext) AddAf(af *AfData) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

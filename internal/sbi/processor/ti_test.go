@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
@@ -757,6 +759,184 @@ func TestPutIndividualTrafficInfluenceSubscription(t *testing.T) {
 	}
 	nefCtx.DeleteAf(af1.AfID)
 	nefCtx.ResetCorreID()
+}
+
+func TestTrafficInfluenceOutboundCallsDoNotHoldAfDataLock(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
+	nefCtx := nefApp.Context()
+	nefCtx.SetUdrDrUri("http://127.0.0.4:8000")
+
+	newUDRSubscription := func(t *testing.T, afID string) (*nef_context.AfData, string) {
+		t.Helper()
+
+		tiSub := tiSub1ForAf1
+		af := nefCtx.NewAf(afID)
+		correID := nefCtx.NewCorreID()
+		af.Mu.Lock()
+		sub := af.NewSub(correID, &tiSub)
+		sub.InfluID = "lock-test-influence"
+		af.Subs[sub.SubID] = sub
+		af.Mu.Unlock()
+		nefCtx.AddAf(af)
+		t.Cleanup(func() {
+			nefCtx.DeleteAf(afID)
+		})
+
+		return af, sub.SubID
+	}
+
+	t.Run("POST", func(t *testing.T) {
+		defer gock.Off()
+		afID := "af-post-lock-test"
+		af := nefCtx.NewAf(afID)
+		nefCtx.AddAf(af)
+		t.Cleanup(func() {
+			nefCtx.DeleteAf(afID)
+		})
+
+		gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+			Put("/application-data/influenceData/.*").
+			AddMatcher(afDataReadLockAvailableMatcher(t, af)).
+			Reply(http.StatusNoContent)
+
+		tiSub := tiSub1ForAf1
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		nefApp.Processor().PostTrafficInfluenceSubscription(c, afID, &tiSub)
+
+		require.Equal(t, http.StatusCreated, recorder.Code)
+	})
+
+	t.Run("PUT", func(t *testing.T) {
+		defer gock.Off()
+		af, subID := newUDRSubscription(t, "af-put-lock-test")
+		gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+			Put("/application-data/influenceData/.*").
+			AddMatcher(afDataReadLockAvailableMatcher(t, af)).
+			Reply(http.StatusNoContent)
+
+		tiSub := tiSub2ForAf1
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		nefApp.Processor().PutIndividualTrafficInfluenceSubscription(c, af.AfID, subID, &tiSub)
+
+		require.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("PATCH", func(t *testing.T) {
+		defer gock.Off()
+		af, subID := newUDRSubscription(t, "af-patch-lock-test")
+		gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+			Patch("/application-data/influenceData/.*").
+			AddMatcher(afDataReadLockAvailableMatcher(t, af)).
+			Reply(http.StatusNoContent)
+
+		tiSubPatch := tiSubPatch1ForAf1
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		nefApp.Processor().PatchIndividualTrafficInfluenceSubscription(c, af.AfID, subID, &tiSubPatch)
+
+		require.Equal(t, http.StatusOK, recorder.Code)
+	})
+
+	t.Run("DELETE", func(t *testing.T) {
+		defer gock.Off()
+		af, subID := newUDRSubscription(t, "af-delete-lock-test")
+		gock.New("http://127.0.0.4:8000/nudr-dr/v1").
+			Delete("/application-data/influenceData/.*").
+			AddMatcher(afDataReadLockAvailableMatcher(t, af)).
+			Reply(http.StatusNoContent)
+
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		nefApp.Processor().DeleteIndividualTrafficInfluenceSubscription(c, af.AfID, subID)
+		c.Writer.WriteHeaderNow()
+
+		require.Equal(t, http.StatusNoContent, recorder.Code)
+	})
+}
+
+func TestConcurrentInitialTrafficInfluenceSubscriptionsShareAf(t *testing.T) {
+	requestArrived := make(chan struct{}, 2)
+	releaseRequests := make(chan struct{})
+	previousTransport := http.DefaultClient.Transport
+	http.DefaultClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requestArrived <- struct{}{}
+		<-releaseRequests
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Status:     "204 No Content",
+			Header:     make(http.Header),
+			Body:       http.NoBody,
+			Request:    req,
+		}, nil
+	})
+	t.Cleanup(func() {
+		http.DefaultClient.Transport = previousTransport
+	})
+
+	nefCtx := nefApp.Context()
+	previousUdrDrURI := nefCtx.UdrDrUri()
+	nefCtx.SetUdrDrUri("http://udr.concurrent.test")
+	const afID = "af-concurrent-post-test"
+	t.Cleanup(func() {
+		nefCtx.DeleteAf(afID)
+		nefCtx.SetUdrDrUri(previousUdrDrURI)
+	})
+
+	start := make(chan struct{})
+	responses := make(chan *httptest.ResponseRecorder, 2)
+	for range 2 {
+		tiSub := tiSub1ForAf1
+		go func() {
+			<-start
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			nefApp.Processor().PostTrafficInfluenceSubscription(c, afID, &tiSub)
+			responses <- recorder
+		}()
+	}
+	close(start)
+
+	for range 2 {
+		select {
+		case <-requestArrived:
+		case <-time.After(5 * time.Second):
+			close(releaseRequests)
+			t.Fatal("timed out waiting for concurrent UDR requests")
+		}
+	}
+	close(releaseRequests)
+
+	for range 2 {
+		select {
+		case recorder := <-responses:
+			require.Equal(t, http.StatusCreated, recorder.Code)
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for concurrent POST responses")
+		}
+	}
+
+	af := nefCtx.GetAf(afID)
+	require.NotNil(t, af)
+	af.Mu.RLock()
+	defer af.Mu.RUnlock()
+	require.Len(t, af.Subs, 2)
+	require.Contains(t, af.Subs, "1")
+	require.Contains(t, af.Subs, "2")
+}
+
+func afDataReadLockAvailableMatcher(t *testing.T, af *nef_context.AfData) gock.MatchFunc {
+	t.Helper()
+
+	return func(_ *http.Request, _ *gock.Request) (bool, error) {
+		if af.Mu.TryRLock() {
+			af.Mu.RUnlock()
+		} else {
+			t.Error("af.Mu is held while performing outbound network I/O")
+		}
+		return true, nil
+	}
 }
 
 func initUDRDrPutTiDataStub(statusCode int) {
