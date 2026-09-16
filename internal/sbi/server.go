@@ -104,6 +104,15 @@ func NewServer(nef nef, tlsKeyLogPath string) (*Server, error) {
 				authCheck.Check(c, s.Context())
 			})
 			applyRoutes(monGroup, s.getMonitoringEventRoutes())
+
+		case factory.ServiceNefUeId:
+			// 3gpp-ue-id is an AF-facing API (3GPP TS 29.522) for UE identifier translation.
+			authCheck := nef_util.NewRouterAuthorizationCheck(models.Nrf_NFMgmt_ServiceName(factory.ServiceNefUeId))
+			ueIdGroup := s.router.Group(factory.UeIdResUriPrefix)
+			ueIdGroup.Use(func(c *gin.Context) {
+				authCheck.Check(c, s.Context())
+			})
+			applyRoutes(ueIdGroup, s.getUeIdRoutes())
 		}
 	}
 

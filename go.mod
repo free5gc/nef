@@ -2,11 +2,9 @@ module github.com/free5gc/nef
 
 go 1.26.2
 
-// TEMPORARY: pins to the merged free5gc/openapi#83 commit (Monitoring Event
-// models), which this PR needs. Remove this replace directive once a new
-// free5gc/openapi release/tag incorporating it is cut, then bump the require
-// below to match.
-replace github.com/free5gc/openapi => github.com/free5gc/openapi v1.3.1-0.20260825075004-424d4d5df062
+// TEMPORARY: points to local openapi fork until free5gc/openapi#85 (Nnef_UEId
+// models) merges upstream. Replace with the upstream pseudo-version once merged.
+replace github.com/free5gc/openapi => ../free5gc-openapi
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
