@@ -2,6 +2,10 @@ module github.com/free5gc/nef
 
 go 1.26.2
 
+// TEMPORARY: points to local openapi fork until free5gc/openapi#85 (Nnef_UEId
+// models) merges upstream. Replace with the upstream pseudo-version once merged.
+replace github.com/free5gc/openapi => ../free5gc-openapi
+
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/davecgh/go-spew v1.1.1

@@ -17,6 +17,11 @@ func (s *Server) getCallbackRoutes() []Route {
 			Pattern: "/notification/smf",
 			APIFunc: s.apiPostSmfNotification,
 		},
+		{
+			Method:  http.MethodPost,
+			Pattern: "/notification/amf-event",
+			APIFunc: s.apiPostAmfEventNotification,
+		},
 	}
 }
 
@@ -41,4 +46,27 @@ func (s *Server) apiPostSmfNotification(gc *gin.Context) {
 	}
 
 	s.Processor().SmfNotification(gc, &eeNotif)
+}
+
+func (s *Server) apiPostAmfEventNotification(gc *gin.Context) {
+	var notif models.Amf_EvtExpos_AmfEventNotification
+	reqBody, err := gc.GetRawData()
+	if err != nil {
+		logger.SBILog.Errorf("Get Request Body error: %+v", err)
+		pd := openapi.ProblemDetailsSystemFailure(err.Error())
+		gc.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		gc.JSON(http.StatusInternalServerError, pd)
+		return
+	}
+
+	err = openapi.Deserialize(&notif, reqBody, "application/json")
+	if err != nil {
+		logger.SBILog.Errorf("Deserialize Request Body error: %+v", err)
+		pd := openapi.ProblemDetailsMalformedReqSyntax(err.Error())
+		gc.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		gc.JSON(http.StatusBadRequest, pd)
+		return
+	}
+
+	s.Processor().AmfEventNotification(gc, &notif)
 }

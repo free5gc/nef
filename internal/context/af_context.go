@@ -11,13 +11,15 @@ import (
 )
 
 type AfData struct {
-	AfID       string
-	NumSubscID uint64
-	NumTransID uint64
-	Subs       map[string]*AfSubscription
-	PfdTrans   map[string]*AfPfdTransaction
-	Mu         sync.RWMutex
-	Log        *logrus.Entry
+	AfID          string
+	NumSubscID    uint64
+	NumTransID    uint64
+	NumMonSubscID uint64
+	Subs          map[string]*AfSubscription
+	PfdTrans      map[string]*AfPfdTransaction
+	MonSubs       map[string]*AfMonitoringSubscription
+	Mu            sync.RWMutex
+	Log           *logrus.Entry
 }
 
 func (a *AfData) NewSub(numCorreID uint64, tiSub *models.Nef_TrafInfl_TrafficInfluSub) *AfSubscription {
@@ -29,6 +31,20 @@ func (a *AfData) NewSub(numCorreID uint64, tiSub *models.Nef_TrafInfl_TrafficInf
 		Log:          a.Log.WithField(logger.FieldSubID, fmt.Sprintf("SUB:%d", a.NumSubscID)),
 	}
 	sub.Log.Infoln("New subscription")
+	return &sub
+}
+
+func (a *AfData) NewMonSub(
+	numCorreID uint64, monSub *models.Nef_MonEvt_MonitoringEventSubscription,
+) *AfMonitoringSubscription {
+	a.NumMonSubscID++
+	sub := AfMonitoringSubscription{
+		NotifCorreID: strconv.FormatUint(numCorreID, 10),
+		SubID:        strconv.FormatUint(a.NumMonSubscID, 10),
+		MonSub:       monSub,
+		Log:          a.Log.WithField(logger.FieldSubID, fmt.Sprintf("MONSUB:%d", a.NumMonSubscID)),
+	}
+	sub.Log.Infoln("New monitoring event subscription")
 	return &sub
 }
 
