@@ -115,3 +115,62 @@ func (s *nudmService) GetSupiFromGpsi(gpsi string) (supi string, pd *models.Prob
 	}
 	return rsp.Udm_SDM_IdTranslationResult.Supi, nil, nil
 }
+
+// GetGpsiFromSupi resolves a SUPI to its AF-specific GPSI (external ID/MSISDN) via the
+// same Nudm_SDM GPSI-to-SUPI translation resource, used in the SUPI-to-GPSI direction
+// (3GPP TS 29.503 clause 5.2.2.7.1). afId/mtcProviderId, when present, scope the lookup
+// to the external ID the UDM considers valid for that AF/MTC provider.
+func (s *nudmService) GetGpsiFromSupi(
+	supi, afId, mtcProviderId string,
+) (gpsi string, pd *models.ProblemDetails, err error) {
+	uri, err := s.getUdmSdmUri()
+	if err != nil {
+		return "", nil, err
+	}
+
+	client := s.getSdmClient(uri)
+	if client == nil {
+		return "", nil, openapi.ReportError("could not initialize the SubscriberDataManagement client")
+	}
+
+	ctx, _, err := s.consumer.Context().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName_NUDM_SDM, models.Nrf_NFMgmt_NFType_UDM)
+	if err != nil {
+		return "", nil, err
+	}
+
+	req := &SDM.GetSupiOrGpsiRequest{
+		UeId: &supi,
+	}
+	if afId != "" {
+		req.AfId = &afId
+	}
+	if mtcProviderId != "" {
+		req.MtcProviderInfo = &mtcProviderId
+	}
+
+	rsp, errGetSupiOrGpsi := client.GPSIToSUPITranslationOrSUPIToGPSITranslationApi.GetSupiOrGpsi(ctx, req)
+	if errGetSupiOrGpsi != nil {
+		switch apiErr := errGetSupiOrGpsi.(type) {
+		case openapi.GenericOpenAPIError:
+			switch errorModel := apiErr.Model().(type) {
+			case SDM.GetSupiOrGpsiError:
+				return "", errorModel.ProblemDetails, nil
+			case error:
+				return "", openapi.ProblemDetailsSystemFailure(errorModel.Error()), nil
+			default:
+				return "", nil, openapi.ReportError("openapi error")
+			}
+		case error:
+			return "", openapi.ProblemDetailsSystemFailure(apiErr.Error()), nil
+		default:
+			return "", nil, openapi.ReportError("server no response")
+		}
+	}
+
+	logger.ConsumerLog.Debugf("GetGpsiFromSupi RspData: %+v", rsp.Udm_SDM_IdTranslationResult)
+	if rsp.Udm_SDM_IdTranslationResult.Gpsi == "" {
+		return "", openapi.ProblemDetailsDataNotFound("No GPSI found for the given SUPI"), nil
+	}
+	return rsp.Udm_SDM_IdTranslationResult.Gpsi, nil, nil
+}
