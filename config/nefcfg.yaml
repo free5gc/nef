@@ -18,6 +18,7 @@ configuration:
     - serviceName: nnef-oam            # OAM service
     - serviceName: 3gpp-traffic-influence # AF-facing Traffic Influence API
     - serviceName: 3gpp-monitoring-event  # AF-facing Monitoring Event API
+    - serviceName: 3gpp-ueid           # AF-facing UE ID service
     - serviceName: nnef-callback       # Inbound SMF/AMF event notification callback
 
 logger: # log output setting

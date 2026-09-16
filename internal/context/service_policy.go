@@ -7,6 +7,7 @@ import (
 )
 
 const ServiceNameNnefCallback models.Nrf_NFMgmt_ServiceName = "nnef-callback"
+const ServiceNameNefUeId models.Nrf_NFMgmt_ServiceName = "3gpp-ueid"
 
 var servicePolicies = map[models.Nrf_NFMgmt_ServiceName][]models.Nrf_NFMgmt_NFType{
 	models.Nrf_NFMgmt_ServiceName_NNEF_PFDMANAGEMENT: {
@@ -17,6 +18,10 @@ var servicePolicies = map[models.Nrf_NFMgmt_ServiceName][]models.Nrf_NFMgmt_NFTy
 	},
 	// TS 29.122 northbound API, consumed by AF/AS.
 	models.Nrf_NFMgmt_ServiceName_3GPP_MONITORING_EVENT: {
+		models.Nrf_NFMgmt_NFType_AF,
+	},
+	// TS 29.522 northbound API, consumed by AF/AS.
+	ServiceNameNefUeId: {
 		models.Nrf_NFMgmt_NFType_AF,
 	},
 	// Inbound event notifications: SMF (Nsmf_EventExposure) and AMF
