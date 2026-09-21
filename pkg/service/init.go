@@ -185,13 +185,9 @@ func (a *NefApp) SetReportCaller(reportCaller bool) {
 }
 
 func (a *NefApp) registerToNrf(ctx context.Context) error {
-	nefContext := a.nefCtx
-
-	_, NfInstID, err := a.consumer.RegisterNFInstance(ctx, nefContext)
-	if err != nil {
-		return fmt.Errorf("failed to register NSSF to NRF: %s", err.Error())
+	if err := a.consumer.RegisterNFInstance(ctx, true); err != nil {
+		return fmt.Errorf("failed to register NEF to NRF: %w", err)
 	}
-	a.nefCtx.SetNfInstID(NfInstID)
 
 	return nil
 }
@@ -202,6 +198,15 @@ func (a *NefApp) Start() error {
 	 * context */
 	go a.listenShutdownEvent()
 
+	// Register before serving: the SBI auth checks read OAuth2Required, which this registration writes.
+	if err := a.registerToNrf(a.ctx); err != nil {
+		logger.MainLog.Errorf("register to NRF failed: %+v", err)
+	} else {
+		logger.MainLog.Infoln("register to NRF successfully")
+		// Only a registered profile has something to keep alive.
+		a.consumer.StartHeartbeat(a.ctx, &a.wg)
+	}
+
 	if err := a.sbiServer.Run(&a.wg); err != nil {
 		return err
 	}
@@ -210,13 +215,6 @@ func (a *NefApp) Start() error {
 		go func() {
 			a.metricsServer.Run(&a.wg)
 		}()
-	}
-
-	err := a.registerToNrf(a.ctx)
-	if err != nil {
-		logger.MainLog.Errorf("register to NRF failed: %+v", err)
-	} else {
-		logger.MainLog.Infoln("register to NRF successfully")
 	}
 
 	a.WaitRoutineStopped()
@@ -251,6 +249,9 @@ func (a *NefApp) terminateProcedure() {
 	logger.MainLog.Infof("Terminating NEF...")
 
 	a.CallServersStop()
+
+	// no heartbeat PATCH or re-registration PUT may land after the deregistration
+	a.consumer.WaitHeartbeatStopped()
 
 	// deregister with NRF
 	if _, err := a.consumer.DeregisterNFInstance(); err != nil {

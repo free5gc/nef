@@ -50,13 +50,6 @@ func (c *NefContext) NfInstID() string {
 	return c.nfInstID
 }
 
-func (c *NefContext) SetNfInstID(id string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.nfInstID = id
-	logger.CtxLog.Infof("Set nfInstID: [%s]", c.nfInstID)
-}
-
 func (c *NefContext) PcfPaUri() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
