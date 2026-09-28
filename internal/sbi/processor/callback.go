@@ -59,7 +59,7 @@ func (p *Processor) SmfNotification(
 		return
 	}
 
-	if err := postSmfEventExposureNotificationToAf(notifDestination, eeNotif, afCallbackTokenCtx); err != nil {
+	if err := postNotificationToAf(notifDestination, eeNotif, afCallbackTokenCtx); err != nil {
 		logger.TrafInfluLog.Errorf("Forward SMF notification to AF failed: %v", err)
 		pd := openapi.ProblemDetailsSystemFailure(err.Error())
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -70,14 +70,143 @@ func (p *Processor) SmfNotification(
 	c.Status(http.StatusNoContent)
 }
 
-func postSmfEventExposureNotificationToAf(
+// AmfEventNotification handles a Namf_EventExposure notification and forwards it, translated
+// into the AF-facing NefMonitoringNotification shape, to the AF's notificationDestination.
+func (p *Processor) AmfEventNotification(
+	c *gin.Context,
+	notif *models.Amf_EvtExpos_AmfEventNotification,
+) {
+	logger.SBILog.Infof("AmfEventNotification - NotifyCorrelationId[%s]", notif.NotifyCorrelationId)
+
+	af, monSub := p.Context().FindAfMonSub(notif.NotifyCorrelationId)
+	if monSub == nil {
+		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		c.JSON(http.StatusNotFound, pd)
+		return
+	}
+
+	af.Mu.RLock()
+	notifDestination := ""
+	var monSubCopy models.Nef_MonEvt_MonitoringEventSubscription
+	if monSub.MonSub != nil {
+		notifDestination = monSub.MonSub.NotificationDestination
+		monSubCopy = *monSub.MonSub
+	}
+	af.Mu.RUnlock()
+
+	if notifDestination == "" {
+		pd := openapi.ProblemDetailsSystemFailure("AF notification destination is empty")
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		c.JSON(http.StatusInternalServerError, pd)
+		return
+	}
+
+	reports := make([]models.Nef_MonEvt_MonitoringEventReport, 0, len(notif.ReportList))
+	for _, r := range notif.ReportList {
+		reports = append(reports, models.Nef_MonEvt_MonitoringEventReport{
+			ExternalId:     monSubCopy.ExternalId,
+			Msisdn:         monSubCopy.Msisdn,
+			MonitoringType: monSubCopy.MonitoringType,
+			EventTime:      r.TimeStamp,
+			LocationInfo:   toLocationInfo(r.Location),
+			// LossOfConnectReason intentionally left unset: AMF's internal
+			// LossOfConnectivityReason has no defined mapping onto the TS 29.336 cause
+			// codes this field expects.
+		})
+	}
+	monNotif := &models.Nef_MonEvt_MonitoringNotification{
+		Subscription:           monSubCopy.Self,
+		MonitoringEventReports: reports,
+	}
+
+	afCallbackTokenCtx, pd, err := p.Context().GetTokenCtx(
+		models.Nrf_NFMgmt_ServiceName("nnef-callback"), models.Nrf_NFMgmt_NFType_AF)
+	if err != nil {
+		logger.SBILog.Errorf("Get token for AF callback failed: %+v", pd)
+		failure := openapi.ProblemDetailsSystemFailure("get token for AF callback failed")
+		if pd != nil && pd.Cause != "" {
+			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		} else {
+			c.Set(sbi.IN_PB_DETAILS_CTX_STR, failure.Cause)
+		}
+		c.JSON(http.StatusBadGateway, failure)
+		return
+	}
+
+	if err := postNotificationToAf(notifDestination, monNotif, afCallbackTokenCtx); err != nil {
+		logger.SBILog.Errorf("Forward AMF event notification to AF failed: %v", err)
+		pd := openapi.ProblemDetailsSystemFailure(err.Error())
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		c.JSON(http.StatusBadGateway, pd)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// toLocationInfo converts AMF's internal (TS 29.571) UserLocation into the AF-facing
+// (TS 29.122) LocationInfo shape used by MonitoringEventReport. Only NR and E-UTRA
+// locations are mapped; the other UserLocation variants (N3GA/UTRA/GERA) are not yet
+// supported by AMF's LOCATION_REPORT event.
+func toLocationInfo(loc *models.UserLocation) *models.Nef_MonEvt_LocationInfo {
+	if loc == nil {
+		return nil
+	}
+
+	switch {
+	case loc.NrLocation != nil:
+		nr := loc.NrLocation
+		info := &models.Nef_MonEvt_LocationInfo{
+			AgeOfLocationInfo: nr.AgeOfLocationInformation,
+		}
+		if nr.Ncgi != nil {
+			info.CellId = nr.Ncgi.NrCellId
+			info.PlmnId = plmnIdString(nr.Ncgi.PlmnId)
+		}
+		if nr.Tai != nil {
+			info.TrackingAreaId = nr.Tai.Tac
+			if info.PlmnId == "" {
+				info.PlmnId = plmnIdString(nr.Tai.PlmnId)
+			}
+		}
+		return info
+	case loc.EutraLocation != nil:
+		eutra := loc.EutraLocation
+		info := &models.Nef_MonEvt_LocationInfo{
+			AgeOfLocationInfo: eutra.AgeOfLocationInformation,
+		}
+		if eutra.Ecgi != nil {
+			info.EnodeBId = eutra.Ecgi.EutraCellId
+			info.PlmnId = plmnIdString(eutra.Ecgi.PlmnId)
+		}
+		if eutra.Tai != nil {
+			info.TrackingAreaId = eutra.Tai.Tac
+			if info.PlmnId == "" {
+				info.PlmnId = plmnIdString(eutra.Tai.PlmnId)
+			}
+		}
+		return info
+	default:
+		return nil
+	}
+}
+
+func plmnIdString(id *models.PlmnId) string {
+	if id == nil {
+		return ""
+	}
+	return id.Mcc + "-" + id.Mnc
+}
+
+func postNotificationToAf(
 	notifDestination string,
-	eeNotif *models.Smf_EvtExpos_NsmfEventExposureNotification,
+	body interface{},
 	requestCtx context.Context,
 ) error {
-	_, reqBody, err := openapi.Serialize(eeNotif, "application/json")
+	contentType, reqBody, err := openapi.Serialize(body, "application/json")
 	if err != nil {
-		return fmt.Errorf("serialize SMF notification failed: %w", err)
+		return fmt.Errorf("serialize notification failed: %w", err)
 	}
 	if requestCtx == nil {
 		requestCtx = context.Background()
@@ -87,7 +216,7 @@ func postSmfEventExposureNotificationToAf(
 	if err != nil {
 		return fmt.Errorf("create AF callback request failed: %w", err)
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", contentType)
 	if err = bindOAuthTokenToRequest(httpReq, requestCtx); err != nil {
 		return fmt.Errorf("bind OAuth2 token for AF callback failed: %w", err)
 	}
