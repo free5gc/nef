@@ -336,6 +336,82 @@ func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
 	require.Equal(t, monSub.MonitoringType, forwarded.MonitoringEventReports[0].MonitoringType)
 }
 
+// TestMonitoringEventNotificationE2E verifies the full notification path without
+// seeding state directly: subscribe via PostMonitoringEventSubscription, then
+// fire an AMF event notification and assert the AF receives the translated body.
+func TestMonitoringEventNotificationE2E(t *testing.T) {
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+
+	var afReceivedBody []byte
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var err error
+		afReceivedBody, err = io.ReadAll(req.Body)
+		require.NoError(t, err)
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	initNRFDiscUDMSdmStub()
+	initUDMSdmGetSupiOrGpsiStub(http.StatusOK, "imsi-208930000000001")
+	initNRFDiscAMFStub()
+	initAMFEvtsCreateSubscriptionStub(http.StatusCreated, "amf-sub-e2e")
+
+	sub := models.Nef_MonEvt_MonitoringEventSubscription{
+		ExternalId:              "10001@domain.com",
+		NotificationDestination: "http://127.0.0.100:8000/notify",
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
+		MaximumNumberOfReports:  1,
+	}
+
+	ginCtx, rec := newGinContext()
+	nefApp.Processor().PostMonitoringEventSubscription(ginCtx, "af-e2e", &sub)
+	ginCtx.Writer.WriteHeaderNow()
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	nefCtx := nefApp.Context()
+	t.Cleanup(func() {
+		nefCtx.DeleteAf("af-e2e")
+		nefCtx.ResetCorreID()
+	})
+
+	af := nefCtx.GetAf("af-e2e")
+	require.NotNil(t, af)
+	af.Mu.RLock()
+	var correID string
+	for _, monSubCtx := range af.MonSubs {
+		correID = monSubCtx.NotifCorreID
+		break
+	}
+	af.Mu.RUnlock()
+	require.NotEmpty(t, correID, "subscription must have a correlation ID after create")
+
+	eventTime := time.Now().UTC()
+	notif := &models.Amf_EvtExpos_AmfEventNotification{
+		NotifyCorrelationId: correID,
+		ReportList: []models.Amf_EvtExpos_AmfEventReport{
+			{
+				Type:      models.Amf_EvtExpos_AmfEventType_REACHABILITY_REPORT,
+				TimeStamp: &eventTime,
+			},
+		},
+	}
+
+	ginCtx2, rec2 := newGinContext()
+	nefApp.Processor().AmfEventNotification(ginCtx2, notif)
+	ginCtx2.Writer.WriteHeaderNow()
+	require.Equal(t, http.StatusNoContent, rec2.Code)
+
+	require.NotEmpty(t, afReceivedBody, "AF must receive the forwarded notification")
+	var forwarded models.Nef_MonEvt_MonitoringNotification
+	require.NoError(t, json.Unmarshal(afReceivedBody, &forwarded))
+	require.Len(t, forwarded.MonitoringEventReports, 1)
+	require.Equal(t, models.Nef_MonEvt_MonitoringType_UE_REACHABILITY, forwarded.MonitoringEventReports[0].MonitoringType)
+}
+
 // TestAmfEventNotification_AfReturnsError verifies that AmfEventNotification returns
 // 502 (BadGateway) when the AF callback endpoint responds with a non-2xx status.
 func TestAmfEventNotification_AfReturnsError(t *testing.T) {
