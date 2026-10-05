@@ -75,41 +75,51 @@ type nnrfService struct {
 
 func (s *nnrfService) getNFDiscoveryClient(uri string) *NFDisc.APIClient {
 	s.nfDiscMu.RLock()
-	if client, ok := s.nfDiscClients[uri]; ok {
-		defer s.nfDiscMu.RUnlock()
+	client, ok := s.nfDiscClients[uri]
+	s.nfDiscMu.RUnlock()
+	if ok {
 		return client
-	} else {
-		configuration := NFDisc.NewConfiguration()
-		configuration.SetBasePath(uri)
-		configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-		configuration.SetHTTPClient(http.DefaultClient)
-		cli := NFDisc.NewAPIClient(configuration)
-
-		s.nfDiscMu.RUnlock()
-		s.nfDiscMu.Lock()
-		defer s.nfDiscMu.Unlock()
-		s.nfDiscClients[uri] = cli
-		return cli
 	}
+
+	s.nfDiscMu.Lock()
+	defer s.nfDiscMu.Unlock()
+	// Another caller may have stored a client while the read lock was down.
+	if client, ok = s.nfDiscClients[uri]; ok {
+		return client
+	}
+
+	configuration := NFDisc.NewConfiguration()
+	configuration.SetBasePath(uri)
+	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
+	configuration.SetHTTPClient(http.DefaultClient)
+	client = NFDisc.NewAPIClient(configuration)
+
+	s.nfDiscClients[uri] = client
+	return client
 }
 
 func (s *nnrfService) getNFManagementClient(uri string) *NFMgmt.APIClient {
 	s.nfMngmntMu.RLock()
-	if client, ok := s.nfMngmntClients[uri]; ok {
-		defer s.nfMngmntMu.RUnlock()
+	client, ok := s.nfMngmntClients[uri]
+	s.nfMngmntMu.RUnlock()
+	if ok {
 		return client
-	} else {
-		configuration := NFMgmt.NewConfiguration()
-		configuration.SetBasePath(uri)
-		configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-		cli := NFMgmt.NewAPIClient(configuration)
-
-		s.nfMngmntMu.RUnlock()
-		s.nfMngmntMu.Lock()
-		defer s.nfMngmntMu.Unlock()
-		s.nfMngmntClients[uri] = cli
-		return cli
 	}
+
+	s.nfMngmntMu.Lock()
+	defer s.nfMngmntMu.Unlock()
+	// Another caller may have stored a client while the read lock was down.
+	if client, ok = s.nfMngmntClients[uri]; ok {
+		return client
+	}
+
+	configuration := NFMgmt.NewConfiguration()
+	configuration.SetBasePath(uri)
+	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
+	client = NFMgmt.NewAPIClient(configuration)
+
+	s.nfMngmntClients[uri] = client
+	return client
 }
 
 func (s *nnrfService) RegisterNFInstance(ctx context.Context, nefCtx *nef_context.NefContext) (
