@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/davecgh/go-spew/spew"
@@ -84,12 +85,13 @@ type Info struct {
 }
 
 type Configuration struct {
-	NfInstanceId string    `yaml:"nfInstanceId,omitempty" valid:"optional,uuidv4"`
-	Sbi          *Sbi      `yaml:"sbi,omitempty" valid:"required"`
-	Metrics      *Metrics  `yaml:"metrics,omitempty" valid:"optional"`
-	NrfUri       string    `yaml:"nrfUri,omitempty" valid:"required"`
-	NrfCertPem   string    `yaml:"nrfCertPem,omitempty" valid:"optional"`
-	ServiceList  []Service `yaml:"serviceList,omitempty" valid:"required"`
+	IdleTimeout  *time.Duration `yaml:"idleTimeout,omitempty" valid:"optional"`
+	NfInstanceId string         `yaml:"nfInstanceId,omitempty" valid:"optional,uuidv4"`
+	Sbi          *Sbi           `yaml:"sbi,omitempty" valid:"required"`
+	Metrics      *Metrics       `yaml:"metrics,omitempty" valid:"optional"`
+	NrfUri       string         `yaml:"nrfUri,omitempty" valid:"required"`
+	NrfCertPem   string         `yaml:"nrfCertPem,omitempty" valid:"optional"`
+	ServiceList  []Service      `yaml:"serviceList,omitempty" valid:"required"`
 }
 
 type Logger struct {
@@ -578,4 +580,15 @@ func (c *Config) ServiceUri(name string) string {
 	default:
 		return ""
 	}
+}
+
+// GetIdleTimeout returns the HTTP server idle timeout. Omitted values preserve
+// the previous 1ms timeout; an explicit zero disables the timeout.
+func (c *Config) GetIdleTimeout() time.Duration {
+	c.RLock()
+	defer c.RUnlock()
+	if c.Configuration == nil || c.Configuration.IdleTimeout == nil {
+		return time.Millisecond
+	}
+	return *c.Configuration.IdleTimeout
 }
