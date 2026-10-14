@@ -16,6 +16,7 @@ import (
 	"github.com/free5gc/nef/internal/sbi/processor"
 	"github.com/free5gc/nef/pkg/app"
 	"github.com/free5gc/nef/pkg/factory"
+	"github.com/free5gc/openapi"
 	"github.com/free5gc/util/metrics"
 	"github.com/free5gc/util/metrics/utils"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,6 +47,9 @@ func NewApp(
 	cfg *factory.Config,
 	tlsKeyLogPath string,
 ) (*NefApp, error) {
+	if err := openapi.ConfigureHTTP2Clients(cfg.GetReadIdleTimeout(), cfg.GetPingTimeout()); err != nil {
+		return nil, err
+	}
 	var err error
 	nef := &NefApp{
 		cfg: cfg,
