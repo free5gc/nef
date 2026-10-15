@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/h2non/gock"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/h2non/gock.v1"
 )
 
 var (
@@ -859,25 +860,27 @@ func TestTrafficInfluenceOutboundCallsDoNotHoldAfDataLock(t *testing.T) {
 func TestConcurrentInitialTrafficInfluenceSubscriptionsShareAf(t *testing.T) {
 	requestArrived := make(chan struct{}, 2)
 	releaseRequests := make(chan struct{})
-	previousTransport := http.DefaultClient.Transport
-	http.DefaultClient.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		requestArrived <- struct{}{}
-		<-releaseRequests
-		return &http.Response{
-			StatusCode: http.StatusNoContent,
-			Status:     "204 No Content",
-			Header:     make(http.Header),
-			Body:       http.NoBody,
-			Request:    req,
-		}, nil
-	})
-	t.Cleanup(func() {
-		http.DefaultClient.Transport = previousTransport
-	})
+	release := sync.OnceFunc(func() { close(releaseRequests) })
+	udrServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		select {
+		case requestArrived <- struct{}{}:
+		case <-req.Context().Done():
+			return
+		}
+		select {
+		case <-releaseRequests:
+			w.WriteHeader(http.StatusNoContent)
+		case <-req.Context().Done():
+		}
+	}))
+	udrServer.EnableHTTP2 = true
+	udrServer.StartTLS()
+	t.Cleanup(udrServer.Close)
+	t.Cleanup(release)
 
 	nefCtx := nefApp.Context()
 	previousUdrDrURI := nefCtx.UdrDrUri()
-	nefCtx.SetUdrDrUri("http://udr.concurrent.test")
+	nefCtx.SetUdrDrUri(udrServer.URL)
 	const afID = "af-concurrent-post-test"
 	t.Cleanup(func() {
 		nefCtx.DeleteAf(afID)
@@ -902,11 +905,11 @@ func TestConcurrentInitialTrafficInfluenceSubscriptionsShareAf(t *testing.T) {
 		select {
 		case <-requestArrived:
 		case <-time.After(5 * time.Second):
-			close(releaseRequests)
+			release()
 			t.Fatal("timed out waiting for concurrent UDR requests")
 		}
 	}
-	close(releaseRequests)
+	release()
 
 	for range 2 {
 		select {
