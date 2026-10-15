@@ -31,7 +31,6 @@ func (s *npcfService) getPolicyAuthClient(uri string) *PolAuth.APIClient {
 	configuration := PolAuth.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	configuration.SetHTTPClient(http.DefaultClient)
 	cli := PolAuth.NewAPIClient(configuration)
 
 	s.mu.RUnlock()

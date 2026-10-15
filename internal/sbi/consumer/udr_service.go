@@ -2,7 +2,6 @@ package consumer
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/free5gc/openapi"
@@ -36,7 +35,6 @@ func (s *nudrService) getDataRepositoryClient(uri string) *DR.APIClient {
 	configuration := DR.NewConfiguration()
 	configuration.SetBasePath(uri)
 	configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-	configuration.SetHTTPClient(http.DefaultClient)
 	client = DR.NewAPIClient(configuration)
 
 	s.mu.RUnlock()

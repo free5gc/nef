@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -82,7 +81,6 @@ func (s *nnrfService) getNFDiscoveryClient(uri string) *NFDisc.APIClient {
 		configuration := NFDisc.NewConfiguration()
 		configuration.SetBasePath(uri)
 		configuration.SetMetrics(sbi_metrics.SbiMetricHook)
-		configuration.SetHTTPClient(http.DefaultClient)
 		cli := NFDisc.NewAPIClient(configuration)
 
 		s.nfDiscMu.RUnlock()
