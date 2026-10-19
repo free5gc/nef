@@ -2,8 +2,11 @@ package processor
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -560,4 +563,25 @@ func TestAmfEventNotification_ExpiredSubscription(t *testing.T) {
 	_, stillExists := af.MonSubs[monSubCtx.SubID]
 	af.Mu.RUnlock()
 	require.False(t, stillExists, "expired subscription must be removed from the map")
+}
+
+func TestSBICallbackTLSVerification(t *testing.T) {
+	previous := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = previous })
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	server.Config.ErrorLog = log.New(io.Discard, "", 0)
+	server.StartTLS()
+	defer server.Close()
+	for _, verify := range []bool{false, true} {
+		configureAFCallbackHTTPClient(verify)
+		err := postNotificationToAf(server.URL, &models.Smf_EvtExpos_NsmfEventExposureNotification{}, context.Background())
+		if verify {
+			var unknown x509.UnknownAuthorityError
+			if !errors.As(err, &unknown) {
+				t.Fatalf("expected certificate rejection, got %v", err)
+			}
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
 }
