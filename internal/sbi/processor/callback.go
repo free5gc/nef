@@ -3,9 +3,12 @@ package processor
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/openapi"
@@ -128,4 +131,18 @@ func bindOAuthTokenToRequest(req *http.Request, requestCtx context.Context) erro
 	}
 	latestToken.SetAuthHeader(req)
 	return nil
+}
+
+// Configure once during NF initialization, before accepting callbacks.
+func configureAFCallbackHTTPClient(verify bool) {
+	afCallbackHTTPClient = &http.Client{Transport: &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: !verify}, // #nosec G402 -- NF configuration
+	}}
 }
