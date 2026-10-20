@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	nef_context "github.com/free5gc/nef/internal/context"
+	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/h2non/gock.v1"
+	"github.com/h2non/gock"
 )
 
 var (
@@ -179,6 +180,7 @@ func TestGetIndividualMonitoringEventSubscription(t *testing.T) {
 }
 
 func TestPostMonitoringEventSubscription(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
 	// Mocks below are intentionally not gock.Off()'d: Off() flushes gock's global mock
 	// registry, including the one-shot NRF discovery mocks other test files register once
 	// in TestMain, breaking them for whichever test runs later. Each mock here is scoped
@@ -295,6 +297,7 @@ func TestPostMonitoringEventSubscription(t *testing.T) {
 // TestPostMonitoringEventSubscription_AmfError verifies that an AMF-side failure is
 // surfaced to the AF as the ProblemDetails AMF returned, rather than a generic error.
 func TestPostMonitoringEventSubscription_AmfError(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
 	initNRFDiscUDMSdmStub()
 	initUDMSdmGetSupiOrGpsiStub(http.StatusOK, "imsi-208930000000001")
 	initNRFDiscAMFStub()
@@ -313,6 +316,7 @@ func TestPostMonitoringEventSubscription_AmfError(t *testing.T) {
 }
 
 func TestDeleteIndividualMonitoringEventSubscription(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
 	initNRFDiscAMFStub()
 	initAMFEvtsDeleteSubscriptionStub(http.StatusNoContent)
 
@@ -372,6 +376,7 @@ func TestDeleteIndividualMonitoringEventSubscription(t *testing.T) {
 }
 
 func TestMonitoringEventSubscriptionDeleteDoesNotHoldAfDataLock(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
 	nefCtx := nefApp.Context()
 
 	afID := "af-delete-lock-test"

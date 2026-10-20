@@ -340,6 +340,7 @@ func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
 // seeding state directly: subscribe via PostMonitoringEventSubscription, then
 // fire an AMF event notification and assert the AF receives the translated body.
 func TestMonitoringEventNotificationE2E(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
 
