@@ -10,8 +10,8 @@ import (
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/require"
 	"github.com/h2non/gock"
+	"github.com/stretchr/testify/require"
 )
 
 var (
