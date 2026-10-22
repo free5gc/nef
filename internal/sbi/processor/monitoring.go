@@ -66,16 +66,7 @@ func (p *Processor) PostMonitoringEventSubscription(
 	}
 
 	nefCtx := p.Context()
-	af := nefCtx.GetAf(afID)
-	if af == nil {
-		af = nefCtx.NewAf(afID)
-		if af == nil {
-			pd := openapi.ProblemDetailsSystemFailure("No resource can be allocated")
-			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
-			c.JSON(int(pd.Status), pd)
-			return
-		}
-	}
+	af := nefCtx.GetOrCreateAf(afID)
 
 	// correID and the UDM/AMF calls below intentionally run without af.Mu held: they involve
 	// synchronous outbound network I/O (NRF discovery + UDM + AMF), and holding a per-AF lock
@@ -106,7 +97,8 @@ func (p *Processor) PostMonitoringEventSubscription(
 	}
 
 	amfSubID, pd, err := p.Consumer().CreateEventSubscription(
-		supi, []models.Amf_EvtExpos_AmfEventType{amfEventType}, p.genAmfEventNotifyUri(), notifCorreID)
+		supi, []models.Amf_EvtExpos_AmfEventType{amfEventType}, p.genAmfEventNotifyUri(), notifCorreID,
+		monSub.MaximumNumberOfReports, monSub.MonitorExpireTime)
 	switch {
 	case pd != nil:
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -128,8 +120,6 @@ func (p *Processor) PostMonitoringEventSubscription(
 	af.MonSubs[monSubCtx.SubID] = monSubCtx
 	af.Log.Infoln("Monitoring event subscription is added")
 	af.Mu.Unlock()
-
-	nefCtx.AddAf(af)
 
 	monSub.Self = p.genMonitoringEventSubURI(afID, monSubCtx.SubID)
 	headers := map[string][]string{
@@ -285,6 +275,10 @@ func validateMonitoringEventData(
 	if monSub.MaximumNumberOfReports == 0 && monSub.MonitorExpireTime == nil {
 		return "", openapi.
 			ProblemDetailsMalformedReqSyntax("Missing one of MaximumNumberOfReports, MonitorExpireTime")
+	}
+
+	if monSub.ImmediateRep {
+		return "", openapi.ProblemDetailsMalformedReqSyntax("immediateRep is not yet supported")
 	}
 
 	return amfEventType, nil

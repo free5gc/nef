@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/openapi"
@@ -102,6 +103,15 @@ func (p *Processor) AmfEventNotification(
 		return
 	}
 
+	if monSubCopy.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCopy.MonitorExpireTime) {
+		af.Mu.Lock()
+		delete(af.MonSubs, monSub.SubID)
+		af.Mu.Unlock()
+		monSub.Log.Infoln("Monitoring subscription expired; removed")
+		c.Status(http.StatusNoContent)
+		return
+	}
+
 	reports := make([]models.Nef_MonEvt_MonitoringEventReport, 0, len(notif.ReportList))
 	for _, r := range notif.ReportList {
 		reports = append(reports, models.Nef_MonEvt_MonitoringEventReport{
@@ -142,6 +152,18 @@ func (p *Processor) AmfEventNotification(
 		return
 	}
 
+	// Enforce MaximumNumberOfReports: decrement the counter and remove the subscription
+	// once the limit is reached. RemainingReports == 0 means no per-report limit was set.
+	if monSub.RemainingReports > 0 {
+		af.Mu.Lock()
+		monSub.RemainingReports--
+		if monSub.RemainingReports == 0 {
+			delete(af.MonSubs, monSub.SubID)
+			monSub.Log.Infoln("Monitoring subscription exhausted (max reports reached); removed")
+		}
+		af.Mu.Unlock()
+	}
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -177,7 +199,7 @@ func toLocationInfo(loc *models.UserLocation) *models.Nef_MonEvt_LocationInfo {
 			AgeOfLocationInfo: eutra.AgeOfLocationInformation,
 		}
 		if eutra.Ecgi != nil {
-			info.EnodeBId = eutra.Ecgi.EutraCellId
+			info.CellId = eutra.Ecgi.EutraCellId
 			info.PlmnId = plmnIdString(eutra.Ecgi.PlmnId)
 		}
 		if eutra.Tai != nil {

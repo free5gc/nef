@@ -39,10 +39,11 @@ func (a *AfData) NewMonSub(
 ) *AfMonitoringSubscription {
 	a.NumMonSubscID++
 	sub := AfMonitoringSubscription{
-		NotifCorreID: strconv.FormatUint(numCorreID, 10),
-		SubID:        strconv.FormatUint(a.NumMonSubscID, 10),
-		MonSub:       monSub,
-		Log:          a.Log.WithField(logger.FieldSubID, fmt.Sprintf("MONSUB:%d", a.NumMonSubscID)),
+		NotifCorreID:     strconv.FormatUint(numCorreID, 10),
+		SubID:            strconv.FormatUint(a.NumMonSubscID, 10),
+		MonSub:           monSub,
+		RemainingReports: monSub.MaximumNumberOfReports,
+		Log:              a.Log.WithField(logger.FieldSubID, fmt.Sprintf("MONSUB:%d", a.NumMonSubscID)),
 	}
 	sub.Log.Infoln("New monitoring event subscription")
 	return &sub

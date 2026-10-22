@@ -3,6 +3,7 @@ package consumer
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/openapi"
@@ -75,6 +76,7 @@ func (s *namfService) CreateEventSubscription(
 	supi string,
 	events []models.Amf_EvtExpos_AmfEventType,
 	notifyUri, correlationID string,
+	maxReports int32, expiry *time.Time,
 ) (amfSubID string, pd *models.ProblemDetails, err error) {
 	uri, err := s.getNamfEvtsUri()
 	if err != nil {
@@ -97,6 +99,12 @@ func (s *namfService) CreateEventSubscription(
 		eventList = append(eventList, models.Amf_EvtExpos_AmfEvent{Type: evtType})
 	}
 
+	options := &models.Amf_EvtExpos_AmfEventMode{
+		Trigger:    models.Amf_EvtExpos_AmfEventTrigger_CONTINUOUS,
+		MaxReports: maxReports,
+		Expiry:     expiry,
+	}
+
 	createReq := &EvtExpos.CreateSubscriptionRequest{
 		RequestBody: &models.Amf_EvtExpos_AmfCreateEventSubscription{
 			Subscription: &models.Amf_EvtExpos_AmfEventSubscription{
@@ -104,6 +112,7 @@ func (s *namfService) CreateEventSubscription(
 				EventNotifyUri:      notifyUri,
 				NotifyCorrelationId: correlationID,
 				Supi:                supi,
+				Options:             options,
 			},
 		},
 	}
