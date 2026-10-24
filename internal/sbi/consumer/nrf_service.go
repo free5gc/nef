@@ -3,7 +3,6 @@ package consumer
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -280,38 +279,12 @@ func getProfileAndUri(resp *models.Nrf_NFDisc_SearchResult, srvName models.Nrf_N
 func searchNFServiceUri(nfProfile models.Nrf_NFDisc_NFProfile, serviceName models.Nrf_NFMgmt_ServiceName,
 	nfServiceStatus models.Nrf_NFMgmt_NFServiceStatus,
 ) string {
-	if nfProfile.NfServices == nil {
+	uri, err := resolveNFServiceURI(nfProfile, serviceName, nfServiceStatus)
+	if err != nil {
+		logger.ConsumerLog.Warnf("NFService URI resolution failed: %v", err)
 		return ""
 	}
-
-	nfUri := ""
-	for _, service := range nfProfile.NfServices {
-		if service.ServiceName == serviceName && service.NfServiceStatus == nfServiceStatus {
-			if service.Fqdn != "" {
-				nfUri = string(service.Scheme) + "://" + service.Fqdn
-			} else if nfProfile.Fqdn != "" {
-				nfUri = string(service.Scheme) + "://" + nfProfile.Fqdn
-			} else if service.ApiPrefix != "" {
-				u, err := url.Parse(service.ApiPrefix)
-				if err != nil {
-					return nfUri
-				}
-				nfUri = u.Scheme + "://" + u.Host
-			} else if service.IpEndPoints != nil {
-				point := (service.IpEndPoints)[0]
-				if point.Ipv4Address != "" {
-					nfUri = getUriFromIpEndPoint(service.Scheme, point.Ipv4Address, point.Port)
-				} else if len(nfProfile.Ipv4Addresses) != 0 {
-					nfUri = getUriFromIpEndPoint(service.Scheme, nfProfile.Ipv4Addresses[0], point.Port)
-				}
-			}
-		}
-		if nfUri != "" {
-			break
-		}
-	}
-
-	return nfUri
+	return uri
 }
 
 func getUriFromIpEndPoint(scheme models.UriScheme, ipv4Address string, port int32) string {

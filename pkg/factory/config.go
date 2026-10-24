@@ -552,7 +552,6 @@ func (c *Config) NFServices() []models.Nrf_NFMgmt_NFService {
 			},
 			Scheme:          models.UriScheme(c.SbiScheme()),
 			NfServiceStatus: models.Nrf_NFMgmt_NFServiceStatus_REGISTERED,
-			ApiPrefix:       c.SbiUri(),
 			IpEndPoints: []models.Nrf_NFMgmt_IpEndPoint{
 				{
 					Ipv4Address: c.SbiRegisterIP(),
