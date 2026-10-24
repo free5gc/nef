@@ -237,13 +237,17 @@ func TestSmfNotification_AfReturnsError(t *testing.T) {
 func TestSBICallbackTLSVerification(t *testing.T) {
 	previous := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = previous })
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	server.Config.ErrorLog = log.New(io.Discard, "", 0)
 	server.StartTLS()
 	defer server.Close()
 	for _, verify := range []bool{false, true} {
 		configureAFCallbackHTTPClient(verify)
-		err := postSmfEventExposureNotificationToAf(server.URL, &models.Smf_EvtExpos_NsmfEventExposureNotification{}, context.Background())
+		err := postSmfEventExposureNotificationToAf(
+			server.URL, &models.Smf_EvtExpos_NsmfEventExposureNotification{}, context.Background(),
+		)
 		if verify {
 			var unknown x509.UnknownAuthorityError
 			if !errors.As(err, &unknown) {

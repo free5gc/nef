@@ -57,7 +57,9 @@ func TestFlushNotifications_UnreachableNotifyURI_DoesNotPanic(t *testing.T) {
 }
 
 func TestSBIPfdTLSVerification(t *testing.T) {
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }))
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	server.Config.ErrorLog = log.New(io.Discard, "", 0)
 	server.StartTLS()
 	defer server.Close()
@@ -67,8 +69,12 @@ func TestSBIPfdTLSVerification(t *testing.T) {
 			t.Fatal(err)
 		}
 		notifier.initPfdManagementApiClient()
-		req := &PFDMgmt.NnefPFDmanagementNotifyRequest{RequestBody: []models.Nef_PFDMgmt_PfdChangeNotification{{ApplicationId: "tls-test"}}}
-		_, err = notifier.clientPfdManagement.PFDSubscriptionsApi.NnefPFDmanagementNotify(context.Background(), server.URL, req)
+		req := &PFDMgmt.NnefPFDmanagementNotifyRequest{
+			RequestBody: []models.Nef_PFDMgmt_PfdChangeNotification{{ApplicationId: "tls-test"}},
+		}
+		_, err = notifier.clientPfdManagement.PFDSubscriptionsApi.NnefPFDmanagementNotify(
+			context.Background(), server.URL, req,
+		)
 		if verify {
 			var unknown x509.UnknownAuthorityError
 			if !errors.As(err, &unknown) {
