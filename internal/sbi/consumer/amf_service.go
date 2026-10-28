@@ -100,9 +100,11 @@ func (s *namfService) CreateEventSubscription(
 	}
 
 	options := &models.Amf_EvtExpos_AmfEventMode{
-		Trigger:    models.Amf_EvtExpos_AmfEventTrigger_CONTINUOUS,
-		MaxReports: maxReports,
-		Expiry:     expiry,
+		Trigger: models.Amf_EvtExpos_AmfEventTrigger_CONTINUOUS,
+		Expiry:  expiry,
+	}
+	if maxReports > 0 {
+		options.MaxReports = maxReports
 	}
 
 	createReq := &EvtExpos.CreateSubscriptionRequest{

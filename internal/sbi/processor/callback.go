@@ -87,28 +87,53 @@ func (p *Processor) AmfEventNotification(
 		return
 	}
 
-	af.Mu.RLock()
-	notifDestination := ""
+	// Gate: under a single write-lock, re-validate map membership (handles concurrent
+	// exhaustion), check expiry, and decrement RemainingReports before forwarding so two
+	// concurrent notifications with maxReports=1 cannot both pass through.
+	af.Mu.Lock()
+
+	if _, active := af.MonSubs[monSub.SubID]; !active {
+		// Subscription already removed by a concurrent notification or DELETE.
+		af.Mu.Unlock()
+		c.Status(http.StatusNoContent)
+		return
+	}
+
 	var monSubCopy models.Nef_MonEvt_MonitoringEventSubscription
 	if monSub.MonSub != nil {
-		notifDestination = monSub.MonSub.NotificationDestination
 		monSubCopy = *monSub.MonSub
 	}
-	af.Mu.RUnlock()
+
+	if monSubCopy.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCopy.MonitorExpireTime) {
+		delete(af.MonSubs, monSub.SubID)
+		expiredAmfSubID := monSub.AmfSubID
+		af.Mu.Unlock()
+		monSub.Log.Infoln("Monitoring subscription expired; removed")
+		if _, err := p.Consumer().DeleteEventSubscription(expiredAmfSubID); err != nil {
+			monSub.Log.Warnf("AMF subscription cleanup after expiry failed: %v", err)
+		}
+		c.Status(http.StatusNoContent)
+		return
+	}
+
+	// Decrement before forwarding; 0 means no per-report limit was set.
+	var exhaustedAmfSubID string
+	if monSub.RemainingReports > 0 {
+		monSub.RemainingReports--
+		if monSub.RemainingReports == 0 {
+			delete(af.MonSubs, monSub.SubID)
+			exhaustedAmfSubID = monSub.AmfSubID
+			monSub.Log.Infoln("Monitoring subscription exhausted (max reports reached); removed")
+		}
+	}
+
+	notifDestination := monSubCopy.NotificationDestination
+	af.Mu.Unlock()
 
 	if notifDestination == "" {
 		pd := openapi.ProblemDetailsSystemFailure("AF notification destination is empty")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(http.StatusInternalServerError, pd)
-		return
-	}
-
-	if monSubCopy.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCopy.MonitorExpireTime) {
-		af.Mu.Lock()
-		delete(af.MonSubs, monSub.SubID)
-		af.Mu.Unlock()
-		monSub.Log.Infoln("Monitoring subscription expired; removed")
-		c.Status(http.StatusNoContent)
 		return
 	}
 
@@ -152,16 +177,11 @@ func (p *Processor) AmfEventNotification(
 		return
 	}
 
-	// Enforce MaximumNumberOfReports: decrement the counter and remove the subscription
-	// once the limit is reached. RemainingReports == 0 means no per-report limit was set.
-	if monSub.RemainingReports > 0 {
-		af.Mu.Lock()
-		monSub.RemainingReports--
-		if monSub.RemainingReports == 0 {
-			delete(af.MonSubs, monSub.SubID)
-			monSub.Log.Infoln("Monitoring subscription exhausted (max reports reached); removed")
+	// Delete orphaned AMF subscription after the last report was forwarded (outside af.Mu).
+	if exhaustedAmfSubID != "" {
+		if _, err := p.Consumer().DeleteEventSubscription(exhaustedAmfSubID); err != nil {
+			monSub.Log.Warnf("AMF subscription cleanup after exhaustion failed: %v", err)
 		}
-		af.Mu.Unlock()
 	}
 
 	c.Status(http.StatusNoContent)

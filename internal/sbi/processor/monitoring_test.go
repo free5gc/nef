@@ -315,6 +315,19 @@ func TestPostMonitoringEventSubscription_AmfError(t *testing.T) {
 	nefApp.Context().ResetCorreID()
 }
 
+// TestPostMonitoringEventSubscription_ImmediateRepRejected verifies that a subscription
+// request with immediateRep=true is rejected with 400 rather than silently ignored.
+func TestPostMonitoringEventSubscription_ImmediateRepRejected(t *testing.T) {
+	monSub := monSub1ForAf1
+	monSub.ImmediateRep = true
+
+	httpRecorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(httpRecorder)
+
+	nefApp.Processor().PostMonitoringEventSubscription(c, "af1", &monSub)
+	require.Equal(t, http.StatusBadRequest, httpRecorder.Code)
+}
+
 func TestDeleteIndividualMonitoringEventSubscription(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	initNRFDiscAMFStub()

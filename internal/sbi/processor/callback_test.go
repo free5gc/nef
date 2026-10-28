@@ -451,3 +451,113 @@ func TestAmfEventNotification_AfReturnsError(t *testing.T) {
 
 	require.Equal(t, http.StatusBadGateway, w.Code)
 }
+
+// TestAmfEventNotification_MaxReportsEnforced verifies that once MaximumNumberOfReports
+// is reached the subscription is removed and a second notification returns 404.
+func TestAmfEventNotification_MaxReportsEnforced(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscAMFStub()
+	initAMFEvtsDeleteSubscriptionStub(http.StatusNoContent)
+
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+
+	forwardCount := 0
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		forwardCount++
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-maxreports-test")
+	af.Mu.Lock()
+	correID := nefCtx.NewCorreID()
+	monSub := &models.Nef_MonEvt_MonitoringEventSubscription{
+		NotificationDestination: "http://af.example.com/notify",
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
+		MaximumNumberOfReports:  1,
+	}
+	monSubCtx := af.NewMonSub(correID, monSub)
+	monSubCtx.AmfSubID = "amf-sub-maxreports"
+	af.MonSubs[monSubCtx.SubID] = monSubCtx
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	t.Cleanup(func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	})
+
+	notif := &models.Amf_EvtExpos_AmfEventNotification{NotifyCorrelationId: monSubCtx.NotifCorreID}
+
+	c1, w1 := newGinContext()
+	nefApp.Processor().AmfEventNotification(c1, notif)
+	c1.Writer.WriteHeaderNow()
+	require.Equal(t, http.StatusNoContent, w1.Code)
+
+	c2, w2 := newGinContext()
+	nefApp.Processor().AmfEventNotification(c2, notif)
+	c2.Writer.WriteHeaderNow()
+	require.Equal(t, http.StatusNotFound, w2.Code)
+
+	require.Equal(t, 1, forwardCount, "AF must receive exactly one notification")
+}
+
+// TestAmfEventNotification_ExpiredSubscription verifies that a notification arriving after
+// MonitorExpireTime is silently dropped (204), the subscription is removed, and the AMF
+// subscription is deleted.
+func TestAmfEventNotification_ExpiredSubscription(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
+	initNRFDiscAMFStub()
+	initAMFEvtsDeleteSubscriptionStub(http.StatusNoContent)
+
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+
+	afCalled := false
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		afCalled = true
+		return &http.Response{
+			StatusCode: http.StatusNoContent,
+			Body:       io.NopCloser(strings.NewReader("")),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-expiry-test")
+	af.Mu.Lock()
+	correID := nefCtx.NewCorreID()
+	pastTime := time.Now().UTC().Add(-time.Minute)
+	monSub := &models.Nef_MonEvt_MonitoringEventSubscription{
+		NotificationDestination: "http://af.example.com/notify",
+		MonitoringType:          models.Nef_MonEvt_MonitoringType_UE_REACHABILITY,
+		MonitorExpireTime:       &pastTime,
+	}
+	monSubCtx := af.NewMonSub(correID, monSub)
+	monSubCtx.AmfSubID = "amf-sub-expiry"
+	af.MonSubs[monSubCtx.SubID] = monSubCtx
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	t.Cleanup(func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	})
+
+	c, w := newGinContext()
+	nefApp.Processor().AmfEventNotification(c, &models.Amf_EvtExpos_AmfEventNotification{
+		NotifyCorrelationId: monSubCtx.NotifCorreID,
+	})
+	c.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.False(t, afCalled, "AF must not be called for an expired subscription")
+
+	af.Mu.RLock()
+	_, stillExists := af.MonSubs[monSubCtx.SubID]
+	af.Mu.RUnlock()
+	require.False(t, stillExists, "expired subscription must be removed from the map")
+}

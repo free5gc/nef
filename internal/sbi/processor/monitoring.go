@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
@@ -42,9 +43,12 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 	af.Mu.RLock()
 	defer af.Mu.RUnlock()
 
+	now := time.Now().UTC()
 	monSubs := make([]models.Nef_MonEvt_MonitoringEventSubscription, 0, len(af.MonSubs))
 	for _, sub := range af.MonSubs {
-		monSubs = append(monSubs, *sub.MonSub)
+		if sub.MonSub.MonitorExpireTime == nil || now.Before(*sub.MonSub.MonitorExpireTime) {
+			monSubs = append(monSubs, *sub.MonSub)
+		}
 	}
 	c.JSON(http.StatusOK, &monSubs)
 }
@@ -154,6 +158,13 @@ func (p *Processor) GetIndividualMonitoringEventSubscription(
 
 	monSubCtx, ok := af.MonSubs[subID]
 	if !ok {
+		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		c.JSON(int(pd.Status), pd)
+		return
+	}
+
+	if monSubCtx.MonSub.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCtx.MonSub.MonitorExpireTime) {
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
