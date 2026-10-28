@@ -8,6 +8,7 @@ import (
 	"github.com/free5gc/openapi/nrf/NFMgmt"
 	"github.com/free5gc/openapi/pcf/PolAuth"
 	"github.com/free5gc/openapi/udr/DR"
+	"github.com/free5gc/util/nfheartbeat"
 )
 
 type nef interface {
@@ -33,6 +34,15 @@ func NewConsumer(nef nef) (*Consumer, error) {
 		nfDiscClients:   make(map[string]*NFDisc.APIClient),
 		nfMngmntClients: make(map[string]*NFMgmt.APIClient),
 	}
+	heartbeat, err := nfheartbeat.NewRunner(
+		nrfRegistrar{c.nnrfService},
+		func() int32 { return c.Config().GetNfHeartBeatTimer() },
+		logger.ConsumerLog,
+	)
+	if err != nil {
+		return nil, err
+	}
+	c.heartbeat = heartbeat
 
 	c.npcfService = &npcfService{
 		consumer: c,
