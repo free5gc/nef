@@ -38,7 +38,7 @@ func newTestApp(cfg *factory.Config, tlsKeyLogPath string) (*nefTestApp, error) 
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
 		return nil, err
 	}
-	if nef.notifier, err = notifier.NewNotifier(); err != nil {
+	if nef.notifier, err = notifier.NewNotifier(nef.Config().GetTLSVerify()); err != nil {
 		return nil, err
 	}
 	if nef.proc, err = NewProcessor(nef); err != nil {
