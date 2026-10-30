@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/free5gc/openapi/nrf/NFMgmt"
 	sbi_metrics "github.com/free5gc/util/metrics/sbi"
 	"github.com/free5gc/util/nfheartbeat"
+	"github.com/free5gc/util/serviceuri"
 )
 
 const (
@@ -236,7 +236,10 @@ func (s *nnrfService) buildNfProfile() (
 	profile.NfStatus = models.Nrf_NFMgmt_NFStatus_REGISTERED
 
 	cfg := s.consumer.Config()
-	profile.Ipv4Addresses = append(profile.Ipv4Addresses, cfg.SbiRegisterIP())
+	addr := serviceuri.NewAddressing(cfg.SbiRegisterIP())
+	profile.Fqdn = addr.FQDN
+	profile.Ipv4Addresses = addr.IPv4Addresses
+	profile.Ipv6Addresses = addr.IPv6Addresses
 	nfServices := cfg.NFServices()
 	if len(nfServices) == 0 {
 		return nil, fmt.Errorf("buildNfProfile err: NFServices is Empty")
@@ -309,57 +312,12 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.Nrf_NFMgmt
 		return nil, "", openapi.ReportError("no search result from NRF")
 	}
 
-	nfProf, uri, err := getProfileAndUri(res.Nrf_NFDisc_SearchResult, srvName)
+	// NFs that still register a full URL as apiPrefix remain reachable.
+	nfProf, result, err := serviceuri.ResolveFromSearchResult(res.Nrf_NFDisc_SearchResult.NfInstances, srvName,
+		serviceuri.Options{AllowLegacyAbsoluteAPIPrefix: true})
 	if err != nil {
 		logger.ConsumerLog.Errorf("%s", err.Error())
 		return nil, "", err
 	}
-	return nfProf, uri, nil
-}
-
-func getProfileAndUri(resp *models.Nrf_NFDisc_SearchResult, srvName models.Nrf_NFMgmt_ServiceName) (
-	*models.Nrf_NFDisc_NFProfile, string, error,
-) {
-	// select the first ServiceName
-	// TODO: select base on other info
-	var profile *models.Nrf_NFDisc_NFProfile
-	var uri string
-	for _, nfProfile := range resp.NfInstances {
-		profile = &nfProfile
-		uri = searchNFServiceUri(nfProfile, srvName, models.Nrf_NFMgmt_NFServiceStatus_REGISTERED)
-		if uri != "" {
-			break
-		}
-	}
-	if uri == "" {
-		return nil, "", fmt.Errorf("no uri for %s found", srvName)
-	}
-	return profile, uri, nil
-}
-
-// searchNFServiceUri returns NF Uri derived from NfProfile with corresponding service
-func searchNFServiceUri(nfProfile models.Nrf_NFDisc_NFProfile, serviceName models.Nrf_NFMgmt_ServiceName,
-	nfServiceStatus models.Nrf_NFMgmt_NFServiceStatus,
-) string {
-	uri, err := resolveNFServiceURI(nfProfile, serviceName, nfServiceStatus)
-	if err != nil {
-		logger.ConsumerLog.Warnf("NFService URI resolution failed: %v", err)
-		return ""
-	}
-	return uri
-}
-
-func getUriFromIpEndPoint(scheme models.UriScheme, ipv4Address string, port int32) string {
-	uri := ""
-	if port != 0 {
-		uri = string(scheme) + "://" + ipv4Address + ":" + strconv.Itoa(int(port))
-	} else {
-		switch scheme {
-		case models.UriScheme_HTTP:
-			uri = string(scheme) + "://" + ipv4Address + ":80"
-		case models.UriScheme_HTTPS:
-			uri = string(scheme) + "://" + ipv4Address + ":443"
-		}
-	}
-	return uri
+	return nfProf, result.APIRoot, nil
 }
