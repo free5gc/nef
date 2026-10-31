@@ -313,11 +313,11 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.Nrf_NFMgmt
 	}
 
 	// NFs that still register a full URL as apiPrefix remain reachable.
-	nfProf, result, err := serviceuri.ResolveFromSearchResult(res.Nrf_NFDisc_SearchResult.NfInstances, srvName,
+	nfProf, uri, err := serviceuri.ResolveFromSearchResult(res.Nrf_NFDisc_SearchResult.NfInstances, srvName,
 		serviceuri.Options{AllowLegacyAbsoluteAPIPrefix: true})
 	if err != nil {
 		logger.ConsumerLog.Errorf("%s", err.Error())
 		return nil, "", err
 	}
-	return nfProf, result.APIRoot, nil
+	return nfProf, uri, nil
 }
