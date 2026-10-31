@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -105,6 +106,11 @@ func (s *namfService) CreateEventSubscription(
 	}
 	if maxReports > 0 {
 		options.MaxReports = maxReports
+	} else {
+		// AMF's CONTINUOUS trigger treats MaxReports=0 as immediately exhausted
+		// (RemainReports<=0 => Active=false in free5gc AMF). Use MaxInt32 as a
+		// "no per-report limit" sentinel; NEF enforces all limits locally.
+		options.MaxReports = math.MaxInt32
 	}
 
 	createReq := &EvtExpos.CreateSubscriptionRequest{

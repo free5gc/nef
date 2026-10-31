@@ -130,6 +130,16 @@ func (p *Processor) AmfEventNotification(
 	notifDestination := monSubCopy.NotificationDestination
 	af.Mu.Unlock()
 
+	// Ensure the orphaned AMF subscription is deleted on all exit paths (success, token
+	// failure, or forward failure) — the local entry was already removed under af.Mu above.
+	defer func() {
+		if exhaustedAmfSubID != "" {
+			if _, err := p.Consumer().DeleteEventSubscription(exhaustedAmfSubID); err != nil {
+				monSub.Log.Warnf("AMF subscription cleanup after exhaustion failed: %v", err)
+			}
+		}
+	}()
+
 	if notifDestination == "" {
 		pd := openapi.ProblemDetailsSystemFailure("AF notification destination is empty")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
@@ -175,13 +185,6 @@ func (p *Processor) AmfEventNotification(
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(http.StatusBadGateway, pd)
 		return
-	}
-
-	// Delete orphaned AMF subscription after the last report was forwarded (outside af.Mu).
-	if exhaustedAmfSubID != "" {
-		if _, err := p.Consumer().DeleteEventSubscription(exhaustedAmfSubID); err != nil {
-			monSub.Log.Warnf("AMF subscription cleanup after exhaustion failed: %v", err)
-		}
 	}
 
 	c.Status(http.StatusNoContent)

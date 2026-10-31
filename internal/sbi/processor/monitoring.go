@@ -40,16 +40,28 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 		return
 	}
 
-	af.Mu.RLock()
-	defer af.Mu.RUnlock()
+	af.Mu.Lock()
 
 	now := time.Now().UTC()
+	var expiredAmfSubIDs []string
 	monSubs := make([]models.Nef_MonEvt_MonitoringEventSubscription, 0, len(af.MonSubs))
-	for _, sub := range af.MonSubs {
-		if sub.MonSub.MonitorExpireTime == nil || now.Before(*sub.MonSub.MonitorExpireTime) {
+	for id, sub := range af.MonSubs {
+		if sub.MonSub.MonitorExpireTime != nil && now.After(*sub.MonSub.MonitorExpireTime) {
+			expiredAmfSubIDs = append(expiredAmfSubIDs, sub.AmfSubID)
+			delete(af.MonSubs, id)
+			sub.Log.Infoln("Monitoring subscription expired on GET; removed")
+		} else {
 			monSubs = append(monSubs, *sub.MonSub)
 		}
 	}
+	af.Mu.Unlock()
+
+	for _, amfSubID := range expiredAmfSubIDs {
+		if _, err := p.Consumer().DeleteEventSubscription(amfSubID); err != nil {
+			af.Log.Warnf("AMF subscription cleanup after expiry (GET) failed: %v", err)
+		}
+	}
+
 	c.JSON(http.StatusOK, &monSubs)
 }
 
@@ -153,11 +165,11 @@ func (p *Processor) GetIndividualMonitoringEventSubscription(
 		return
 	}
 
-	af.Mu.RLock()
-	defer af.Mu.RUnlock()
+	af.Mu.Lock()
 
 	monSubCtx, ok := af.MonSubs[subID]
 	if !ok {
+		af.Mu.Unlock()
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
@@ -165,13 +177,22 @@ func (p *Processor) GetIndividualMonitoringEventSubscription(
 	}
 
 	if monSubCtx.MonSub.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCtx.MonSub.MonitorExpireTime) {
+		delete(af.MonSubs, subID)
+		expiredAmfSubID := monSubCtx.AmfSubID
+		af.Mu.Unlock()
+		monSubCtx.Log.Infoln("Monitoring subscription expired on GET; removed")
+		if _, err := p.Consumer().DeleteEventSubscription(expiredAmfSubID); err != nil {
+			monSubCtx.Log.Warnf("AMF subscription cleanup after expiry (GET) failed: %v", err)
+		}
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
 		return
 	}
 
-	c.JSON(http.StatusOK, monSubCtx.MonSub)
+	result := monSubCtx.MonSub
+	af.Mu.Unlock()
+	c.JSON(http.StatusOK, result)
 }
 
 // DeleteIndividualMonitoringEventSubscription Delete an individual monitoring event subscription
