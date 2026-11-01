@@ -19,7 +19,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-replace github.com/free5gc/openapi => github.com/carlhus/openapi v0.0.0-20260810150356-d8cc967ad99b
+replace github.com/free5gc/openapi => github.com/carlhus/openapi v0.0.0-20260831123630-67c603f8c589
 
 require (
 	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1 // indirect
