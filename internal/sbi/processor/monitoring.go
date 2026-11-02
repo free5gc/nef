@@ -13,6 +13,7 @@ import (
 	"github.com/free5gc/openapi/models"
 	"github.com/free5gc/util/metrics/sbi"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 // supportedMonitoringTypes are the monitoring types AMF's Namf_EventExposure already exposes.
@@ -349,11 +350,7 @@ func buildGpsi(externalId, msisdn string) string {
 // cleanupAmfSubscription deletes an AMF-side subscription outside of any lock.
 // On failure it retains the amfSubID by scheduling one retry after 30 s; if the
 // retry also fails the amfSubID is logged at error level for operator intervention.
-func (p *Processor) cleanupAmfSubscription(log interface {
-	Infoln(...interface{})
-	Warnf(string, ...interface{})
-	Errorf(string, ...interface{})
-}, amfSubID string) {
+func (p *Processor) cleanupAmfSubscription(log *logrus.Entry, amfSubID string) {
 	pd, err := p.Consumer().DeleteEventSubscription(amfSubID)
 	if pd == nil && err == nil {
 		return
