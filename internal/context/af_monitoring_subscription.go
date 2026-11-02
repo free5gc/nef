@@ -2,6 +2,7 @@ package context
 
 import (
 	"sync"
+	"time"
 
 	"github.com/free5gc/openapi/models"
 	"github.com/sirupsen/logrus"
@@ -21,4 +22,9 @@ type AfMonitoringSubscription struct {
 	// OpMu serializes outbound mutations for this subscription.
 	// It must be acquired without holding the parent AfData.Mu.
 	OpMu sync.Mutex
+
+	// CleanupTimer fires when MonitorExpireTime is reached without a prior notification or
+	// explicit DELETE, ensuring the local entry and its AMF subscription are cleaned up even
+	// without a subsequent request.
+	CleanupTimer *time.Timer
 }

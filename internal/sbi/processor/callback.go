@@ -105,13 +105,14 @@ func (p *Processor) AmfEventNotification(
 	}
 
 	if monSubCopy.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCopy.MonitorExpireTime) {
+		if monSub.CleanupTimer != nil {
+			monSub.CleanupTimer.Stop()
+		}
 		delete(af.MonSubs, monSub.SubID)
 		expiredAmfSubID := monSub.AmfSubID
 		af.Mu.Unlock()
 		monSub.Log.Infoln("Monitoring subscription expired; removed")
-		if _, err := p.Consumer().DeleteEventSubscription(expiredAmfSubID); err != nil {
-			monSub.Log.Warnf("AMF subscription cleanup after expiry failed: %v", err)
-		}
+		p.cleanupAmfSubscription(monSub.Log, expiredAmfSubID)
 		c.Status(http.StatusNoContent)
 		return
 	}
@@ -121,6 +122,9 @@ func (p *Processor) AmfEventNotification(
 	if monSub.RemainingReports > 0 {
 		monSub.RemainingReports--
 		if monSub.RemainingReports == 0 {
+			if monSub.CleanupTimer != nil {
+				monSub.CleanupTimer.Stop()
+			}
 			delete(af.MonSubs, monSub.SubID)
 			exhaustedAmfSubID = monSub.AmfSubID
 			monSub.Log.Infoln("Monitoring subscription exhausted (max reports reached); removed")
@@ -134,9 +138,7 @@ func (p *Processor) AmfEventNotification(
 	// failure, or forward failure) — the local entry was already removed under af.Mu above.
 	defer func() {
 		if exhaustedAmfSubID != "" {
-			if _, err := p.Consumer().DeleteEventSubscription(exhaustedAmfSubID); err != nil {
-				monSub.Log.Warnf("AMF subscription cleanup after exhaustion failed: %v", err)
-			}
+			p.cleanupAmfSubscription(monSub.Log, exhaustedAmfSubID)
 		}
 	}()
 

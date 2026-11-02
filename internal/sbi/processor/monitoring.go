@@ -47,6 +47,9 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 	monSubs := make([]models.Nef_MonEvt_MonitoringEventSubscription, 0, len(af.MonSubs))
 	for id, sub := range af.MonSubs {
 		if sub.MonSub.MonitorExpireTime != nil && now.After(*sub.MonSub.MonitorExpireTime) {
+			if sub.CleanupTimer != nil {
+				sub.CleanupTimer.Stop()
+			}
 			expiredAmfSubIDs = append(expiredAmfSubIDs, sub.AmfSubID)
 			delete(af.MonSubs, id)
 			sub.Log.Infoln("Monitoring subscription expired on GET; removed")
@@ -57,9 +60,7 @@ func (p *Processor) GetMonitoringEventSubscriptions(
 	af.Mu.Unlock()
 
 	for _, amfSubID := range expiredAmfSubIDs {
-		if _, err := p.Consumer().DeleteEventSubscription(amfSubID); err != nil {
-			af.Log.Warnf("AMF subscription cleanup after expiry (GET) failed: %v", err)
-		}
+		p.cleanupAmfSubscription(af.Log, amfSubID)
 	}
 
 	c.JSON(http.StatusOK, &monSubs)
@@ -135,6 +136,22 @@ func (p *Processor) PostMonitoringEventSubscription(
 	monSubCtx.AmfSubID = amfSubID
 	af.MonSubs[monSubCtx.SubID] = monSubCtx
 	af.Log.Infoln("Monitoring event subscription is added")
+	if monSub.MonitorExpireTime != nil {
+		if d := time.Until(*monSub.MonitorExpireTime); d > 0 {
+			monSubCtx.CleanupTimer = time.AfterFunc(d, func() {
+				af.Mu.Lock()
+				if _, ok := af.MonSubs[monSubCtx.SubID]; !ok {
+					af.Mu.Unlock()
+					return // already removed by notification or DELETE
+				}
+				delete(af.MonSubs, monSubCtx.SubID)
+				subAmfID := monSubCtx.AmfSubID
+				af.Mu.Unlock()
+				monSubCtx.Log.Infoln("Monitoring subscription expired (timer); removed")
+				p.cleanupAmfSubscription(monSubCtx.Log, subAmfID)
+			})
+		}
+	}
 	af.Mu.Unlock()
 
 	monSub.Self = p.genMonitoringEventSubURI(afID, monSubCtx.SubID)
@@ -177,13 +194,14 @@ func (p *Processor) GetIndividualMonitoringEventSubscription(
 	}
 
 	if monSubCtx.MonSub.MonitorExpireTime != nil && time.Now().UTC().After(*monSubCtx.MonSub.MonitorExpireTime) {
+		if monSubCtx.CleanupTimer != nil {
+			monSubCtx.CleanupTimer.Stop()
+		}
 		delete(af.MonSubs, subID)
 		expiredAmfSubID := monSubCtx.AmfSubID
 		af.Mu.Unlock()
 		monSubCtx.Log.Infoln("Monitoring subscription expired on GET; removed")
-		if _, err := p.Consumer().DeleteEventSubscription(expiredAmfSubID); err != nil {
-			monSubCtx.Log.Warnf("AMF subscription cleanup after expiry (GET) failed: %v", err)
-		}
+		p.cleanupAmfSubscription(monSubCtx.Log, expiredAmfSubID)
 		pd := openapi.ProblemDetailsDataNotFound("Subscription is not found")
 		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
 		c.JSON(int(pd.Status), pd)
@@ -241,6 +259,9 @@ func (p *Processor) DeleteIndividualMonitoringEventSubscription(
 	}
 
 	af.Mu.Lock()
+	if monSubCtx.CleanupTimer != nil {
+		monSubCtx.CleanupTimer.Stop()
+	}
 	delete(af.MonSubs, subID)
 	af.Mu.Unlock()
 	c.Status(http.StatusNoContent)
@@ -323,6 +344,26 @@ func buildGpsi(externalId, msisdn string) string {
 		return "extid-" + externalId
 	}
 	return "msisdn-" + msisdn
+}
+
+// cleanupAmfSubscription deletes an AMF-side subscription outside of any lock.
+// On failure it retains the amfSubID by scheduling one retry after 30 s; if the
+// retry also fails the amfSubID is logged at error level for operator intervention.
+func (p *Processor) cleanupAmfSubscription(log interface {
+	Infoln(...interface{})
+	Warnf(string, ...interface{})
+	Errorf(string, ...interface{})
+}, amfSubID string) {
+	pd, err := p.Consumer().DeleteEventSubscription(amfSubID)
+	if pd == nil && err == nil {
+		return
+	}
+	log.Warnf("AMF subscription cleanup failed (amfSubID=%s pd=%v err=%v); scheduling retry in 30s", amfSubID, pd, err)
+	time.AfterFunc(30*time.Second, func() {
+		if pd2, err2 := p.Consumer().DeleteEventSubscription(amfSubID); pd2 != nil || err2 != nil {
+			log.Errorf("AMF subscription cleanup retry failed, orphaned (amfSubID=%s pd=%v err=%v)", amfSubID, pd2, err2)
+		}
+	})
 }
 
 func (p *Processor) genMonitoringEventSubURI(
