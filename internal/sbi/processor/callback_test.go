@@ -21,50 +21,14 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func TestBindOAuthTokenToRequest(t *testing.T) {
-	openapi.InterceptInnerHttp2Client(t, false)
-	t.Run("context without token source", func(t *testing.T) {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://af.example.com", nil)
-		if err != nil {
-			t.Fatalf("create request failed: %v", err)
-		}
-
-		err = bindOAuthTokenToRequest(req, context.TODO())
-		if err != nil {
-			t.Fatalf("bind token failed: %v", err)
-		}
-		if got := req.Header.Get("Authorization"); got != "" {
-			t.Fatalf("unexpected authorization header: %q", got)
-		}
-	})
-
-	t.Run("context with token source", func(t *testing.T) {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://example.com", nil)
-		if err != nil {
-			t.Fatalf("create request failed: %v", err)
-		}
-
-		tok := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "abc123", TokenType: "Bearer"})
-		tokenCtx := context.WithValue(context.Background(), openapi.ContextOAuth2, tok)
-
-		err = bindOAuthTokenToRequest(req, tokenCtx)
-		if err != nil {
-			t.Fatalf("bind token failed: %v", err)
-		}
-		if got := req.Header.Get("Authorization"); got != "Bearer abc123" {
-			t.Fatalf("authorization header = %q, want %q", got, "Bearer abc123")
-		}
-	})
-}
-
-func TestPostSmfEventExposureNotificationToAfWithToken(t *testing.T) {
+func TestPostSmfEventExposureNotificationToAfOmitsAuthorization(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
 
 	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if got := req.Header.Get("Authorization"); got != "Bearer token-for-af" {
-			t.Fatalf("authorization header = %q, want %q", got, "Bearer token-for-af")
+		if got := req.Header.Get("Authorization"); got != "" {
+			t.Fatalf("unexpected authorization header: %q", got)
 		}
 		return &http.Response{
 			StatusCode: http.StatusNoContent,
@@ -103,9 +67,10 @@ func TestPostSmfEventExposureNotificationToAfNon2xx(t *testing.T) {
 }
 
 // newGinContext returns a fresh gin context backed by a ResponseRecorder.
-func newGinContext() (*gin.Context, *httptest.ResponseRecorder) {
+func newGinContext(t *testing.T) (*gin.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 	return c, w
 }
 
@@ -113,7 +78,7 @@ func newGinContext() (*gin.Context, *httptest.ResponseRecorder) {
 // 404 when the NotifId has no matching subscription in NefContext.
 func TestSmfNotification_NotifIdNotFound(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
-	c, w := newGinContext()
+	c, w := newGinContext(t)
 
 	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: "unknown-corr-id"}
 	nefApp.Processor().SmfNotification(c, notif)
@@ -142,7 +107,7 @@ func TestSmfNotification_EmptyNotifDest(t *testing.T) {
 		nefCtx.ResetCorreID()
 	}()
 
-	c, w := newGinContext()
+	c, w := newGinContext(t)
 	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
 	nefApp.Processor().SmfNotification(c, notif)
 	c.Writer.WriteHeaderNow()
@@ -159,6 +124,7 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 
 	afReceived := false
 	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		require.Empty(t, req.Header.Get("Authorization"))
 		afReceived = true
 		return &http.Response{
 			StatusCode: http.StatusNoContent,
@@ -168,6 +134,9 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 	})}
 
 	nefCtx := nefApp.Context()
+	previous := nefCtx.OAuth2Required
+	nefCtx.OAuth2Required = true
+	t.Cleanup(func() { nefCtx.OAuth2Required = previous })
 	af := nefCtx.NewAf("af-callback-test-2")
 	af.Mu.Lock()
 	correID := nefCtx.NewCorreID()
@@ -183,7 +152,7 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 		nefCtx.ResetCorreID()
 	}()
 
-	c, w := newGinContext()
+	c, w := newGinContext(t)
 	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
 	nefApp.Processor().SmfNotification(c, notif)
 	c.Writer.WriteHeaderNow()
@@ -223,7 +192,7 @@ func TestSmfNotification_AfReturnsError(t *testing.T) {
 		nefCtx.ResetCorreID()
 	}()
 
-	c, w := newGinContext()
+	c, w := newGinContext(t)
 	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
 	nefApp.Processor().SmfNotification(c, notif)
 	c.Writer.WriteHeaderNow()
