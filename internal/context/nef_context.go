@@ -27,16 +27,16 @@ var _ NFContext = &NefContext{}
 type NefContext struct {
 	nef
 
-	nfInstID       string // NF Instance ID
+	nfInstID        string // NF Instance ID
 	nrfNfInstanceID string
-	pcfPaUri       string
-	udrDrUri       string
-	namfEvtsUri    string
-	udmSdmUri      string
-	numCorreID     uint64
-	OAuth2Required bool
-	afs            map[string]*AfData
-	mu             sync.RWMutex
+	pcfPaUri        string
+	udrDrUri        string
+	namfEvtsUri     string
+	udmSdmUri       string
+	numCorreID      uint64
+	OAuth2Required  bool
+	afs             map[string]*AfData
+	mu              sync.RWMutex
 }
 
 func NewContext(nef nef) (*NefContext, error) {
