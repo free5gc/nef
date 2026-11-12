@@ -28,6 +28,7 @@ type NefContext struct {
 	nef
 
 	nfInstID       string // NF Instance ID
+	nrfNfInstanceID string
 	pcfPaUri       string
 	udrDrUri       string
 	namfEvtsUri    string
@@ -240,7 +241,7 @@ func (c *NefContext) GetTokenCtxForNRF(serviceName models.Nrf_NFMgmt_ServiceName
 	context.Context, *models.ProblemDetails, error,
 ) {
 	return c.GetTokenCtxForNFInstance(
-		serviceName, models.Nrf_NFMgmt_NFType_NRF, c.Config().NrfNfInstanceID())
+		serviceName, models.Nrf_NFMgmt_NFType_NRF, c.nrfNfInstanceID)
 }
 
 func (c *NefContext) tokenRequest(serviceName models.Nrf_NFMgmt_ServiceName,
@@ -263,6 +264,7 @@ func (c *NefContext) tokenRequestForNFInstance(serviceName models.Nrf_NFMgmt_Ser
 func (c *NefContext) SetOAuth2Required(required bool) error {
 	if !required {
 		c.OAuth2Required = false
+		c.nrfNfInstanceID = ""
 		return nil
 	}
 	if strings.TrimSpace(c.Config().NrfCertPem()) == "" {
@@ -271,9 +273,11 @@ func (c *NefContext) SetOAuth2Required(required bool) error {
 	if strings.TrimSpace(c.Config().NrfUri()) == "" {
 		return fmt.Errorf("OAuth2 enabled but NRF URI is empty")
 	}
-	if err := uuid.Validate(c.Config().NrfNfInstanceID()); err != nil {
-		return fmt.Errorf("OAuth2 enabled but trusted NRF instance ID is invalid: %w", err)
+	nrfNfInstanceID, err := oauth.NFInstanceIDFromCertificate(c.Config().NrfCertPem())
+	if err != nil {
+		return fmt.Errorf("derive trusted NRF instance ID from certificate: %w", err)
 	}
+	c.nrfNfInstanceID = nrfNfInstanceID
 	c.OAuth2Required = true
 	return nil
 }
@@ -291,5 +295,5 @@ func (c *NefContext) AuthorizationCheck(token string, serviceName models.Nrf_NFM
 	)
 	return oauth.VerifyOAuth(token, string(serviceName), oauth.AudiencePolicy{
 		NFInstanceID: c.nfInstID, NFType: models.Nrf_NFMgmt_NFType_NEF,
-	}, c.Config().NrfNfInstanceID(), c.Config().NrfCertPem())
+	}, c.nrfNfInstanceID, c.Config().NrfCertPem())
 }
