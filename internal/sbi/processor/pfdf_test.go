@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
@@ -181,17 +181,13 @@ func TestDeleteIndividualPFDSubscription(t *testing.T) {
 	}
 }
 
-var (
-	// `notifChan` are used in `TestPostPfdChangeReports()` to pass the notification requests intercepted by gock.
-	notifChan   = make(chan *http.Request)
-	pfdContent1 = models.Nef_PFDMgmt_PfdContent{
-		PfdId: "pfd1",
-		FlowDescriptions: []string{
-			"permit in ip from 10.68.28.39 80 to any",
-			"permit out ip from any to 10.68.28.39 80",
-		},
-	}
-)
+var pfdContent1 = models.Nef_PFDMgmt_PfdContent{
+	PfdId: "pfd1",
+	FlowDescriptions: []string{
+		"permit in ip from 10.68.28.39 80 to any",
+		"permit out ip from any to 10.68.28.39 80",
+	},
+}
 
 func TestPostPfdChangeReports(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
@@ -199,14 +195,33 @@ func TestPostPfdChangeReports(t *testing.T) {
 	// Note: Because TestPostPFDSubscriptions() already used subscription ID 1, the ID will start from 2 here.
 	initUDRDrPutPfdDataStub(http.StatusOK)
 	initUDRDrDeletePfdDataStub()
-	initNEFNotificationStub("http://pfdSub2URI")
-	initNEFNotificationStub("http://pfdSub3URI")
 	defer gock.Off()
-	gock.Observe(func(request *http.Request, mock gock.Mock) {
-		if strings.Contains(request.URL.String(), "pfdSub") {
-			notifChan <- request
+
+	type notification struct {
+		uri   string
+		items []models.Nef_PFDMgmt_PfdChangeNotification
+	}
+	notifChan := make(chan notification, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("unexpected notification method: %s", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
 		}
-	})
+		var items []models.Nef_PFDMgmt_PfdChangeNotification
+		if err := json.NewDecoder(r.Body).Decode(&items); err != nil {
+			t.Errorf("decode PFD notification: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		select {
+		case notifChan <- notification{uri: "http://" + r.Host + r.URL.Path, items: items}:
+		default:
+			t.Error("unexpected extra PFD notification")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
 
 	af := nefApp.Context().NewAf("af1")
 	nefApp.Context().AddAf(af)
@@ -221,11 +236,11 @@ func TestPostPfdChangeReports(t *testing.T) {
 
 	subsID1 := nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.Nef_PFDMgmt_PfdSubscription{
 		ApplicationIds: []string{"app1"},
-		NotifyUri:      "http://pfdSub2URI/notify",
+		NotifyUri:      server.URL + "/sub2/notify",
 	})
 	subsID2 := nefApp.Notifier().PfdChangeNotifier.AddPfdSub(&models.Nef_PFDMgmt_PfdSubscription{
 		ApplicationIds: []string{"app1", "app2"},
-		NotifyUri:      "http://pfdSub3URI/notify",
+		NotifyUri:      server.URL + "/sub3/notify",
 	})
 	defer func() {
 		if err := nefApp.Notifier().PfdChangeNotifier.DeletePfdSub(subsID1); err != nil {
@@ -252,7 +267,7 @@ func TestPostPfdChangeReports(t *testing.T) {
 				})
 			},
 			expectedNotifications: map[string][]models.Nef_PFDMgmt_PfdChangeNotification{
-				"http://pfdSub2URI/notify": {
+				server.URL + "/sub2/notify": {
 					{
 						ApplicationId: "app1",
 						Pfds: []models.Nef_PFDMgmt_PfdContent{
@@ -260,7 +275,7 @@ func TestPostPfdChangeReports(t *testing.T) {
 						},
 					},
 				},
-				"http://pfdSub3URI/notify": {
+				server.URL + "/sub3/notify": {
 					{
 						ApplicationId: "app1",
 						Pfds: []models.Nef_PFDMgmt_PfdContent{
@@ -276,7 +291,7 @@ func TestPostPfdChangeReports(t *testing.T) {
 				nefApp.Processor().DeleteIndividualApplicationPFDManagement(c, "af1", "1", "app2")
 			},
 			expectedNotifications: map[string][]models.Nef_PFDMgmt_PfdChangeNotification{
-				"http://pfdSub3URI/notify": {
+				server.URL + "/sub3/notify": {
 					{
 						ApplicationId: "app2",
 						RemovalFlag:   true,
@@ -293,21 +308,13 @@ func TestPostPfdChangeReports(t *testing.T) {
 
 			tc.triggerFunc(c)
 			for i := 0; i < len(tc.expectedNotifications); i++ {
-				r := <-notifChan
-
-				var getNotifications []models.Nef_PFDMgmt_PfdChangeNotification
-				if err := json.NewDecoder(r.Body).Decode(&getNotifications); err != nil {
-					t.Fatal(err)
+				select {
+				case received := <-notifChan:
+					require.Equal(t, tc.expectedNotifications[received.uri], received.items)
+				case <-time.After(5 * time.Second):
+					t.Fatal("timed out waiting for PFD notification")
 				}
-				require.Equal(t, tc.expectedNotifications[r.URL.String()], getNotifications)
 			}
 		})
 	}
-}
-
-func initNEFNotificationStub(notifyURI string) {
-	gock.New(notifyURI).
-		Post("/notify").
-		Persist().
-		Reply(http.StatusNoContent)
 }

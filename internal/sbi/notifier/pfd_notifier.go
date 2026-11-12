@@ -2,11 +2,14 @@ package notifier
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/free5gc/nef/internal/logger"
 	// "github.com/free5gc/openapi/Nnef_PFDmanagement"
@@ -16,6 +19,7 @@ import (
 )
 
 type PfdChangeNotifier struct {
+	verify              bool
 	clientPfdManagement *PFDMgmt.APIClient
 	mu                  sync.RWMutex
 
@@ -30,8 +34,9 @@ type PfdNotifyContext struct {
 	subIdToChangedAppIDs map[string][]string
 }
 
-func NewPfdChangeNotifier() (*PfdChangeNotifier, error) {
+func NewPfdChangeNotifier(verify bool) (*PfdChangeNotifier, error) {
 	return &PfdChangeNotifier{
+		verify:        verify,
 		appIdToSubIDs: make(map[string]map[string]bool),
 		subIdToURI:    make(map[string]string),
 	}, nil
@@ -47,7 +52,16 @@ func (n *PfdChangeNotifier) initPfdManagementApiClient() {
 
 	config := PFDMgmt.NewConfiguration()
 	config.SetMetrics(sbi_metrics.SbiMetricHook)
-	config.SetHTTPClient(http.DefaultClient)
+	config.SetHTTPClient(&http.Client{Transport: &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: time.Second,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: !n.verify}, // #nosec G402 -- NF configuration
+	}})
 	n.clientPfdManagement = PFDMgmt.NewAPIClient(config)
 }
 
