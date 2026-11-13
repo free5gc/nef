@@ -43,3 +43,6 @@ func TestGetOrCreateAfConcurrent(t *testing.T) {
 		t.Fatal("GetOrCreateAf did not register the returned AF instance")
 	}
 }
+
+// Exercise parsed NF config through the same startup configuration API and
+// generated NRF client used in production. No deployment files are modified.

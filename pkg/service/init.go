@@ -47,7 +47,9 @@ func NewApp(
 	cfg *factory.Config,
 	tlsKeyLogPath string,
 ) (*NefApp, error) {
-	if err := openapi.ConfigureHTTP2Clients(cfg.GetReadIdleTimeout(), cfg.GetPingTimeout()); err != nil {
+	if err := openapi.ConfigureHTTP2Clients(
+		cfg.GetReadIdleTimeout(), cfg.GetPingTimeout(), cfg.GetTLSVerify(),
+	); err != nil {
 		return nil, err
 	}
 	var err error
@@ -66,7 +68,7 @@ func NewApp(
 	if nef.consumer, err = consumer.NewConsumer(nef); err != nil {
 		return nil, err
 	}
-	if nef.notifier, err = notifier.NewNotifier(); err != nil {
+	if nef.notifier, err = notifier.NewNotifier(cfg.GetTLSVerify()); err != nil {
 		return nil, err
 	}
 	if nef.proc, err = processor.NewProcessor(nef); err != nil {
@@ -193,6 +195,11 @@ func (a *NefApp) registerToNrf(ctx context.Context) error {
 }
 
 func (a *NefApp) Start() error {
+	if err := a.registerToNrf(a.ctx); err != nil {
+		return err
+	}
+	logger.MainLog.Infoln("register to NRF successfully")
+
 	a.wg.Add(1)
 	/* Go Routine is spawned here for listening for cancellation event on
 	 * context */

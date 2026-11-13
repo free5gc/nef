@@ -24,6 +24,7 @@ type HandlerResponse struct {
 }
 
 func NewProcessor(nef nef) (*Processor, error) {
+	configureAFCallbackHTTPClient(nef.Config().GetTLSVerify())
 	handler := &Processor{
 		nef: nef,
 	}
