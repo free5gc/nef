@@ -290,8 +290,8 @@ func (c *NefContext) AuthorizationCheck(token string, serviceName models.Nrf_NFM
 		return nil
 	}
 	logger.CtxLog.Debugf(
-		"NefContext::AuthorizationCheck: tokenPresent[%t] tokenLen[%d] serviceName[%s]",
-		token != "", len(token), serviceName,
+		"NefContext::AuthorizationCheck: tokenPresent[%t] serviceName[%s]",
+		token != "", serviceName,
 	)
 	return oauth.VerifyOAuth(token, string(serviceName), oauth.AudiencePolicy{
 		NFInstanceID: c.nfInstID, NFType: models.Nrf_NFMgmt_NFType_NEF,

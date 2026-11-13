@@ -26,42 +26,6 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
-func TestBindOAuthTokenToRequest(t *testing.T) {
-	openapi.InterceptInnerHttp2Client(t, false)
-	t.Run("context without token source", func(t *testing.T) {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://af.example.com", nil)
-		if err != nil {
-			t.Fatalf("create request failed: %v", err)
-		}
-
-		err = bindOAuthTokenToRequest(req, context.TODO())
-		if err != nil {
-			t.Fatalf("bind token failed: %v", err)
-		}
-		if got := req.Header.Get("Authorization"); got != "" {
-			t.Fatalf("unexpected authorization header: %q", got)
-		}
-	})
-
-	t.Run("context with token source", func(t *testing.T) {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://example.com", nil)
-		if err != nil {
-			t.Fatalf("create request failed: %v", err)
-		}
-
-		tok := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "abc123", TokenType: "Bearer"})
-		tokenCtx := context.WithValue(context.Background(), openapi.ContextOAuth2, tok)
-
-		err = bindOAuthTokenToRequest(req, tokenCtx)
-		if err != nil {
-			t.Fatalf("bind token failed: %v", err)
-		}
-		if got := req.Header.Get("Authorization"); got != "Bearer abc123" {
-			t.Fatalf("authorization header = %q, want %q", got, "Bearer abc123")
-		}
-	})
-}
-
 func TestPostSmfEventExposureNotificationToAfOmitsAuthorization(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
@@ -82,7 +46,7 @@ func TestPostSmfEventExposureNotificationToAfOmitsAuthorization(t *testing.T) {
 	tokenCtx := context.WithValue(context.Background(), openapi.ContextOAuth2, tok)
 
 	eeNotif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: "notif-1"}
-	if err := postNotificationToAf("http://af.example.com/notify", eeNotif, tokenCtx, false); err != nil {
+	if err := postNotificationToAf("http://af.example.com/notify", eeNotif, tokenCtx); err != nil {
 		t.Fatalf("post callback failed: %v", err)
 	}
 }
@@ -101,7 +65,7 @@ func TestPostNotificationToAfNon2xx(t *testing.T) {
 	})}
 
 	eeNotif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: "notif-2"}
-	err := postNotificationToAf("http://af.example.com/notify", eeNotif, context.TODO(), false)
+	err := postNotificationToAf("http://af.example.com/notify", eeNotif, context.TODO())
 	if err == nil {
 		t.Fatal("expected error when AF callback returns non-2xx")
 	}
@@ -289,6 +253,8 @@ func TestAmfEventNotification_SuccessfulForward(t *testing.T) {
 
 	var afReceivedBody []byte
 	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		// TS 29.500 §6.7.3: notifications are sent without an OAuth2 access token.
+		require.Empty(t, req.Header.Get("Authorization"))
 		var readErr error
 		afReceivedBody, readErr = io.ReadAll(req.Body)
 		require.NoError(t, readErr)
@@ -582,7 +548,7 @@ func TestSBICallbackTLSVerification(t *testing.T) {
 	for _, verify := range []bool{false, true} {
 		configureAFCallbackHTTPClient(verify)
 		err := postNotificationToAf(
-			server.URL, &models.Smf_EvtExpos_NsmfEventExposureNotification{}, context.Background(), false,
+			server.URL, &models.Smf_EvtExpos_NsmfEventExposureNotification{}, context.Background(),
 		)
 		if verify {
 			var unknown x509.UnknownAuthorityError
