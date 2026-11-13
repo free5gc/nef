@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/models"
@@ -144,8 +145,7 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context, applyOAuth2 bool) 
 	for ctx.Err() == nil {
 		res, err = client.NFInstanceIDDocumentApi.RegisterNFInstance(ctx, req)
 		if err == nil && res != nil {
-			s.processRegisterResponse(res.Nrf_NFMgmt_NFProfile, applyOAuth2)
-			return nil
+			return s.processRegisterResponse(res.Nrf_NFMgmt_NFProfile, applyOAuth2)
 		}
 		logger.ConsumerLog.Errorf("NEF register to NRF Error[%v]", err)
 		select {
@@ -158,7 +158,7 @@ func (s *nnrfService) RegisterNFInstance(ctx context.Context, applyOAuth2 bool) 
 
 // processRegisterResponse adopts what the NRF answered to the NFRegister PUT: the
 // heartbeat interval and the oauth2 custom info.
-func (s *nnrfService) processRegisterResponse(nf *models.Nrf_NFMgmt_NFProfile, applyOAuth2 bool) {
+func (s *nnrfService) processRegisterResponse(nf *models.Nrf_NFMgmt_NFProfile, applyOAuth2 bool) error {
 	if nf == nil {
 		nf = &models.Nrf_NFMgmt_NFProfile{}
 	}
@@ -173,13 +173,11 @@ func (s *nnrfService) processRegisterResponse(nf *models.Nrf_NFMgmt_NFProfile, a
 	}
 	nefContext := s.consumer.Context()
 	if applyOAuth2 {
-		nefContext.OAuth2Required = oauth2
-		if oauth2 && s.consumer.Config().NrfCertPem() == "" {
-			logger.CfgLog.Error("OAuth2 enable but no nrfCertPem provided in config.")
-		}
+		return nefContext.SetOAuth2Required(oauth2)
 	} else if oauth2 != nefContext.OAuth2Required {
 		logger.ConsumerLog.Warnf("NRF OAuth2 setting changed to %v, restart NEF to apply it", oauth2)
 	}
+	return nil
 }
 
 // UpdateNFInstance sends an NFUpdate PATCH to the NRF, honoring ctx. The raw err
@@ -188,10 +186,7 @@ func (s *nnrfService) processRegisterResponse(nf *models.Nrf_NFMgmt_NFProfile, a
 func (s *nnrfService) UpdateNFInstance(ctx context.Context, patchItems []models.PatchItem) (
 	nf models.Nrf_NFMgmt_NFProfile, problemDetails *models.ProblemDetails, err error,
 ) {
-	tokCtx, pd, err := s.consumer.Context().GetTokenCtx(
-		models.Nrf_NFMgmt_ServiceName_NNRF_NFM,
-		models.Nrf_NFMgmt_NFType_NRF,
-	)
+	tokCtx, pd, err := s.consumer.Context().GetTokenCtxForNRF(models.Nrf_NFMgmt_ServiceName_NNRF_NFM)
 	if err != nil {
 		return nf, pd, err
 	}
@@ -242,14 +237,22 @@ func (s *nnrfService) buildNfProfile() (
 	if len(nfServices) == 0 {
 		return nil, fmt.Errorf("buildNfProfile err: NFServices is Empty")
 	}
-	profile.NfServices = nfServices
+	profile.NfServices = make([]models.Nrf_NFMgmt_NFService, 0, len(nfServices))
+	for _, nfService := range nfServices {
+		allowed, known := nef_context.AllowedNfTypesForService(nfService.ServiceName)
+		if !known {
+			return nil, fmt.Errorf("no AllowedNfTypes policy for service %q", nfService.ServiceName)
+		}
+		nfService.AllowedNfTypes = allowed
+		profile.NfServices = append(profile.NfServices, nfService)
+	}
 	return profile, nil
 }
 
 func (s *nnrfService) DeregisterNFInstance() (problemDetails *models.ProblemDetails, err error) {
 	logger.ConsumerLog.Infof("DeregisterNFInstance")
 
-	ctx, pd, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_NFM, models.Nrf_NFMgmt_NFType_NRF)
+	ctx, pd, err := s.consumer.Context().GetTokenCtxForNRF(models.Nrf_NFMgmt_ServiceName_NNRF_NFM)
 	if err != nil {
 		return pd, err
 	}
@@ -292,7 +295,7 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.Nrf_NFMgmt
 		return nil, "", openapi.ReportError("nrf not found")
 	}
 
-	ctx, _, err := s.consumer.Context().GetTokenCtx(models.Nrf_NFMgmt_ServiceName_NNRF_DISC, models.Nrf_NFMgmt_NFType_NRF)
+	ctx, _, err := s.consumer.Context().GetTokenCtxForNRF(models.Nrf_NFMgmt_ServiceName_NNRF_DISC)
 	if err != nil {
 		return nil, "", err
 	}
