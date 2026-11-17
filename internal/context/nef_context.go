@@ -33,6 +33,7 @@ type NefContext struct {
 	udrDrUri        string
 	namfEvtsUri     string
 	udmSdmUri       string
+	bsfMgmtUri      string
 	numCorreID      uint64
 	OAuth2Required  bool
 	afs             map[string]*AfData
@@ -105,6 +106,19 @@ func (c *NefContext) SetUdmSdmUri(uri string) {
 	defer c.mu.Unlock()
 	c.udmSdmUri = uri
 	logger.CtxLog.Infof("Set udmSdmUri: [%s]", c.udmSdmUri)
+}
+
+func (c *NefContext) BsfMgmtUri() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.bsfMgmtUri
+}
+
+func (c *NefContext) SetBsfMgmtUri(uri string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.bsfMgmtUri = uri
+	logger.CtxLog.Infof("Set bsfMgmtUri: [%s]", c.bsfMgmtUri)
 }
 
 func (c *NefContext) NewAf(afID string) *AfData {
