@@ -6,8 +6,10 @@ import (
 	"github.com/free5gc/openapi/models"
 )
 
-const ServiceNameNnefCallback models.Nrf_NFMgmt_ServiceName = "nnef-callback"
-const ServiceNameNefUeId models.Nrf_NFMgmt_ServiceName = "3gpp-ueid"
+const (
+	ServiceNameNnefCallback models.Nrf_NFMgmt_ServiceName = "nnef-callback"
+	ServiceNameNefUeId      models.Nrf_NFMgmt_ServiceName = "3gpp-ueid"
+)
 
 var servicePolicies = map[models.Nrf_NFMgmt_ServiceName][]models.Nrf_NFMgmt_NFType{
 	models.Nrf_NFMgmt_ServiceName_NNEF_PFDMANAGEMENT: {
