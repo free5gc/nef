@@ -27,8 +27,8 @@ github.com/free5gc/ngap v1.1.4-0.20260707055048-c26215fe47ef h1:+TrPHbLcROsjDUuw
 github.com/free5gc/ngap v1.1.4-0.20260707055048-c26215fe47ef/go.mod h1:1lfw7JP0fs8bdv0B685KDC2/shOciL9gf1f3KwKnGvk=
 github.com/free5gc/openapi v1.3.1-0.20261104070955-7fad8e868cb2 h1:BOJSQK6arB7Ohf51fAceHY/cPwXSyb07Tnj6bpm5Wxw=
 github.com/free5gc/openapi v1.3.1-0.20261104070955-7fad8e868cb2/go.mod h1:ixcBUsgwkQBAT/4peVVB0daqxk0qv6V8zOMSFvhKVfo=
-github.com/free5gc/util v1.4.1-0.20261105063436-ea3001890fa5 h1:NuwrVOBaWmw7oTQkU/P6KwzrLS4+Pv+RIWNmylKtvkg=
-github.com/free5gc/util v1.4.1-0.20261105063436-ea3001890fa5/go.mod h1:TQGJb7gl4SmlTn/oFhmgV/OpOdiIoylhYqyvKvMsUD4=
+github.com/free5gc/util v1.4.1-0.20261118044530-a14766fe79d2 h1:7heQWP9a8p9wg1UczgKz4ZkxsdOZerLVRxt6xm4cKDg=
+github.com/free5gc/util v1.4.1-0.20261118044530-a14766fe79d2/go.mod h1:BKve0a2Zc9/31J3mh+bI/81TvqqALjX1VJ7qVTdwc10=
 github.com/gabriel-vasile/mimetype v1.4.3 h1:in2uUcidCuFcDKtdcBxlR0rJ1+fsokWf+uqxgUFjbI0=
 github.com/gabriel-vasile/mimetype v1.4.3/go.mod h1:d8uq/6HKRL6CGdk+aubisF/M5GcPfT7nKyLpA0lbSSk=
 github.com/gin-contrib/cors v1.3.1 h1:doAsuITavI4IOcd0Y19U4B+O0dNWihRyX//nn4sEmgA=
@@ -162,8 +162,8 @@ go.opentelemetry.io/otel/trace v1.24.0/go.mod h1:HPc3Xr/cOApsBI154IU0OI0HJexz+aw
 golang.org/x/arch v0.0.0-20210923205945-b76863e36670/go.mod h1:5om86z9Hs0C8fWVUuoMHwpExlXzs5Tkyp9hOrfG7pp8=
 golang.org/x/arch v0.8.0 h1:3wRIsP3pM4yUptoR96otTUOXI367OS0+c9eeRi9doIc=
 golang.org/x/arch v0.8.0/go.mod h1:FEVrYAQjsQXMVJ1nsMoVVXPZg6p2JE2mx8psSWTDQys=
-golang.org/x/crypto v0.51.0 h1:IBPXwPfKxY7cWQZ38ZCIRPI50YLeevDLlLnyC5wRGTI=
-golang.org/x/crypto v0.51.0/go.mod h1:8AdwkbraGNABw2kOX6YFPs3WM22XqI4EXEd8g+x7Oc8=
+golang.org/x/crypto v0.52.0 h1:RMs7fP2rXdep0CftQlK8Uf+kibLm7qkCcradZWYz988=
+golang.org/x/crypto v0.52.0/go.mod h1:1QgfPxDqh0T2M/elOJtp9RvuR95kVjir0e6/BvEmGbc=
 golang.org/x/net v0.55.0 h1:bcvxaJn3e1U6InsFWt1JUq1aSjnRxLzT2rtD2KfkDF8=
 golang.org/x/net v0.55.0/go.mod h1:L5U2KuzuOe1lY7Z+aWVIKK6qEeJXnXV9yzGA+WCHJww=
 golang.org/x/oauth2 v0.27.0 h1:da9Vo7/tDv5RH/7nZDz1eMGS/q1Vv1N/7FCrBhI9I3M=
