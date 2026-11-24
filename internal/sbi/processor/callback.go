@@ -35,8 +35,10 @@ func (p *Processor) SmfNotification(
 
 	af.Mu.RLock()
 	notifDestination := ""
+	afTransID := ""
 	if sub.TiSub != nil {
 		notifDestination = sub.TiSub.NotificationDestination
+		afTransID = sub.TiSub.AfTransId
 	}
 	af.Mu.RUnlock()
 
@@ -47,12 +49,44 @@ func (p *Processor) SmfNotification(
 		return
 	}
 
-	if err := postNotificationToAf(notifDestination, eeNotif, c.Request.Context()); err != nil {
-		logger.TrafInfluLog.Errorf("Forward SMF notification to AF failed: %v", err)
-		pd := openapi.ProblemDetailsSystemFailure(err.Error())
-		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
-		c.JSON(http.StatusBadGateway, pd)
-		return
+	// Validate the entire batch before sending any event. The Release 17
+	// northbound schema requires dnaiChgType for UP path notifications.
+	for _, event := range eeNotif.EventNotifs {
+		if event.Event == models.Smf_EvtExpos_SmfEvent_UP_PATH_CH && event.DnaiChgType == "" {
+			pd := openapi.ProblemDetailsMalformedReqSyntax("Missing dnaiChgType in UP path change event")
+			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+			c.JSON(int(pd.Status), pd)
+			return
+		}
+	}
+
+	for _, event := range eeNotif.EventNotifs {
+		if event.Event != models.Smf_EvtExpos_SmfEvent_UP_PATH_CH {
+			continue
+		}
+		// TS 29.522 §5.4.3.3.4 defines a separate AF-facing payload for each event.
+		notification := models.Nef_TrafInfl_EventNotification{
+			AfTransId:          afTransID,
+			SubscribedEvent:    models.Nef_TrafInfl_SubscribedEvent_UP_PATH_CHANGE,
+			DnaiChgType:        event.DnaiChgType,
+			SourceTrafficRoute: event.SourceTraRouting,
+			TargetTrafficRoute: event.TargetTraRouting,
+			SourceDnai:         event.SourceDnai,
+			TargetDnai:         event.TargetDnai,
+			Gpsi:               event.Gpsi,
+			SrcUeIpv4Addr:      event.SourceUeIpv4Addr,
+			SrcUeIpv6Prefix:    event.SourceUeIpv6Prefix,
+			TgtUeIpv4Addr:      event.TargetUeIpv4Addr,
+			TgtUeIpv6Prefix:    event.TargetUeIpv6Prefix,
+			UeMac:              event.UeMac,
+		}
+		if err := postNotificationToAf(notifDestination, notification, c.Request.Context()); err != nil {
+			logger.TrafInfluLog.Errorf("Forward SMF notification to AF failed: %v", err)
+			pd := openapi.ProblemDetailsSystemFailure(err.Error())
+			c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+			c.JSON(http.StatusBadGateway, pd)
+			return
+		}
 	}
 
 	c.Status(http.StatusNoContent)
