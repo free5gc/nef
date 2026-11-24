@@ -127,10 +127,14 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
 
-	afReceived := false
+	var afBodies []string
 	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		require.Empty(t, req.Header.Get("Authorization"))
-		afReceived = true
+		require.Equal(t, http.MethodPost, req.Method)
+		require.Equal(t, "application/json", req.Header.Get("Content-Type"))
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		afBodies = append(afBodies, string(body))
 		return &http.Response{
 			StatusCode: http.StatusNoContent,
 			Body:       io.NopCloser(strings.NewReader("")),
@@ -147,6 +151,7 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 	correID := nefCtx.NewCorreID()
 	tiSub := &models.Nef_TrafInfl_TrafficInfluSub{
 		NotificationDestination: "http://af.example.com/notify",
+		AfTransId:               "af-transaction-1",
 	}
 	afSub := af.NewSub(correID, tiSub)
 	af.Subs[afSub.SubID] = afSub
@@ -158,28 +163,57 @@ func TestSmfNotification_SuccessfulForward(t *testing.T) {
 	}()
 
 	c, w := newGinContext(t)
-	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
+	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{
+		NotifId: afSub.NotifCorreID,
+		EventNotifs: []models.Smf_EvtExpos_EventNotification{
+			{
+				Event:              models.Smf_EvtExpos_SmfEvent_UP_PATH_CH,
+				Supi:               "imsi-001010000000001",
+				Gpsi:               "msisdn-15551234567",
+				PduSeId:            5,
+				DnaiChgType:        models.DnaiChangeType_EARLY,
+				SourceDnai:         "source",
+				TargetDnai:         "target",
+				SourceTraRouting:   &models.RouteToLocation{Dnai: "source"},
+				TargetTraRouting:   &models.RouteToLocation{Dnai: "target"},
+				SourceUeIpv4Addr:   "192.0.2.10",
+				SourceUeIpv6Prefix: "2001:db8:1::/64",
+				TargetUeIpv4Addr:   "192.0.2.11",
+				TargetUeIpv6Prefix: "2001:db8:2::/64",
+				UeMac:              "02-00-00-00-00-01",
+			},
+			{Event: models.Smf_EvtExpos_SmfEvent_PDU_SES_REL},
+			{Event: models.Smf_EvtExpos_SmfEvent_UP_PATH_CH, DnaiChgType: models.DnaiChangeType_LATE},
+		},
+	}
 	nefApp.Processor().SmfNotification(c, notif)
 	c.Writer.WriteHeaderNow()
 
 	require.Equal(t, http.StatusNoContent, w.Code)
-	require.True(t, afReceived, "AF mock should have received the notification")
+	require.Len(t, afBodies, 2)
+	require.JSONEq(t, `{
+		"afTransId": "af-transaction-1",
+		"subscribedEvent": "UP_PATH_CHANGE",
+		"dnaiChgType": "EARLY",
+		"sourceDnai": "source",
+		"targetDnai": "target",
+		"sourceTrafficRoute": {"dnai": "source"},
+		"targetTrafficRoute": {"dnai": "target"},
+		"gpsi": "msisdn-15551234567",
+		"srcUeIpv4Addr": "192.0.2.10",
+		"srcUeIpv6Prefix": "2001:db8:1::/64",
+		"tgtUeIpv4Addr": "192.0.2.11",
+		"tgtUeIpv6Prefix": "2001:db8:2::/64",
+		"ueMac": "02-00-00-00-00-01"
+	}`, afBodies[0])
+	require.JSONEq(t,
+		`{"afTransId":"af-transaction-1","subscribedEvent":"UP_PATH_CHANGE","dnaiChgType":"LATE"}`, afBodies[1])
 }
 
-// TestSmfNotification_AfReturnsError verifies that SmfNotification returns
-// 502 (BadGateway) when the AF callback endpoint responds with a non-2xx status.
-func TestSmfNotification_AfReturnsError(t *testing.T) {
+func TestSmfNotification_BatchValidationAndDeliveryFailure(t *testing.T) {
 	openapi.InterceptInnerHttp2Client(t, false)
 	originalClient := afCallbackHTTPClient
 	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
-
-	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return &http.Response{
-			StatusCode: http.StatusForbidden,
-			Body:       io.NopCloser(strings.NewReader(`{"status":403,"title":"Forbidden"}`)),
-			Header:     make(http.Header),
-		}, nil
-	})}
 
 	nefCtx := nefApp.Context()
 	af := nefCtx.NewAf("af-callback-test-3")
@@ -197,12 +231,53 @@ func TestSmfNotification_AfReturnsError(t *testing.T) {
 		nefCtx.ResetCorreID()
 	}()
 
-	c, w := newGinContext(t)
-	notif := &models.Smf_EvtExpos_NsmfEventExposureNotification{NotifId: afSub.NotifCorreID}
-	nefApp.Processor().SmfNotification(c, notif)
-	c.Writer.WriteHeaderNow()
+	valid := models.Smf_EvtExpos_EventNotification{
+		Event:       models.Smf_EvtExpos_SmfEvent_UP_PATH_CH,
+		DnaiChgType: models.DnaiChangeType_EARLY,
+	}
+	for _, tc := range []struct {
+		name       string
+		events     []models.Smf_EvtExpos_EventNotification
+		wantStatus int
+		wantPosts  int
+	}{
+		{"missing phase in second event", []models.Smf_EvtExpos_EventNotification{
+			valid, {Event: models.Smf_EvtExpos_SmfEvent_UP_PATH_CH},
+		}, http.StatusBadRequest, 0},
+		{"unsupported event", []models.Smf_EvtExpos_EventNotification{
+			{Event: models.Smf_EvtExpos_SmfEvent_PDU_SES_REL},
+		}, http.StatusNoContent, 0},
+		{
+			"AF rejects second event",
+			[]models.Smf_EvtExpos_EventNotification{valid, valid, valid},
+			http.StatusBadGateway, 2,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			posts := 0
+			afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				posts++
+				status := http.StatusNoContent
+				if posts == 2 {
+					status = http.StatusForbidden
+				}
+				return &http.Response{
+					StatusCode: status,
+					Body:       http.NoBody,
+					Header:     make(http.Header),
+				}, nil
+			})}
 
-	require.Equal(t, http.StatusBadGateway, w.Code)
+			c, w := newGinContext(t)
+			nefApp.Processor().SmfNotification(c, &models.Smf_EvtExpos_NsmfEventExposureNotification{
+				NotifId:     afSub.NotifCorreID,
+				EventNotifs: tc.events,
+			})
+			c.Writer.WriteHeaderNow()
+			require.Equal(t, tc.wantStatus, w.Code)
+			require.Equal(t, tc.wantPosts, posts)
+		})
+	}
 }
 
 // TestAmfEventNotification_NotifyCorrelationIdNotFound verifies that AmfEventNotification
