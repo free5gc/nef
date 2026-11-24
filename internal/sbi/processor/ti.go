@@ -3,6 +3,7 @@ package processor
 import (
 	"net/http"
 	"net/url"
+	"strconv"
 
 	nef_context "github.com/free5gc/nef/internal/context"
 	"github.com/free5gc/nef/internal/logger"
@@ -126,6 +127,7 @@ func (p *Processor) PostTrafficInfluenceSubscription(
 		return
 	}
 
+	tiSub.SuppFeat = withoutURLLC(tiSub.SuppFeat)
 	tiSub.Self = p.genTrafficInfluSubURI(afID, afSub.SubID)
 	af.Mu.Lock()
 	af.Subs[afSub.SubID] = afSub
@@ -265,6 +267,7 @@ func (p *Processor) PutIndividualTrafficInfluenceSubscription(
 	}
 
 	af.Mu.Lock()
+	tiSub.SuppFeat = withoutURLLC(tiSub.SuppFeat)
 	afSub.TiSub = tiSub
 	afSub.AppSessID = updatedAppSessID
 	af.Mu.Unlock()
@@ -283,6 +286,13 @@ func (p *Processor) PatchIndividualTrafficInfluenceSubscription(
 	tiSubPatch *models.Nef_TrafInfl_TrafficInfluSubPatch,
 ) {
 	logger.TrafInfluLog.Infof("PatchIndividualTrafficInfluenceSubscription - afID[%s], subID[%s]", afID, subID)
+
+	if tiSubPatch.AfAckInd {
+		pd := unsupportedAFAckProblem()
+		c.Set(sbi.IN_PB_DETAILS_CTX_STR, pd.Cause)
+		c.JSON(int(pd.Status), pd)
+		return
+	}
 
 	af := p.Context().GetAf(afID)
 	if af == nil {
@@ -450,9 +460,38 @@ func lockTrafficInfluenceSubscription(
 	return sub, true
 }
 
+const afAcknowledgementUnsupported = "AF acknowledgement is not supported"
+
+func unsupportedAFAckProblem() *models.ProblemDetails {
+	return &models.ProblemDetails{
+		Status: http.StatusBadRequest,
+		Title:  "Unsupported subscription feature",
+		Detail: afAcknowledgementUnsupported,
+	}
+}
+
+// TS 29.522 Table 5.4.4-1 assigns URLLC feature number 3.
+// Clear its bit in the least significant hex digit of the AF-facing feature mask.
+func withoutURLLC(features string) string {
+	if features == "" {
+		return features
+	}
+	last := len(features) - 1
+	digit, err := strconv.ParseUint(features[last:], 16, 4)
+	const urllcBit = 0x4
+	if err != nil || digit&urllcBit == 0 {
+		return features
+	}
+	return features[:last] + strconv.FormatUint(digit&^urllcBit, 16)
+}
+
 func validateTrafficInfluenceData(
 	tiSub *models.Nef_TrafInfl_TrafficInfluSub,
 ) *models.ProblemDetails {
+	if tiSub.AfAckInd {
+		return unsupportedAFAckProblem()
+	}
+
 	if tiSub.NotificationDestination == "" {
 		pd := openapi.ProblemDetailsMalformedReqSyntax("Missing notificationDestination")
 		return pd
@@ -578,7 +617,6 @@ func (p *Processor) convertTrafficInfluSubToTrafficInfluData(
 		// ValidStartTime: ,
 		// ValidEndTime: ,
 		TempValidities:    tiSub.TempValidities,
-		AfAckInd:          tiSub.AfAckInd,
 		AddrPreserInd:     tiSub.AddrPreserInd,
 		SupportedFeatures: tiSub.SuppFeat,
 	}

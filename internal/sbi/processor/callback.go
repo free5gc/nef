@@ -33,6 +33,13 @@ func (p *Processor) SmfNotification(
 		return
 	}
 
+	if eeNotif.AckUri != "" {
+		// The northbound ack URI must point to an NEF relay, which is not implemented.
+		pd := models.ProblemDetails{Status: http.StatusNotImplemented, Detail: afAcknowledgementUnsupported}
+		c.JSON(http.StatusNotImplemented, pd)
+		return
+	}
+
 	af.Mu.RLock()
 	notifDestination := ""
 	if sub.TiSub != nil {

@@ -560,3 +560,35 @@ func TestSBICallbackTLSVerification(t *testing.T) {
 		}
 	}
 }
+
+func TestSmfNotificationRejectsUnsupportedAcknowledgement(t *testing.T) {
+	originalClient := afCallbackHTTPClient
+	t.Cleanup(func() { afCallbackHTTPClient = originalClient })
+	afCallbackHTTPClient = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		t.Fatal("unexpected callback to AF")
+		return nil, nil
+	})}
+
+	nefCtx := nefApp.Context()
+	af := nefCtx.NewAf("af-ack-test")
+	af.Mu.Lock()
+	sub := af.NewSub(nefCtx.NewCorreID(), &models.Nef_TrafInfl_TrafficInfluSub{
+		NotificationDestination: "http://af.example.test/notify",
+	})
+	af.Subs[sub.SubID] = sub
+	nefCtx.AddAf(af)
+	af.Mu.Unlock()
+	t.Cleanup(func() {
+		nefCtx.DeleteAf(af.AfID)
+		nefCtx.ResetCorreID()
+	})
+
+	c, w := newGinContext(t)
+	const ackURI = "http://smf.example.test/internal/ack"
+	nefApp.Processor().SmfNotification(c, &models.Smf_EvtExpos_NsmfEventExposureNotification{
+		NotifId: sub.NotifCorreID,
+		AckUri:  ackURI,
+	})
+	require.Equal(t, http.StatusNotImplemented, w.Code)
+	require.NotContains(t, w.Body.String(), ackURI)
+}

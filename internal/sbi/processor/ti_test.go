@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"sync"
 	"testing"
 	"time"
@@ -1021,4 +1022,77 @@ func assertJSONBodyEqual(t *testing.T, expectedBody interface{}, actualBody []by
 	require.NoError(t, json.Unmarshal(actualBody, &actualData))
 
 	require.Equal(t, expectedData, actualData)
+}
+
+func TestTrafficInfluenceRejectsAFAcknowledgement(t *testing.T) {
+	processor := nefApp.Processor()
+	sub := tiSub1ForAf1
+	sub.AfAckInd = true
+	const afID = "af-unsupported-ack"
+	require.Nil(t, nefApp.Context().GetAf(afID))
+	for _, tc := range []struct {
+		method string
+		call   func(*gin.Context)
+	}{
+		{http.MethodPost, func(c *gin.Context) { processor.PostTrafficInfluenceSubscription(c, afID, &sub) }},
+		{http.MethodPut, func(c *gin.Context) {
+			processor.PutIndividualTrafficInfluenceSubscription(c, afID, "1", &sub)
+		}},
+		{http.MethodPatch, func(c *gin.Context) {
+			processor.PatchIndividualTrafficInfluenceSubscription(c, afID, "1",
+				&models.Nef_TrafInfl_TrafficInfluSubPatch{AfAckInd: true})
+		}},
+	} {
+		t.Run(tc.method, func(t *testing.T) {
+			c, w := newGinContext(t)
+			tc.call(c)
+			require.Equal(t, http.StatusBadRequest, w.Code)
+			var problem models.ProblemDetails
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &problem))
+			require.Equal(t, afAcknowledgementUnsupported, problem.Detail)
+			require.Nil(t, nefApp.Context().GetAf(afID))
+		})
+	}
+}
+
+func TestTrafficInfluenceAcknowledgementNegotiation(t *testing.T) {
+	openapi.InterceptInnerHttp2Client(t, false)
+	initUDRDrPutTiDataStub(http.StatusNoContent)
+	defer gock.Off()
+	const afID = "af-ack-negotiation"
+	t.Cleanup(func() {
+		nefApp.Context().DeleteAf(afID)
+		nefApp.Context().ResetCorreID()
+	})
+	processor := nefApp.Processor()
+	sub := tiSub1ForAf1
+	sub.SuppFeat = "4"
+	c, w := newGinContext(t)
+	processor.PostTrafficInfluenceSubscription(c, afID, &sub)
+	require.Equal(t, http.StatusCreated, w.Code)
+	var created models.Nef_TrafInfl_TrafficInfluSub
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &created))
+	require.Equal(t, "0", created.SuppFeat)
+	subID := path.Base(created.Self)
+
+	replacement := tiSub1ForAf1
+	replacement.SuppFeat = "1F"
+	c, w = newGinContext(t)
+	processor.PutIndividualTrafficInfluenceSubscription(c, afID, subID, &replacement)
+	require.Equal(t, http.StatusOK, w.Code)
+	var updated models.Nef_TrafInfl_TrafficInfluSub
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &updated))
+	require.Equal(t, "1b", updated.SuppFeat)
+
+	c, w = newGinContext(t)
+	processor.PatchIndividualTrafficInfluenceSubscription(c, afID, subID,
+		&models.Nef_TrafInfl_TrafficInfluSubPatch{AfAckInd: true})
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	c, w = newGinContext(t)
+	processor.GetIndividualTrafficInfluenceSubscription(c, afID, subID)
+	require.Equal(t, http.StatusOK, w.Code)
+	var stored models.Nef_TrafInfl_TrafficInfluSub
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &stored))
+	require.Equal(t, "1b", stored.SuppFeat)
+	require.False(t, stored.AfAckInd)
 }
