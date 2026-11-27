@@ -315,9 +315,8 @@ func (s *nnrfService) SearchNFInstances(nrfUri string, srvName models.Nrf_NFMgmt
 		return nil, "", openapi.ReportError("no search result from NRF")
 	}
 
-	// NFs that still register a full URL as apiPrefix remain reachable.
 	nfProf, uri, err := serviceuri.ResolveFromSearchResult(res.Nrf_NFDisc_SearchResult.NfInstances, srvName,
-		serviceuri.Options{AllowLegacyAbsoluteAPIPrefix: true})
+		serviceuri.Options{})
 	if err != nil {
 		logger.ConsumerLog.Errorf("%s", err.Error())
 		return nil, "", err
