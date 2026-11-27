@@ -5,6 +5,7 @@ import (
 	"github.com/free5gc/nef/pkg/app"
 	"github.com/free5gc/openapi"
 	"github.com/free5gc/openapi/amf/EvtExpos"
+	"github.com/free5gc/openapi/bsf/Mgmt"
 	"github.com/free5gc/openapi/nrf/NFDisc"
 	"github.com/free5gc/openapi/nrf/NFMgmt"
 	"github.com/free5gc/openapi/pcf/PolAuth"
@@ -26,6 +27,7 @@ type Consumer struct {
 	*nudrService
 	*namfService
 	*nudmService
+	*nbsfService
 }
 
 func NewConsumer(nef nef) (*Consumer, error) {
@@ -66,6 +68,11 @@ func NewConsumer(nef nef) (*Consumer, error) {
 	c.nudmService = &nudmService{
 		consumer: c,
 		clients:  make(map[string]*SDM.APIClient),
+	}
+
+	c.nbsfService = &nbsfService{
+		consumer: c,
+		clients:  make(map[string]*Mgmt.APIClient),
 	}
 	return c, nil
 }

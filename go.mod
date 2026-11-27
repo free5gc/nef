@@ -2,6 +2,10 @@ module github.com/free5gc/nef
 
 go 1.26.2
 
+// TEMPORARY: points to the free5gc/openapi#85 branch (Nnef_UEId models) until
+// it merges upstream. Replace with the upstream pseudo-version once merged.
+replace github.com/free5gc/openapi => github.com/ALIIQBAL786/openapi v1.2.5-0.20261127070225-2bd459b81cfb
+
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/davecgh/go-spew v1.1.1
